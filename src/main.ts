@@ -3,6 +3,7 @@ import { applyCssVariables, clearCssVariables } from './utils/dom';
 import { debug, resetWarnings, setDebugLogging } from './utils/log';
 import { normalizeSettings, type SelectionTranslateSettings } from './settings/settings';
 import { SelectionTranslateSettingTab } from './settings/SettingTab';
+import { SelectionManager } from './core/SelectionManager';
 
 export default class SelectionTranslatePlugin extends Plugin {
 	// `override` because Obsidian's Plugin declares `settings?: unknown` as the
@@ -18,8 +19,23 @@ export default class SelectionTranslatePlugin extends Plugin {
 	 */
 	private readonly attachedWindows = new Set<Window>();
 
+	private selectionManager!: SelectionManager;
+
 	override async onload(): Promise<void> {
 		await this.loadSettings();
+
+		this.selectionManager = new SelectionManager(() => this.settings, {
+			onSelection: (snapshot, cause) => {
+				// Phase 3 turns this into the trigger icon and the state machine.
+				debug('usable selection', { cause, context: snapshot.context, id: snapshot.id });
+			},
+			onClear: (reason) => debug('selection cleared', reason),
+			onPointerDownOutside: () => debug('pointer down outside'),
+			onViewportChange: (kind) => debug('viewport changed', kind),
+		});
+		// Ties teardown to the plugin's own lifecycle, so unload releases every
+		// listener even though they are not individually registerDomEvent'd.
+		this.register(() => this.selectionManager.destroy());
 
 		this.attachWindow(window);
 		this.registerEvent(
@@ -65,11 +81,13 @@ export default class SelectionTranslatePlugin extends Plugin {
 		if (this.attachedWindows.has(win)) return;
 		this.attachedWindows.add(win);
 		applyCssVariables(win.document, this.settings);
+		this.selectionManager.attach(win);
 		debug('attached window', this.attachedWindows.size);
 	}
 
 	private detachWindow(win: Window): void {
 		if (!this.attachedWindows.has(win)) return;
+		this.selectionManager.detach(win);
 		clearCssVariables(win.document);
 		this.attachedWindows.delete(win);
 	}

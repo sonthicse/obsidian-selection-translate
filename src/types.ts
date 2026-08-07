@@ -4,6 +4,30 @@
  * node. Everything crossing that boundary is a plain object declared here.
  */
 
+/**
+ * A plain, structurally-compatible stand-in for DOMRect.
+ *
+ * `getBoundingClientRect()` already returns something that satisfies this, so
+ * browser rects flow in unchanged. Going the other way is the point: geometry
+ * can be constructed and compared in a plain Node process, which is what makes
+ * the positioner unit-testable without a DOM.
+ */
+export interface Rect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	top: number;
+	right: number;
+	bottom: number;
+	left: number;
+}
+
+/** Builds a {@link Rect} from a position and size, filling in the edges. */
+export function makeRect(x: number, y: number, width: number, height: number): Rect {
+	return { x, y, width, height, left: x, top: y, right: x + width, bottom: y + height };
+}
+
 /** Languages offered as a translation source. */
 export type SourceLangCode = 'auto' | 'en' | 'es' | 'fr' | 'de' | 'ru' | 'vi';
 
@@ -30,12 +54,23 @@ export interface SelectionSnapshot {
 	/** Exactly what the user highlighted, verbatim and unprocessed. */
 	text: string;
 	/** Client rects of the range, empty ones filtered out. */
-	rects: DOMRect[];
+	rects: Rect[];
 	/** Union of `rects` — the box the icon is anchored to. */
-	bbox: DOMRect;
+	bbox: Rect;
 	/** Last rect, i.e. where the selection ends. Used by end-anchored placements. */
-	anchorRect: DOMRect;
+	anchorRect: Rect;
 	context: SelectionContext;
+	/**
+	 * Whether the selection sits in the properties / frontmatter editor.
+	 *
+	 * Tracked separately from `context` because the two answer different
+	 * questions: `context` says whether typing a bare letter would insert text
+	 * (which gates the local trigger key), while this drives the independent
+	 * "enable in properties" scope toggle. A property *value* is an editable
+	 * contenteditable and a property *key* is an `<input>`, so neither maps to a
+	 * context value of its own.
+	 */
+	inProperties: boolean;
 	/** Owning window. Differs from the main one inside popout windows. */
 	win: Window;
 	/** Leaf content element, used as the positioning boundary. */

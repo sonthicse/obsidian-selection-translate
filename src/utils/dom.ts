@@ -1,4 +1,5 @@
 import { OWN_UI_SELECTOR } from '../constants';
+import { makeRect, type Rect } from '../types';
 import type { SelectionTranslateSettings } from '../settings/settings';
 
 /**
@@ -40,10 +41,17 @@ export function isInsideOwnUi(node: Node | null): boolean {
 	return el?.closest(OWN_UI_SELECTOR) != null;
 }
 
+/** `Node.ELEMENT_NODE`, spelled out.
+ *
+ *  Referencing the global `Node` would tie this to one window's class objects
+ *  and would break under the plain-Node test runner; the numeric value is fixed
+ *  by the DOM specification. */
+const ELEMENT_NODE = 1;
+
 /** Nearest Element for any node, since text nodes have no `closest()`. */
 export function toElement(node: Node | null): Element | null {
 	if (node == null) return null;
-	if (node.nodeType === Node.ELEMENT_NODE) return node as Element;
+	if (node.nodeType === ELEMENT_NODE) return node as Element;
 	return node.parentElement;
 }
 
@@ -53,8 +61,8 @@ export function toElement(node: Node | null): Element | null {
  * A multi-line selection reports one rect per line; the icon anchors to their
  * union rather than to any single line.
  */
-export function unionRects(rects: DOMRect[]): DOMRect {
-	if (rects.length === 0) return new DOMRect(0, 0, 0, 0);
+export function unionRects(rects: Rect[]): Rect {
+	if (rects.length === 0) return makeRect(0, 0, 0, 0);
 
 	let left = Number.POSITIVE_INFINITY;
 	let top = Number.POSITIVE_INFINITY;
@@ -68,7 +76,16 @@ export function unionRects(rects: DOMRect[]): DOMRect {
 		bottom = Math.max(bottom, rect.bottom);
 	}
 
-	return new DOMRect(left, top, right - left, bottom - top);
+	return makeRect(left, top, right - left, bottom - top);
+}
+
+/** Copies a live DOMRect into a detached plain {@link Rect}.
+ *
+ *  Necessary because a DOMRectReadOnly from `getClientRects()` reflects live
+ *  layout: keeping the original in a snapshot means the geometry silently
+ *  changes when the user scrolls. */
+export function freezeRect(rect: DOMRectReadOnly): Rect {
+	return makeRect(rect.left, rect.top, rect.width, rect.height);
 }
 
 /**

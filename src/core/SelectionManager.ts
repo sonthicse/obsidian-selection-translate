@@ -1,0 +1,356 @@
+import {
+	DOUBLE_CLICK_GUARD_MS,
+	IGNORED_SELECTORS,
+	RESIZE_DEBOUNCE_MS,
+	SELECTION_CHANGE_DEBOUNCE_MS,
+} from '../constants';
+import { detectContext, isContextEnabled, type ContextInfo } from './ContextDetector';
+import { DomSelectionSource } from '../selection/DomSelectionSource';
+import { InputSelectionSource } from '../selection/InputSelectionSource';
+import { PdfSelectionSource } from '../selection/PdfSelectionSource';
+import type { RawSelection } from '../selection/SelectionSource';
+import type { SelectionSnapshot } from '../types';
+import type { SelectionTranslateSettings } from '../settings/settings';
+import { isInsideOwnUi, last, toElement, unionRects } from '../utils/dom';
+import { debounce } from '../utils/debounce';
+import { debug } from '../utils/log';
+
+/** What prompted a selection to be evaluated. */
+export type SelectionCause = 'mouse' | 'keyboard' | 'selectionchange' | 'double-click' | 'command';
+
+/** Why a previously reported selection is no longer valid. */
+export type ClearReason =
+	| 'empty'
+	| 'ignored-surface'
+	| 'disabled-context'
+	| 'too-short'
+	| 'too-long'
+	| 'undetectable';
+
+export interface SelectionManagerHandlers {
+	/** A usable selection exists. The snapshot is already detached from the DOM. */
+	onSelection(snapshot: SelectionSnapshot, cause: SelectionCause): void;
+	/** No usable selection remains. */
+	onClear(reason: ClearReason): void;
+	/** Pointer went down somewhere outside the plugin's own UI. */
+	onPointerDownOutside(event: PointerEvent): void;
+	/** The viewport moved under the selection. */
+	onViewportChange(kind: 'scroll' | 'resize'): void;
+}
+
+/** Outcome of trying to read a selection out of a window. */
+type CaptureResult =
+	| { kind: 'snapshot'; snapshot: SelectionSnapshot }
+	| { kind: 'none'; reason: ClearReason }
+	// Selection is inside the plugin's own popup: neither a new request nor a
+	// reason to tear down what is on screen.
+	| { kind: 'ignore' };
+
+/**
+ * Watches every window for selections and turns them into snapshots.
+ *
+ * Owns all DOM event wiring. Two invariants are worth stating outright:
+ *
+ * 1. **Snapshot early.** Geometry and text are copied the moment a selection is
+ *    detected, never re-read later. Pressing the mouse on the trigger icon
+ *    collapses the live selection before any click handler runs, so anything
+ *    read at click time is already gone.
+ * 2. **Every window, not just the first.** Obsidian popouts have their own
+ *    `Document`, and a listener bound to the main one never fires there.
+ */
+export class SelectionManager {
+	private readonly domSource = new DomSelectionSource();
+	private readonly inputSource = new InputSelectionSource();
+	private readonly pdfSource = new PdfSelectionSource();
+
+	private readonly teardowns = new Map<Window, Array<() => void>>();
+	/**
+	 * Deferred evaluations, keyed by timer id and remembering their window.
+	 *
+	 * The window has to be carried along: timer ids are scoped to the window
+	 * that created them, so cancelling one requires calling `clearTimeout` on
+	 * that same window rather than on whichever global happens to be in scope.
+	 */
+	private readonly pendingTimers = new Map<number, Window>();
+
+	private current: SelectionSnapshot | null = null;
+	private snapshotSeq = 0;
+
+	/**
+	 * Timestamp until which `mouseup` is ignored.
+	 *
+	 * A double click fires `mouseup` twice and then `dblclick`; without this the
+	 * trailing `mouseup` would re-evaluate the same selection and pop a second
+	 * icon on top of the popup the double click just opened.
+	 */
+	private doubleClickGuardUntil = 0;
+
+	private readonly onSelectionChangeDebounced: ((win: Window) => void) & { cancel: () => void };
+	private readonly onResizeDebounced: (() => void) & { cancel: () => void };
+
+	constructor(
+		private readonly getSettings: () => SelectionTranslateSettings,
+		private readonly handlers: SelectionManagerHandlers
+	) {
+		this.onSelectionChangeDebounced = debounce((win: Window) => {
+			this.evaluate(win, 'selectionchange');
+		}, SELECTION_CHANGE_DEBOUNCE_MS);
+
+		this.onResizeDebounced = debounce(() => {
+			this.handlers.onViewportChange('resize');
+		}, RESIZE_DEBOUNCE_MS);
+	}
+
+	/** The most recent usable selection, or null. Backs the Obsidian command. */
+	getCurrentSnapshot(): SelectionSnapshot | null {
+		return this.current;
+	}
+
+	/** Forgets the current selection without notifying handlers. */
+	reset(): void {
+		this.current = null;
+	}
+
+	/**
+	 * Binds listeners to one window.
+	 *
+	 * Listeners are added directly and their removers tracked, rather than going
+	 * through `registerDomEvent`. The reason is `detach`: Obsidian only releases
+	 * `registerDomEvent` handlers when the whole plugin unloads, so a session
+	 * that opens and closes popouts repeatedly would accumulate registrations
+	 * against dead documents. The plugin registers {@link destroy} with its own
+	 * component, so unload cleanup is still automatic.
+	 */
+	attach(win: Window): void {
+		if (this.teardowns.has(win)) return;
+
+		const doc = win.document;
+		const teardowns: Array<() => void> = [];
+
+		const onDoc = <K extends keyof DocumentEventMap>(
+			type: K,
+			handler: (event: DocumentEventMap[K]) => void,
+			options?: AddEventListenerOptions
+		): void => {
+			const listener = handler as EventListener;
+			doc.addEventListener(type, listener, options);
+			teardowns.push(() => doc.removeEventListener(type, listener, options));
+		};
+
+		onDoc('mouseup', (event) => this.handleMouseUp(event, win));
+		onDoc('keyup', (event) => this.handleKeyUp(event, win));
+		onDoc('dblclick', (event) => this.handleDoubleClick(event, win));
+		// `selectionchange` is the only signal touch devices reliably emit, and it
+		// also catches selections made by other plugins or by the app itself.
+		onDoc('selectionchange', () => this.onSelectionChangeDebounced(win));
+		// Capture phase: the click that dismisses the popup must be seen even if
+		// the element under the pointer stops propagation.
+		onDoc('pointerdown', (event) => this.handlePointerDown(event), { capture: true });
+		// Scroll does not bubble, so it is only observable from the capture phase
+		// on the document. Passive because this handler never prevents default.
+		onDoc('scroll', () => this.handlers.onViewportChange('scroll'), {
+			capture: true,
+			passive: true,
+		});
+
+		const resizeListener = (): void => this.onResizeDebounced();
+		win.addEventListener('resize', resizeListener);
+		teardowns.push(() => win.removeEventListener('resize', resizeListener));
+
+		this.teardowns.set(win, teardowns);
+		debug('selection listeners attached', { windows: this.teardowns.size });
+	}
+
+	/** Unbinds everything bound to one window. Safe to call for unknown windows. */
+	detach(win: Window): void {
+		const teardowns = this.teardowns.get(win);
+		if (teardowns == null) return;
+
+		for (const teardown of teardowns) teardown();
+		this.teardowns.delete(win);
+		// A queued evaluation would run against a document that no longer exists.
+		this.cancelPendingFor(win);
+
+		// A snapshot taken in a window that just closed can never be translated.
+		if (this.current?.win === win) this.current = null;
+	}
+
+	/** Full teardown. Registered with the plugin so unload calls it. */
+	destroy(): void {
+		for (const win of Array.from(this.teardowns.keys())) this.detach(win);
+		for (const [timer, win] of this.pendingTimers) win.clearTimeout(timer);
+		this.pendingTimers.clear();
+		this.onSelectionChangeDebounced.cancel();
+		this.onResizeDebounced.cancel();
+		this.current = null;
+	}
+
+	/* ── Event handlers ───────────────────────────────────────────────────── */
+
+	private handleMouseUp(event: MouseEvent, win: Window): void {
+		// Still mid-drag: a button is down, so the selection is not final.
+		if (event.buttons !== 0) return;
+		if (this.isWithinDoubleClickGuard()) return;
+		if (isInsideOwnUi(event.target as Node | null)) return;
+
+		// The selection is not yet settled when mouseup fires; deferring by one
+		// task lets the browser finish updating it.
+		this.deferEvaluate(win, 'mouse');
+	}
+
+	private handleKeyUp(event: KeyboardEvent, win: Window): void {
+		// Shift+arrows extend a selection; Ctrl/Cmd+A replaces it. Every other
+		// key either does not change the selection or collapses it, and the
+		// collapse is picked up by `selectionchange`.
+		const isExtend = event.shiftKey;
+		const isSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a';
+		if (!isExtend && !isSelectAll) return;
+
+		this.deferEvaluate(win, 'keyboard');
+	}
+
+	private handleDoubleClick(event: MouseEvent, win: Window): void {
+		if (isInsideOwnUi(event.target as Node | null)) return;
+
+		this.doubleClickGuardUntil = Date.now() + DOUBLE_CLICK_GUARD_MS;
+		this.deferEvaluate(win, 'double-click');
+	}
+
+	private handlePointerDown(event: PointerEvent): void {
+		if (isInsideOwnUi(event.target as Node | null)) return;
+		this.handlers.onPointerDownOutside(event);
+	}
+
+	private isWithinDoubleClickGuard(): boolean {
+		return Date.now() < this.doubleClickGuardUntil;
+	}
+
+	/** Runs an evaluation on the next task, tracking the timer for teardown. */
+	private deferEvaluate(win: Window, cause: SelectionCause): void {
+		const timer = win.setTimeout(() => {
+			this.pendingTimers.delete(timer);
+			this.evaluate(win, cause);
+		}, 0);
+		this.pendingTimers.set(timer, win);
+	}
+
+	/** Drops deferred evaluations belonging to one window. */
+	private cancelPendingFor(win: Window): void {
+		for (const [timer, owner] of Array.from(this.pendingTimers)) {
+			if (owner !== win) continue;
+			win.clearTimeout(timer);
+			this.pendingTimers.delete(timer);
+		}
+	}
+
+	/* ── Evaluation ───────────────────────────────────────────────────────── */
+
+	/** Reads the current selection and notifies handlers of the outcome. */
+	evaluate(win: Window, cause: SelectionCause): void {
+		const result = this.capture(win);
+
+		if (result.kind === 'ignore') return;
+
+		if (result.kind === 'none') {
+			if (this.current !== null) {
+				this.current = null;
+				this.handlers.onClear(result.reason);
+			}
+			return;
+		}
+
+		const snapshot = result.snapshot;
+		// `selectionchange` fires repeatedly for one unchanged selection; only a
+		// genuine change should restart the UI.
+		if (cause === 'selectionchange' && this.isSameAsCurrent(snapshot)) return;
+
+		this.current = snapshot;
+		debug('selection', {
+			cause,
+			context: snapshot.context,
+			inProperties: snapshot.inProperties,
+			length: snapshot.text.length,
+			text: snapshot.text.length > 80 ? `${snapshot.text.slice(0, 80)}…` : snapshot.text,
+		});
+		this.handlers.onSelection(snapshot, cause);
+	}
+
+	/**
+	 * Reads a selection and applies every validity rule.
+	 *
+	 * Sources are tried in order of specificity: a focused `<input>` shadows the
+	 * document selection entirely, and the PDF text-layer fallback only runs
+	 * when the ordinary path found nothing.
+	 */
+	private capture(win: Window): CaptureResult {
+		const settings = this.getSettings();
+
+		let raw = this.inputSource.capture(win);
+		if (raw == null) raw = this.domSource.capture(win);
+		if (raw == null && settings.pdfSelectionFallback) raw = this.pdfSource.capture(win);
+		if (raw == null) return { kind: 'none', reason: 'empty' };
+
+		// Rule 3: never react to text inside our own popup, or translating a
+		// translation would loop indefinitely.
+		if (isInsideOwnUi(raw.referenceNode)) return { kind: 'ignore' };
+
+		// Rule 4: transient chrome — modals, the command palette, suggestion
+		// popups — is UI text, not content the user means to translate.
+		const referenceEl = toElement(raw.referenceNode);
+		if (referenceEl?.closest(IGNORED_SELECTORS) != null) {
+			return { kind: 'none', reason: 'ignored-surface' };
+		}
+
+		// Rules 1 and 2: length bounds, measured on trimmed text so a selection
+		// of pure whitespace counts as empty.
+		const trimmed = raw.text.trim();
+		if (trimmed.length === 0) return { kind: 'none', reason: 'empty' };
+		if (trimmed.length < settings.minSelectionLength) return { kind: 'none', reason: 'too-short' };
+		if (raw.text.length > settings.maxSelectionLength) return { kind: 'none', reason: 'too-long' };
+
+		const info = detectContext(raw.referenceNode, win.document.body);
+		if (info == null) return { kind: 'none', reason: 'undetectable' };
+
+		// Rule 5: the surface must be switched on in settings.
+		if (!isContextEnabled(info, settings)) return { kind: 'none', reason: 'disabled-context' };
+
+		return { kind: 'snapshot', snapshot: this.buildSnapshot(win, raw, info) };
+	}
+
+	private buildSnapshot(win: Window, raw: RawSelection, info: ContextInfo): SelectionSnapshot {
+		const bbox = unionRects(raw.rects);
+		const anchorRect = last(raw.rects) ?? bbox;
+
+		return {
+			text: raw.text,
+			rects: raw.rects,
+			bbox,
+			anchorRect,
+			context: info.context,
+			inProperties: info.inProperties,
+			win,
+			containerEl: info.containerEl,
+			// Remembered so focus can be handed back when the popup closes.
+			activeElement: win.document.activeElement,
+			id: ++this.snapshotSeq,
+		};
+	}
+
+	/**
+	 * Whether a freshly read selection is the one already on screen.
+	 *
+	 * Compares text and anchor position rather than identity: the same words
+	 * selected in a different place are a different request.
+	 */
+	private isSameAsCurrent(snapshot: SelectionSnapshot): boolean {
+		const current = this.current;
+		if (current == null) return false;
+
+		return (
+			current.text === snapshot.text &&
+			current.win === snapshot.win &&
+			Math.abs(current.bbox.left - snapshot.bbox.left) < 1 &&
+			Math.abs(current.bbox.top - snapshot.bbox.top) < 1
+		);
+	}
+}
