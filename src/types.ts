@@ -77,6 +77,9 @@ export interface SelectionSnapshot {
 	containerEl: HTMLElement;
 	/** Element focused when the selection was taken, so focus can be restored. */
 	activeElement: Element | null;
+	/** Last known pointer position, for the cursor-following icon placement.
+	 *  Null when the selection was made with the keyboard. */
+	cursor: { x: number; y: number } | null;
 	/** Monotonic id, for correlating a snapshot with the request it triggered. */
 	id: number;
 }
@@ -120,6 +123,21 @@ export type ProviderId = 'google-free' | 'google-cloud' | 'deepl';
 export type DictionarySourceId = 'auto' | 'gtx' | 'dictionaryapi' | 'off';
 
 export type TtsEngineId = 'webspeech' | 'google';
+
+/**
+ * A failure rendered in the popup.
+ *
+ * Carries a message key rather than a message: the popup is localised, and the
+ * provider that produced the failure has no business knowing the UI language.
+ * Every error offers at least one action, because "something went wrong" with
+ * no way forward is the least useful thing a plugin can say.
+ */
+export interface UiErrorInfo {
+	messageKey: string;
+	action: 'retry' | 'open-settings' | 'change-provider' | 'none';
+	/** Substitutions for the message template, e.g. character counts. */
+	vars?: Record<string, string | number>;
+}
 
 /** A key combination recorded by the settings tab for the local trigger key. */
 export interface HotkeyBinding {

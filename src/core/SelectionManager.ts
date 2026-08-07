@@ -36,6 +36,8 @@ export interface SelectionManagerHandlers {
 	onPointerDownOutside(event: PointerEvent): void;
 	/** The viewport moved under the selection. */
 	onViewportChange(kind: 'scroll' | 'resize'): void;
+	/** Escape was pressed outside the plugin's own UI. */
+	onEscape(): void;
 }
 
 /** Outcome of trying to read a selection out of a window. */
@@ -84,6 +86,19 @@ export class SelectionManager {
 	 * icon on top of the popup the double click just opened.
 	 */
 	private doubleClickGuardUntil = 0;
+
+	/**
+	 * Whether a mouse button is currently held.
+	 *
+	 * `selectionchange` fires on every character as a drag grows, so without
+	 * this the plugin reports "Domai" and then "Domain" as two separate
+	 * selections mid-gesture. With auto-popup enabled that is two wasted API
+	 * calls for one user action. The drag's real result arrives on `mouseup`.
+	 */
+	private pointerIsDown = false;
+
+	/** Last pointer position, for the cursor-following icon placement. */
+	private lastCursor: { x: number; y: number } | null = null;
 
 	private readonly onSelectionChangeDebounced: ((win: Window) => void) & { cancel: () => void };
 	private readonly onResizeDebounced: (() => void) & { cancel: () => void };
@@ -139,16 +154,26 @@ export class SelectionManager {
 
 		onDoc('mouseup', (event) => this.handleMouseUp(event, win));
 		onDoc('keyup', (event) => this.handleKeyUp(event, win));
+		onDoc('keydown', (event) => this.handleKeyDown(event));
 		onDoc('dblclick', (event) => this.handleDoubleClick(event, win));
 		// `selectionchange` is the only signal touch devices reliably emit, and it
 		// also catches selections made by other plugins or by the app itself.
-		onDoc('selectionchange', () => this.onSelectionChangeDebounced(win));
+		onDoc('selectionchange', () => {
+			if (this.pointerIsDown) return;
+			this.onSelectionChangeDebounced(win);
+		});
 		// Capture phase: the click that dismisses the popup must be seen even if
 		// the element under the pointer stops propagation.
 		onDoc('pointerdown', (event) => this.handlePointerDown(event), { capture: true });
+		onDoc('pointerup', (event) => this.handlePointerUp(event), { capture: true });
+		// A pointer released outside the window never emits `pointerup` there,
+		// which would otherwise leave the drag flag stuck on.
+		onDoc('pointercancel', () => {
+			this.pointerIsDown = false;
+		});
 		// Scroll does not bubble, so it is only observable from the capture phase
 		// on the document. Passive because this handler never prevents default.
-		onDoc('scroll', () => this.handlers.onViewportChange('scroll'), {
+		onDoc('scroll', (event) => this.handleScroll(event), {
 			capture: true,
 			passive: true,
 		});
@@ -193,9 +218,29 @@ export class SelectionManager {
 		if (this.isWithinDoubleClickGuard()) return;
 		if (isInsideOwnUi(event.target as Node | null)) return;
 
+		this.lastCursor = { x: event.clientX, y: event.clientY };
+
 		// The selection is not yet settled when mouseup fires; deferring by one
 		// task lets the browser finish updating it.
 		this.deferEvaluate(win, 'mouse');
+	}
+
+	private handleKeyDown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape') return;
+		if (isInsideOwnUi(event.target as Node | null)) return;
+
+		this.handlers.onEscape();
+	}
+
+	/**
+	 * Ignores scrolling that happens inside the plugin's own UI.
+	 *
+	 * A long result scrolls within the popup, and treating that as the viewport
+	 * moving would dismiss the very thing the user is reading.
+	 */
+	private handleScroll(event: Event): void {
+		if (isInsideOwnUi(event.target as Node | null)) return;
+		this.handlers.onViewportChange('scroll');
 	}
 
 	private handleKeyUp(event: KeyboardEvent, win: Window): void {
@@ -217,8 +262,16 @@ export class SelectionManager {
 	}
 
 	private handlePointerDown(event: PointerEvent): void {
+		this.pointerIsDown = true;
+		this.lastCursor = { x: event.clientX, y: event.clientY };
+
 		if (isInsideOwnUi(event.target as Node | null)) return;
 		this.handlers.onPointerDownOutside(event);
+	}
+
+	private handlePointerUp(event: PointerEvent): void {
+		this.pointerIsDown = false;
+		this.lastCursor = { x: event.clientX, y: event.clientY };
 	}
 
 	private isWithinDoubleClickGuard(): boolean {
@@ -260,9 +313,20 @@ export class SelectionManager {
 		}
 
 		const snapshot = result.snapshot;
-		// `selectionchange` fires repeatedly for one unchanged selection; only a
-		// genuine change should restart the UI.
-		if (cause === 'selectionchange' && this.isSameAsCurrent(snapshot)) return;
+
+		/*
+		 * One gesture reaches this method more than once: `selectionchange`
+		 * fires as the drag settles and `mouseup` fires right after, both
+		 * describing the same highlighted text. Re-reporting it would rebuild
+		 * the icon (a visible flicker) and, with auto-popup on, spend a second
+		 * API call on an identical request.
+		 *
+		 * Double clicks and commands are exempt because they are not
+		 * observations of a selection but instructions to act on one, and the
+		 * user may well repeat the same instruction on the same word.
+		 */
+		const isDeliberateRequest = cause === 'double-click' || cause === 'command';
+		if (!isDeliberateRequest && this.isSameAsCurrent(snapshot)) return;
 
 		this.current = snapshot;
 		debug('selection', {
@@ -332,6 +396,7 @@ export class SelectionManager {
 			containerEl: info.containerEl,
 			// Remembered so focus can be handed back when the popup closes.
 			activeElement: win.document.activeElement,
+			cursor: this.lastCursor,
 			id: ++this.snapshotSeq,
 		};
 	}

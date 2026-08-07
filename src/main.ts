@@ -4,6 +4,7 @@ import { debug, resetWarnings, setDebugLogging } from './utils/log';
 import { normalizeSettings, type SelectionTranslateSettings } from './settings/settings';
 import { SelectionTranslateSettingTab } from './settings/SettingTab';
 import { SelectionManager } from './core/SelectionManager';
+import { UiController } from './ui/UiController';
 
 export default class SelectionTranslatePlugin extends Plugin {
 	// `override` because Obsidian's Plugin declares `settings?: unknown` as the
@@ -20,22 +21,41 @@ export default class SelectionTranslatePlugin extends Plugin {
 	private readonly attachedWindows = new Set<Window>();
 
 	private selectionManager!: SelectionManager;
+	private ui!: UiController;
 
 	override async onload(): Promise<void> {
 		await this.loadSettings();
 
-		this.selectionManager = new SelectionManager(() => this.settings, {
-			onSelection: (snapshot, cause) => {
-				// Phase 3 turns this into the trigger icon and the state machine.
-				debug('usable selection', { cause, context: snapshot.context, id: snapshot.id });
+		this.ui = new UiController({
+			getSettings: () => this.settings,
+			onTranslateRequested: (snapshot) => {
+				// Phase 4 and 5 replace this with the orchestrator and the popup.
+				debug('translate requested', { id: snapshot.id, length: snapshot.text.length });
 			},
-			onClear: (reason) => debug('selection cleared', reason),
-			onPointerDownOutside: () => debug('pointer down outside'),
-			onViewportChange: (kind) => debug('viewport changed', kind),
+		});
+		this.register(() => this.ui.destroy());
+
+		this.selectionManager = new SelectionManager(() => this.settings, {
+			onSelection: (snapshot, cause) => this.ui.handleSelection(snapshot, cause),
+			onClear: () => this.ui.handleClear(),
+			onPointerDownOutside: () => this.ui.handleDismiss(),
+			onViewportChange: (kind) => this.ui.handleViewportChange(kind),
+			onEscape: () => this.ui.handleDismiss(),
 		});
 		// Ties teardown to the plugin's own lifecycle, so unload releases every
 		// listener even though they are not individually registerDomEvent'd.
 		this.register(() => this.selectionManager.destroy());
+
+		// Changing note, file or layout leaves the floating UI pointing at text
+		// that is no longer on screen. Registered one by one because
+		// `workspace.on` is overloaded per event name and cannot take a union.
+		const dismiss = (): void => {
+			this.selectionManager.reset();
+			this.ui.handleDismiss();
+		};
+		this.registerEvent(this.app.workspace.on('active-leaf-change', dismiss));
+		this.registerEvent(this.app.workspace.on('file-open', dismiss));
+		this.registerEvent(this.app.workspace.on('layout-change', dismiss));
 
 		this.attachWindow(window);
 		this.registerEvent(
