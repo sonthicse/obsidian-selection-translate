@@ -1,0 +1,10 @@
+{
+  "id": "selection-translate",
+  "name": "Selection Translate",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Translate selected text in notes and PDFs with an inline popup showing pronunciation, part of speech, and alternative meanings.",
+  "author": "Thi Duong",
+  "authorUrl": "https://github.com/sonthicse",
+  "isDesktopOnly": false
+}

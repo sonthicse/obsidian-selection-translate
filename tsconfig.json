@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2018",
+    /*
+     * `lib` is deliberately capped at ES2020, one notch above the ES2018 emit
+     * target. esbuild downlevels *syntax* (optional chaining, nullish
+     * coalescing) but never injects polyfills for *runtime methods*, so any
+     * method newer than the oldest supported runtime would compile fine and
+     * then throw in production. Capping the lib makes the compiler reject
+     * `Array.prototype.at` (ES2022), `String.prototype.replaceAll` (ES2021)
+     * and `Object.hasOwn` (ES2022) at build time instead.
+     *
+     * ES2020 runtime methods we do rely on (notably `Promise.allSettled`,
+     * Chrome 76+) are present in every Obsidian build at or above the declared
+     * minAppVersion of 1.5.0, on desktop and mobile alike.
+     */
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "allowJs": false,
+    "noEmit": true,
+    "isolatedModules": true,
+    "importHelpers": false,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+    "useUnknownInCatchVariables": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.mts"]
+}
