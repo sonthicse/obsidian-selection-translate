@@ -1,0 +1,4 @@
+{
+  "unexpected": "The undocumented endpoint changed shape and now returns an object.",
+  "note": "Hand-written. Exercises the degrade-instead-of-crash path in parseGtx."
+}

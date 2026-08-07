@@ -64,10 +64,20 @@
 	cursor: pointer;
 	opacity: 0;
 	transition: opacity 120ms ease;
+	/*
+	 * A hidden icon must be invisible to hit-testing, not merely transparent.
+	 * An opacity-0 element is still hit-tested, so it would both swallow clicks
+	 * meant for the text underneath and register as an obstacle when the
+	 * positioner probes candidate spots with elementsFromPoint — which is why
+	 * placing the icon twice in the same place could come out differently the
+	 * second time. `pointer-events: none` removes it from hit-testing outright.
+	 */
+	pointer-events: none;
 }
 
 .st-icon.is-visible {
 	opacity: 1;
+	pointer-events: auto;
 }
 
 .st-icon:hover {

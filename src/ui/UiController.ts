@@ -2,7 +2,13 @@ import { ICON_SIZE, OCCLUSION_SELECTORS, OWN_UI_SELECTOR, VIEWPORT_MARGIN } from
 import { StateMachine } from '../core/StateMachine';
 import type { SelectionCause } from '../core/SelectionManager';
 import type { SelectionTranslateSettings } from '../settings/settings';
-import { makeRect, type Rect, type SelectionSnapshot } from '../types';
+import {
+	makeRect,
+	type Rect,
+	type SelectionSnapshot,
+	type TranslationResult,
+	type UiErrorInfo,
+} from '../types';
 import { debug } from '../utils/log';
 import { TriggerIcon } from './TriggerIcon';
 import {
@@ -86,6 +92,22 @@ export class UiController {
 		this.dismiss();
 	}
 
+	/**
+	 * A translation came back.
+	 *
+	 * The transition can legitimately be refused — the user may have pressed
+	 * Escape while the request was in flight — and refusing it is the whole
+	 * point: a late reply must not reopen dismissed UI.
+	 */
+	handleResult(snapshot: SelectionSnapshot, result: TranslationResult): void {
+		this.machine.transition({ to: 'result', snapshot, result });
+	}
+
+	/** A translation failed. */
+	handleError(snapshot: SelectionSnapshot, error: UiErrorInfo): void {
+		this.machine.transition({ to: 'error', snapshot, error });
+	}
+
 	/** Translates the current selection, if there is one. Backs the command. */
 	translateCurrent(snapshot: SelectionSnapshot): void {
 		this.requestTranslate(snapshot);
@@ -123,7 +145,17 @@ export class UiController {
 		this.options.onTranslateRequested(snapshot);
 	}
 
+	/**
+	 * Tears the floating UI down.
+	 *
+	 * Returns early when there is nothing up. Clicks land outside the plugin
+	 * constantly, and asking the machine to go from idle to idle each time would
+	 * fill the debug log with rejected transitions, burying the ones that
+	 * actually indicate a bug.
+	 */
 	private dismiss(): void {
+		if (this.machine.getState() === 'idle') return;
+
 		this.icon.hide();
 		this.machine.transition({ to: 'idle' });
 	}

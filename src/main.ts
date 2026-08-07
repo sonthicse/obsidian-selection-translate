@@ -4,6 +4,8 @@ import { debug, resetWarnings, setDebugLogging } from './utils/log';
 import { normalizeSettings, type SelectionTranslateSettings } from './settings/settings';
 import { SelectionTranslateSettingTab } from './settings/SettingTab';
 import { SelectionManager } from './core/SelectionManager';
+import { TranslationOrchestrator } from './core/TranslationOrchestrator';
+import { ProviderRegistry } from './providers/ProviderRegistry';
 import { UiController } from './ui/UiController';
 
 export default class SelectionTranslatePlugin extends Plugin {
@@ -22,16 +24,36 @@ export default class SelectionTranslatePlugin extends Plugin {
 
 	private selectionManager!: SelectionManager;
 	private ui!: UiController;
+	private registry!: ProviderRegistry;
+	private orchestrator!: TranslationOrchestrator;
 
 	override async onload(): Promise<void> {
 		await this.loadSettings();
 
+		this.registry = new ProviderRegistry(() => this.settings);
+		this.orchestrator = new TranslationOrchestrator(() => this.settings, this.registry, {
+			onResult: (snapshot, result) => {
+				// Phase 5 replaces this with the popup.
+				debug('result', {
+					provider: result.provider,
+					fromCache: result.fromCache,
+					elapsedMs: result.elapsedMs,
+					translated: result.translated,
+					phonetic: result.phonetic,
+					entries: result.entries?.length ?? 0,
+				});
+				this.ui.handleResult(snapshot, result);
+			},
+			onError: (snapshot, error) => {
+				debug('error', error);
+				this.ui.handleError(snapshot, error);
+			},
+		});
+		this.register(() => this.orchestrator.destroy());
+
 		this.ui = new UiController({
 			getSettings: () => this.settings,
-			onTranslateRequested: (snapshot) => {
-				// Phase 4 and 5 replace this with the orchestrator and the popup.
-				debug('translate requested', { id: snapshot.id, length: snapshot.text.length });
-			},
+			onTranslateRequested: (snapshot) => this.orchestrator.translate(snapshot),
 		});
 		this.register(() => this.ui.destroy());
 
@@ -95,6 +117,7 @@ export default class SelectionTranslatePlugin extends Plugin {
 		await this.saveData(this.settings);
 		setDebugLogging(this.settings.debugLog);
 		this.refreshCssVariables();
+		this.orchestrator.applySettings();
 	}
 
 	private attachWindow(win: Window): void {
