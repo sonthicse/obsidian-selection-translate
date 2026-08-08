@@ -3,8 +3,10 @@
  *
  * These are the rules a submission is rejected for, and every one of them is
  * the kind of thing that survives code review and is caught by a reviewer
- * instead. Running them in CI means the answer is known before the pull request
- * is opened rather than a week later.
+ * instead. Running them in CI means the answer is known before the plugin is
+ * submitted, rather than a week later — and under the current submission flow
+ * that matters more than it used to, since fixing a rejected submission means
+ * publishing a whole new release rather than pushing to a branch.
  *
  * Some overlap with the ESLint config on purpose: ESLint sees TypeScript,
  * this sees the whole repository, including manifest.json and styles.css.
@@ -85,7 +87,7 @@ for (const file of sourceFiles) {
 	}
 }
 
-/* ── manifest.json, which the submission bot validates ────────────────────── */
+/* ── manifest.json, which the community directory validates on submission ── */
 
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 
@@ -103,6 +105,11 @@ if (/\p{Extended_Pictographic}/u.test(manifest.description)) {
 }
 if (/obsidian/i.test(manifest.name)) {
 	fail('Plugin name', 'the plugin name must not contain "Obsidian"');
+}
+// The community directory rejects an id containing "obsidian" outright, which
+// is a separate rule from the one about the display name.
+if (/obsidian/i.test(manifest.id)) {
+	fail('Plugin id', 'the plugin id must not contain "obsidian"');
 }
 if (manifest.id !== 'selection-translate') {
 	fail('Plugin id', `unexpected id "${manifest.id}"`);

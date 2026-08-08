@@ -1,12 +1,18 @@
 # Đưa plugin lên Obsidian community store
 
-Quy trình đầy đủ, từ repo tới lúc được merge.
+Quy trình đầy đủ, từ repo tới lúc plugin xuất hiện trong store.
+
+> **Quy trình đã thay đổi.** Trước đây phải fork `obsidianmd/obsidian-releases`, thêm một entry vào `community-plugins.json` rồi mở pull request. **Cách đó không còn dùng nữa.** Hiện nay submit qua cổng cộng đồng tại <https://community.obsidian.md>.
+>
+> Tài liệu chính thức: <https://docs.obsidian.md/Plugins/Releasing/Submit+your+plugin>
+>
+> `community-plugins.json` vẫn tồn tại, nhưng giờ chỉ là **danh sách đã publish** — dùng để tra cứu, không phải nơi nộp.
 
 ---
 
 ## Giai đoạn 1 — Chuẩn bị repo
 
-### Checklist trước khi mở PR
+### Checklist trước khi submit
 
 Chạy `npm run verify` trước. Lệnh này tự kiểm phần lớn các mục có dấu 🤖 dưới đây.
 
@@ -32,19 +38,26 @@ Chạy `npm run verify` trước. Lệnh này tự kiểm phần lớn các mụ
 - [ ] 🤖 `description` ≤ 250 ký tự, bắt đầu bằng động từ, kết thúc bằng dấu chấm, không emoji
 - [ ] 🤖 `name` không chứa chữ "Obsidian"
 - [ ] 🤖 `version` khớp `package.json`, và `versions.json` có mục tương ứng
-- [ ] `id` = `selection-translate`, **chưa trùng** trong `community-plugins.json`
+- [ ] 🤖 `id` **không chứa** chữ "obsidian" — cổng submit từ chối id như vậy
+- [ ] `id` = `selection-translate`, **chưa bị plugin khác chiếm**
 - [ ] `minAppVersion` hợp lý (`1.5.0`)
 - [ ] `isDesktopOnly: false` — đúng, plugin không dùng API Node/Electron
 - [ ] `author` và `authorUrl` chính xác
 
-**Kiểm tra id chưa trùng:**
+**Kiểm tra id chưa bị chiếm.** `community-plugins.json` không còn là nơi nộp, nhưng vẫn là danh sách chính thức các plugin đã publish, nên vẫn là chỗ đúng để tra:
 
 ```bash
 curl -s https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugins.json \
-  | grep -c '"id": "selection-translate"'
+  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+      const id="selection-translate";
+      const all=JSON.parse(s);
+      console.log(all.some(p=>p.id===id) ? `ĐÃ BỊ CHIẾM: ${id}` : `còn trống: ${id} (trong ${all.length} plugin)`);
+    })'
 ```
 
-Kết quả phải là `0`.
+> Dùng `node` chứ không dùng `grep` vì khoảng trắng trong JSON có thể khác nhau, và một `grep` không khớp trông y hệt như "id còn trống" — kiểu âm tính giả tệ nhất trong một checklist.
+>
+> Tính đến lần kiểm gần nhất, `selection-translate` **còn trống**. Có tồn tại các plugin tên gần giống (`google-selection-translate`, `deepl-translate-selection`, `translate-inline`); id khác nhau nên không xung đột, nhưng nên xem qua để biết mình khác họ ở đâu.
 
 **Repo**
 
@@ -65,7 +78,7 @@ Kết quả phải là `0`.
 - [ ] Linux
 - [ ] Mobile (iOS / Android)
 
-> Khai báo **trung thực** những nền tảng bạn đã test trong PR. Ghi "đã test trên Windows và Linux, chưa test mobile" thì tốt hơn nhiều so với việc tick bừa rồi để reviewer phát hiện.
+> `isDesktopOnly: false` là một lời khẳng định rằng plugin chạy được trên di động. Ở đây khẳng định đó đúng — plugin không dùng API nào của Node hay Electron — nhưng "chạy được về mặt kỹ thuật" khác với "đã thử". Nếu bạn chưa test được trên di động, hãy ghi rõ điều đó trong README thay vì để người dùng tự phát hiện.
 
 ---
 
@@ -100,62 +113,60 @@ git push --delete origin 0.1.0
 
 ---
 
-## Giai đoạn 3 — Mở pull request
+## Giai đoạn 3 — Nộp qua cổng cộng đồng
 
-### 1. Fork
+Không fork, không sửa JSON, không pull request. Toàn bộ diễn ra trên web.
 
-Fork <https://github.com/obsidianmd/obsidian-releases>.
+### 1. Đăng nhập
 
-### 2. Thêm entry vào **cuối** `community-plugins.json`
+Mở <https://community.obsidian.md> và đăng nhập bằng **tài khoản Obsidian** của bạn (cùng tài khoản dùng cho Obsidian Sync/Publish; tạo miễn phí nếu chưa có).
 
-```json
-  {
-    "id": "selection-translate",
-    "name": "Selection Translate",
-    "author": "Thi Duong",
-    "description": "Translate selected text in notes and PDFs with an inline popup showing pronunciation, part of speech, and alternative meanings.",
-    "repo": "sonthicse/selection-translate"
-  }
+### 2. Liên kết tài khoản GitHub
+
+Trong phần hồ sơ, liên kết GitHub. Bước này bắt buộc: cổng cần chứng minh bạn sở hữu repo sắp nộp.
+
+Repo phải thuộc chính tài khoản GitHub vừa liên kết — ở đây là `sonthicse`.
+
+### 3. Nộp plugin
+
+Vào mục **Plugins** rồi chọn nút thêm plugin mới — tài liệu chính thức gọi là **"Add your plugin"**, giao diện có thể hiển thị là *New plugin*. Nhập URL repo:
+
+```
+https://github.com/sonthicse/obsidian-selection-translate
 ```
 
-Lưu ý:
+### 4. Hệ thống tự kiểm tra
 
-- Thêm vào **cuối mảng**, không chèn giữa.
-- Nhớ dấu phẩy sau phần tử liền trước.
-- `description` phải **khớp chính xác** với `manifest.json`.
-- `repo` là `user/repo`, **không** phải URL đầy đủ.
+Việc kiểm diễn ra ngay, không phải chờ người:
 
-### 3. Chỉ sửa duy nhất một tệp
+| Kiểm cái gì | Ở đâu |
+|---|---|
+| `manifest.json` tồn tại và hợp lệ | **HEAD của nhánh mặc định** trong repo |
+| `id` là duy nhất trên toàn store | So với danh sách đã publish |
+| `id` **không chứa** chữ "obsidian" | `manifest.json` |
+| Có ít nhất một GitHub Release với **tag khớp `version`** | Trang Releases của repo |
+| Release có đính `main.js` và `manifest.json` (và `styles.css` nếu có) dưới dạng **asset rời** | Assets của release |
+| Repo gốc có `README.md` và `LICENSE` | Nhánh mặc định |
 
-⚠️ PR **chỉ được** thay đổi `community-plugins.json`. Đụng vào bất kỳ tệp nào khác sẽ bị từ chối ngay.
+> ⚠️ Cổng đọc `manifest.json` ở **nhánh mặc định**, còn đọc file build ở **release**. Hai nơi khác nhau. Nếu bạn tăng version rồi quên tạo release — hoặc ngược lại — thì kiểm tra sẽ trượt. Workflow [`release.yml`](../.github/workflows/release.yml) đã tự đối chiếu tag với manifest chính vì lý do này.
 
-Kiểm tra trước khi đẩy:
+### 5. Sửa lỗi nếu bị báo
 
-```bash
-git diff --name-only master
-# Kết quả phải đúng một dòng: community-plugins.json
-```
+Nếu có lỗi, cách sửa **không phải** là nộp lại form. Cách đúng là:
 
-### 4. Mở PR
+1. Sửa trong repo.
+2. **Tăng version** và tạo một **release mới**.
+3. Cổng đọc lại từ repo.
 
-- Dùng template dành cho plugin.
-- Tick đầy đủ checklist trong template.
-- Ghi rõ những nền tảng đã kiểm thử.
+Nói cách khác: mỗi vòng sửa là một phiên bản mới. Đây là điểm khác căn bản so với quy trình PR cũ — trước đây bạn push lên nhánh của PR rồi bot chạy lại; giờ nguồn sự thật là chính các release của bạn.
 
-### 5. Bot validate chạy
+Vì vậy nên chạy `npm run verify` cho sạch **trước khi** nộp, thay vì dùng cổng làm nơi kiểm bài.
 
-Bot tự động kiểm tra trong vài phút.
+### 6. Chờ duyệt
 
-- **Error** → **chặn merge**. Phải sửa.
-- **Warning** → không chặn nhưng nên sửa; reviewer sẽ hỏi.
+Sau khi qua phần kiểm tự động, plugin vào hàng chờ người của Obsidian xem. Thời gian thường tính bằng **tuần**. Khi mọi lỗi đã được xử lý, plugin trở nên cài được từ trong Obsidian.
 
-Sửa xong thì push lên nhánh của PR, bot chạy lại.
-
-### 6. Chờ reviewer
-
-Người của Obsidian sẽ xem. Thời gian chờ thường tính bằng **tuần**, đôi khi hơn.
-
-Những điều reviewer hay yêu cầu sửa:
+Những điều thường bị yêu cầu sửa:
 
 | Vấn đề | Đã xử lý trong dự án này |
 |---|---|
@@ -169,15 +180,22 @@ Những điều reviewer hay yêu cầu sửa:
 | Còn tên class mẫu | ✅ `npm run check` chặn |
 | Dùng endpoint không chính thức | ⚠️ Có, nhưng **công bố rõ ràng**, có cảnh báo trong tuỳ chọn, và có hai lựa chọn chính thức thay thế |
 
-> Điểm cuối là rủi ro lớn nhất của PR này. Hãy chủ động nêu nó trong phần mô tả PR: nói rõ rằng endpoint không chính thức là mặc định vì nó không cần tài khoản, rằng nó được công bố ở cả README lẫn trong tuỳ chọn, và rằng người dùng có hai đường chính thức. Nêu trước thì tốt hơn là để reviewer tự phát hiện.
+> Điểm cuối là rủi ro lớn nhất của lần nộp này. Vì quy trình mới không có ô mô tả kiểu pull request, chỗ để nói trước chính là **README**: mục *Network use* đã ghi thẳng rằng `translate.googleapis.com` và `translate.google.com` là endpoint Google không công bố và không hỗ trợ, rằng chúng là mặc định vì không cần tài khoản, và rằng có hai đường chính thức thay thế cách đó một dropdown. Tuỳ chọn trong plugin cũng hiện cảnh báo tương ứng.
+>
+> Nếu reviewer liên hệ, hãy nêu ba điểm đó thay vì giải thích lại từ đầu.
 
-**Chỉ team Obsidian mới merge được.** Đừng thúc giục.
+### 7. Sau khi được duyệt
 
-### 7. Sau khi được merge
+- Plugin xuất hiện trong community store.
+- **Các bản cập nhật về sau không cần nộp lại.** Obsidian tự lấy release mới từ repo của bạn; người dùng nhận cập nhật ngay trong app.
+- Mỗi lần phát hành chỉ cần:
 
-- Plugin xuất hiện trong community store trong vòng vài giờ.
-- **Các bản cập nhật về sau không cần PR nữa.** Obsidian tự lấy release mới từ repo của bạn.
-- Chỉ cần `npm version patch && git push --tags` cho mỗi lần phát hành.
+  ```bash
+  npm version patch      # đồng bộ package.json + manifest.json + versions.json
+  git push && git push --tags
+  ```
+
+  Workflow lo phần còn lại.
 
 ---
 

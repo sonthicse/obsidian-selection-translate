@@ -27,13 +27,13 @@ Settings → Community plugins → Browse → tìm **Selection Translate** → I
 
 ### Từ một bản release
 
-1. Tải `main.js`, `manifest.json` và `styles.css` từ [release mới nhất](https://github.com/sonthicse/selection-translate/releases/latest).
+1. Tải `main.js`, `manifest.json` và `styles.css` từ [release mới nhất](https://github.com/sonthicse/obsidian-selection-translate/releases/latest).
 2. Đặt vào `<vault>/.obsidian/plugins/selection-translate/`.
 3. Settings → Community plugins → tắt Restricted mode → bật **Selection Translate**.
 
 ### Bản beta qua BRAT
 
-Cài [BRAT](https://github.com/TfTHacker/obsidian42-brat), rồi *Add beta plugin* với `sonthicse/selection-translate`.
+Cài [BRAT](https://github.com/TfTHacker/obsidian42-brat), rồi *Add beta plugin* với `sonthicse/obsidian-selection-translate`.
 
 Hướng dẫn đầy đủ, gồm cả build từ mã nguồn, ở [docs/INSTALL.md](docs/INSTALL.md).
 

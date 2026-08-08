@@ -48,5 +48,5 @@ First release.
 - Restoring default options deliberately preserves API keys.
 - Translations are never written to `data.json`, which syncs between devices.
 
-[Unreleased]: https://github.com/sonthicse/selection-translate/compare/0.1.0...HEAD
-[0.1.0]: https://github.com/sonthicse/selection-translate/releases/tag/0.1.0
+[Unreleased]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/sonthicse/obsidian-selection-translate/releases/tag/0.1.0
