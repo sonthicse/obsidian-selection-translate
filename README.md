@@ -6,8 +6,6 @@ Select any text in Obsidian and translate it in place — in notes, in PDFs, in 
 
 ![Demo: selecting a word and reading its translation](docs/images/demo.gif)
 
-> **Placeholder.** Replace `docs/images/demo.gif` with a real recording before publishing, along with `docs/images/popup-word.png` and `docs/images/popup-sentence.png` referenced below.
-
 | Single word | Sentence |
 |---|---|
 | ![Popup showing pronunciation, meaning and part of speech](docs/images/popup-word.png) | ![Popup showing a sentence translation](docs/images/popup-sentence.png) |

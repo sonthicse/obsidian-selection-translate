@@ -27,8 +27,6 @@ Plugin **chạy được ngay không cần khoá nào** — công cụ mặc đ�
 
 ![Trang khoá API của DeepL](images/deepl-key.png)
 
-> **Ảnh mẫu.** Thay `docs/images/deepl-key.png` bằng ảnh chụp thật.
-
 ### Hậu tố `:fx` nghĩa là gì
 
 Khoá gói Free trông như:
@@ -79,8 +77,6 @@ Nhiều bước hơn DeepL và **bắt buộc bật thanh toán**, kể cả khi
 6. Sao chép khoá (dạng `AIza...`).
 
 ![Trang Credentials của Google Cloud](images/google-cloud-key.png)
-
-> **Ảnh mẫu.** Thay `docs/images/google-cloud-key.png` bằng ảnh chụp thật.
 
 ### ⚠️ Giới hạn khoá — đừng bỏ qua bước này
 

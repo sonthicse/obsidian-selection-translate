@@ -6,8 +6,6 @@ Bôi đen bất kỳ đoạn văn bản nào trong Obsidian rồi dịch tại c
 
 ![Minh hoạ: bôi đen một từ và xem bản dịch](docs/images/demo.gif)
 
-> **Ảnh mẫu.** Thay `docs/images/demo.gif` bằng bản ghi màn hình thật trước khi phát hành, cùng với `docs/images/popup-word.png` và `docs/images/popup-sentence.png`.
-
 ## Tính năng
 
 - **Chạy ở mọi nơi có chữ.** Chế độ đọc, Live Preview, Source mode, trang PDF, thuộc tính (cả tên lẫn giá trị), bảng, callout, code block, liên kết và cửa sổ popout.
