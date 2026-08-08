@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest something the plugin should do
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: |
+        Describe the situation rather than the solution. Knowing what you are
+        working around usually suggests a better answer than the one either of
+        us thought of first.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you had in mind
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked the existing issues for the same request
+          required: true
+        - label: I read the known limitations in the README
+          required: true

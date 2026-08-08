@@ -1,0 +1,58 @@
+name: Release
+
+# Obsidian matches a plugin release by a tag equal to the manifest version,
+# with no "v" prefix. Tagging "v1.0.0" produces a release the updater cannot
+# find, so the pattern below deliberately does not accept one.
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # `npm ci` rather than `npm install`: it installs exactly what
+      # package-lock.json pins, so the published main.js is built from the same
+      # dependency tree that was tested.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify
+        run: npm run verify
+
+      # The tag is the source of truth. A tag that disagrees with the manifest
+      # produces a release Obsidian will offer and then fail to install, so the
+      # mismatch is caught here instead.
+      - name: Check the tag matches the manifest
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          MANIFEST=$(node -p "require('./manifest.json').version")
+          if [ "$TAG" != "$MANIFEST" ]; then
+            echo "Tag $TAG does not match manifest version $MANIFEST" >&2
+            exit 1
+          fi
+          echo "Releasing $TAG"
+
+      # Attached as loose files, not a zip. Obsidian's installer fetches
+      # main.js, manifest.json and styles.css individually from the release, and
+      # a zip is simply invisible to it.
+      - name: Create the release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            --title "${GITHUB_REF#refs/tags/}" \
+            --generate-notes \
+            main.js manifest.json styles.css

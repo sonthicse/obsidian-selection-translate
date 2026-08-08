@@ -1,0 +1,69 @@
+name: Bug report
+description: Something does not work the way it should
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        **Before you paste anything:** turn off *Debug logging* before taking
+        screenshots of the options tab, and never include your API key. The key
+        field is masked, but a screen recording of you pasting it is not.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        1. Selected "information" in reading view
+        2. Clicked the translate button
+        3. Expected the translation; the popup stayed on the loading dots
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      multiple: true
+      options:
+        - Reading view
+        - Live Preview
+        - Source mode
+        - PDF
+        - Properties
+        - Popout window
+        - Everywhere
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Translation engine
+      options:
+        - Google (no key)
+        - Google Cloud
+        - DeepL
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: |
+        Turn on *Debug logging* in the plugin options, reproduce the problem,
+        then copy the `[selection-translate]` lines from the developer console
+        (Ctrl+Shift+I, or Cmd+Option+I on macOS).
+      render: text
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      placeholder: 'Obsidian 1.5.3, plugin 0.1.0, Windows 11'
+    validations:
+      required: true
