@@ -1,5 +1,5 @@
 import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from 'obsidian';
-import { RETRYABLE_STATUSES, RETRY_DELAYS_MS } from '../constants';
+import { REQUEST_TIMEOUT_MS, RETRYABLE_STATUSES, RETRY_DELAYS_MS } from '../constants';
 import { sleep } from '../utils/debounce';
 import { debug } from '../utils/log';
 import { ProviderError } from './TranslationProvider';
@@ -30,8 +30,11 @@ export async function requestWithRetry(param: RequestUrlParam): Promise<RequestU
 
 		let response: RequestUrlResponse;
 		try {
-			response = await requestUrl({ ...param, throw: false });
+			response = await withTimeout(requestUrl({ ...param, throw: false }));
 		} catch (cause) {
+			// A timeout is already a ProviderError and carries its own message.
+			if (cause instanceof ProviderError) throw cause;
+
 			// requestUrl still rejects when the request cannot be made at all:
 			// no network, DNS failure, TLS refusal.
 			debug('request failed before reaching the server', cause);
@@ -52,6 +55,35 @@ export async function requestWithRetry(param: RequestUrlParam): Promise<RequestU
 	// Out of attempts. Hand back the last response so the caller maps the
 	// status into its own vocabulary.
 	return lastResponse as RequestUrlResponse;
+}
+
+/**
+ * Stops waiting on a request that is taking unreasonably long.
+ *
+ * Not a cancellation: `requestUrl` exposes no AbortController, so the request
+ * carries on somewhere below and its eventual answer is simply never read. What
+ * this buys is a bounded wait, so a hung endpoint surfaces as an error with a
+ * retry button instead of a popup that spins until the user gives up.
+ *
+ * A timeout is not retried. Three attempts at fifteen seconds each is a
+ * three-quarter-minute stare at a spinner, which is worse than failing once and
+ * offering the button.
+ */
+async function withTimeout<T>(promise: Promise<T>): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+
+	const timeout = new Promise<never>((_resolve, reject) => {
+		timer = setTimeout(() => {
+			debug('request timed out', REQUEST_TIMEOUT_MS);
+			reject(new ProviderError('timeout'));
+		}, REQUEST_TIMEOUT_MS);
+	});
+
+	try {
+		return await Promise.race([promise, timeout]);
+	} finally {
+		if (timer !== undefined) clearTimeout(timer);
+	}
 }
 
 /**

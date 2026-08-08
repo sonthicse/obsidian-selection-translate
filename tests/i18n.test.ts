@@ -72,15 +72,32 @@ describe('message catalogue coverage', () => {
 		}
 	});
 
+	/**
+	 * Words that are capitalised because they are names, not because the string
+	 * is in title case. Kept explicit rather than guessed at: a heuristic loose
+	 * enough to accept "Google Cloud" would accept most title case too.
+	 */
+	const PROPER_NOUNS = [
+		'DeepL',
+		'Google',
+		'Cloud',
+		'API',
+		'Obsidian',
+		'Free',
+		'Dictionary',
+		'Markdown',
+	];
+
 	it('writes every string in sentence case, as the style guide requires', () => {
 		for (const [key, value] of Object.entries(en)) {
-			// A second capital in the first two words usually means title case.
+			// Placeholders are example values, not prose. "Inter, Segoe UI,
+			// sans-serif" is a list of typefaces and has no sentence case.
+			if (key.endsWith('Placeholder')) continue;
+
+			// A capitalised word after the first usually means title case.
 			const words = value.split(' ').slice(1, 3);
 			for (const word of words) {
-				const looksLikeTitleCase =
-					/^[A-Z][a-z]+$/.test(word) &&
-					// Proper nouns and the plugin's own engine names are fine.
-					!['DeepL', 'Google', 'API', 'Obsidian'].includes(word);
+				const looksLikeTitleCase = /^[A-Z][a-z]+$/.test(word) && !PROPER_NOUNS.includes(word);
 				expect(looksLikeTitleCase, `${key}: "${value}"`).toBe(false);
 			}
 		}

@@ -29,6 +29,10 @@ export interface UiControllerOptions {
 	onTranslateRequested: (snapshot: SelectionSnapshot) => void;
 	/** Opens the engine dropdown, offered when the current engine cannot help. */
 	onChangeProvider: () => void;
+	/** Starts or stops reading the source text aloud. */
+	onSpeak: (win: Window, text: string, lang: string) => void;
+	/** Consulted so the read button can show its stop state. */
+	tts: { isSpeaking(): boolean; subscribe(listener: (speaking: boolean) => void): () => void };
 }
 
 const OCCLUSION_QUERY = OCCLUSION_SELECTORS.join(', ');
@@ -61,6 +65,12 @@ export class UiController {
 				this.dismiss();
 				this.options.onChangeProvider();
 			},
+			onSpeak: (text, lang) => {
+				const win = this.machine.getSnapshot()?.win;
+				if (win != null) this.options.onSpeak(win, text, lang);
+			},
+			isSpeaking: () => this.options.tts.isSpeaking(),
+			subscribeSpeaking: (listener) => this.options.tts.subscribe(listener),
 		});
 
 		/*

@@ -14,8 +14,11 @@ export interface PopupHandlers {
 	onRetry(): void;
 	onOpenSettings(): void;
 	onChangeProvider(): void;
-	/** Supplied from Phase 6 onward; the read-aloud button is omitted without it. */
-	onSpeak?: (text: string, lang: string) => void;
+	/** Starts reading the source text, or stops if it is already reading. */
+	onSpeak(text: string, lang: string): void;
+	isSpeaking(): boolean;
+	/** Notifies while the popup is open, so the button can flip to "stop". */
+	subscribeSpeaking(listener: (speaking: boolean) => void): () => void;
 }
 
 /**
@@ -47,6 +50,8 @@ export class TranslatePopup {
 
 	private pendingFrame: number | null = null;
 	private resizeTimer: number | null = null;
+	/** Released whenever the content is replaced or the popup closes. */
+	private unsubscribeSpeaking: (() => void) | null = null;
 
 	/** Focused element from before the popup opened, restored on close. */
 	private previousFocus: Element | null = null;
@@ -117,6 +122,7 @@ export class TranslatePopup {
 
 		this.cancelPending();
 		this.releaseScope();
+		this.releaseSpeakingSubscription();
 
 		this.el.remove();
 		this.el = null;
@@ -190,6 +196,11 @@ export class TranslatePopup {
 		this.scope = scope;
 	}
 
+	private releaseSpeakingSubscription(): void {
+		this.unsubscribeSpeaking?.();
+		this.unsubscribeSpeaking = null;
+	}
+
 	private releaseScope(): void {
 		if (this.scope == null) return;
 		this.app.keymap.popScope(this.scope);
@@ -212,6 +223,7 @@ export class TranslatePopup {
 		if (el == null || win == null) return;
 
 		this.cancelPending();
+		this.releaseSpeakingSubscription();
 
 		const measured = this.measure(win, build);
 
@@ -338,12 +350,25 @@ export class TranslatePopup {
 	private buildHeader(parent: HTMLElement, result: TranslationResult): void {
 		const header = parent.createDiv({ cls: 'st-popup-header' });
 
-		const speak = this.handlers.onSpeak;
-		if (speak != null) {
-			this.button(header, ICON.speak, t('popup.speak'), () => {
-				speak(result.sourceText, result.detectedSourceLang);
-			});
-		}
+		/*
+		 * One button for both reading and stopping. A separate stop control
+		 * would sit dead most of the time, and pressing the same button again
+		 * is what people try first anyway — which matters here, because a long
+		 * passage takes a while and there has to be a way out of it.
+		 */
+		const speakButton = this.button(header, ICON.speak, t('popup.speak'), () => {
+			this.handlers.onSpeak(result.sourceText, result.detectedSourceLang);
+		});
+
+		const renderSpeakState = (speaking: boolean): void => {
+			applyIcon(speakButton, speaking ? ICON.stopSpeaking : ICON.speak);
+			const label = t(speaking ? 'popup.stopSpeaking' : 'popup.speak');
+			speakButton.setAttribute('aria-label', label);
+			speakButton.setAttribute('title', label);
+		};
+
+		renderSpeakState(this.handlers.isSpeaking());
+		this.unsubscribeSpeaking = this.handlers.subscribeSpeaking(renderSpeakState);
 
 		this.button(header, ICON.copy, t('popup.copy'), () => {
 			void this.copy(result.translated);

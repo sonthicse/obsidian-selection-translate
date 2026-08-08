@@ -65,5 +65,14 @@ export class Plugin {}
 export class PluginSettingTab {}
 export class Setting {}
 export class Component {}
-export class Scope {}
+export class Scope {
+	register(): void {}
+}
+
+/** Tests run as a non-macOS desktop, so 'Mod' resolves to Ctrl. */
+export const Platform = {
+	isMacOS: false,
+	isDesktop: true,
+	isMobile: false,
+};
 export function addIcon(_id: string, _svg: string): void {}

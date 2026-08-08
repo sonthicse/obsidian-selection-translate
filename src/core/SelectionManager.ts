@@ -39,6 +39,8 @@ export interface SelectionManagerHandlers {
 	onViewportChange(kind: 'scroll' | 'resize'): void;
 	/** Escape was pressed outside the plugin's own UI. */
 	onEscape(): void;
+	/** Any other key press outside the plugin's own UI, for the trigger key. */
+	onKeyDown(event: KeyboardEvent): void;
 }
 
 /** Outcome of trying to read a selection out of a window. */
@@ -227,10 +229,13 @@ export class SelectionManager {
 	}
 
 	private handleKeyDown(event: KeyboardEvent): void {
-		if (event.key !== 'Escape') return;
 		if (isInsideOwnUi(event.target as Node | null)) return;
 
-		this.handlers.onEscape();
+		if (event.key === 'Escape') {
+			this.handlers.onEscape();
+			return;
+		}
+		this.handlers.onKeyDown(event);
 	}
 
 	/**
@@ -313,7 +318,11 @@ export class SelectionManager {
 			 * saw it" — which is exactly the dead end this used to create for a
 			 * selection above the length limit.
 			 */
-			debug('selection rejected', result.reason);
+			// "empty" fires after every dismissal and says nothing useful; the
+			// other reasons are the ones worth being able to find in a log.
+			if (result.reason !== 'empty' || this.current !== null) {
+				debug('selection rejected', result.reason);
+			}
 
 			if (this.current !== null) {
 				this.current = null;

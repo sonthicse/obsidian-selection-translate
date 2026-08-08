@@ -38,6 +38,7 @@ export type ProviderErrorCode =
 	| 'server-busy'
 	| 'payload-too-large'
 	| 'unsupported-pair'
+	| 'timeout'
 	| 'network'
 	| 'bad-response'
 	| 'unknown';
@@ -51,6 +52,7 @@ const PRESENTATION: Record<ProviderErrorCode, { i18nKey: string; action: UiError
 	'server-busy': { i18nKey: 'error.serverBusy', action: 'retry' },
 	'payload-too-large': { i18nKey: 'error.tooLong', action: 'none' },
 	'unsupported-pair': { i18nKey: 'error.unsupportedPair', action: 'change-provider' },
+	timeout: { i18nKey: 'error.timeout', action: 'retry' },
 	network: { i18nKey: 'error.network', action: 'retry' },
 	'bad-response': { i18nKey: 'error.badResponse', action: 'retry' },
 	unknown: { i18nKey: 'error.unknown', action: 'retry' },

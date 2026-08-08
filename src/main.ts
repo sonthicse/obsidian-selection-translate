@@ -1,12 +1,17 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { PLUGIN_ID } from './constants';
+import { applyLocale, t } from './i18n';
 import { applyCssVariables, clearCssVariables } from './utils/dom';
 import { debug, resetWarnings, setDebugLogging } from './utils/log';
 import { normalizeSettings, type SelectionTranslateSettings } from './settings/settings';
 import { SelectionTranslateSettingTab } from './settings/SettingTab';
 import { SelectionManager } from './core/SelectionManager';
 import { TranslationOrchestrator } from './core/TranslationOrchestrator';
+import { isBindingSafeFor, matchesBinding } from './core/HotkeyManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
+import type { ValidationResult } from './providers/TranslationProvider';
+import type { ProviderId } from './types';
+import { TtsService } from './tts/TtsService';
 import { UiController } from './ui/UiController';
 
 export default class SelectionTranslatePlugin extends Plugin {
@@ -27,11 +32,16 @@ export default class SelectionTranslatePlugin extends Plugin {
 	private ui!: UiController;
 	private registry!: ProviderRegistry;
 	private orchestrator!: TranslationOrchestrator;
+	private tts!: TtsService;
 
 	override async onload(): Promise<void> {
 		await this.loadSettings();
+		applyLocale(this.settings.uiLanguage, window);
 
 		this.registry = new ProviderRegistry(() => this.settings);
+		this.tts = new TtsService(() => this.settings);
+		this.register(() => this.tts.destroy());
+
 		this.orchestrator = new TranslationOrchestrator(() => this.settings, this.registry, {
 			onResult: (snapshot, result) => {
 				debug('result', {
@@ -57,6 +67,8 @@ export default class SelectionTranslatePlugin extends Plugin {
 			getSettings: () => this.settings,
 			onTranslateRequested: (snapshot) => this.orchestrator.translate(snapshot),
 			onChangeProvider: () => this.openPluginSettings(),
+			onSpeak: (win, text, lang) => void this.tts.toggle(win, text, lang),
+			tts: this.tts,
 		});
 		this.register(() => this.ui.destroy());
 
@@ -66,10 +78,13 @@ export default class SelectionTranslatePlugin extends Plugin {
 			onPointerDownOutside: () => this.ui.handleDismiss(),
 			onViewportChange: (kind) => this.ui.handleViewportChange(kind),
 			onEscape: () => this.ui.handleDismiss(),
+			onKeyDown: (event) => this.handleTriggerKey(event),
 		});
 		// Ties teardown to the plugin's own lifecycle, so unload releases every
 		// listener even though they are not individually registerDomEvent'd.
 		this.register(() => this.selectionManager.destroy());
+
+		this.addCommands();
 
 		// Changing note, file or layout leaves the floating UI pointing at text
 		// that is no longer on screen. Registered one by one because
@@ -119,8 +134,78 @@ export default class SelectionTranslatePlugin extends Plugin {
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
 		setDebugLogging(this.settings.debugLog);
+		applyLocale(this.settings.uiLanguage, window);
 		this.refreshCssVariables();
 		this.orchestrator.applySettings();
+	}
+
+	/** Checks one engine's credentials. Backs the test button in options. */
+	testProvider(id: ProviderId): Promise<ValidationResult> {
+		return this.registry.getTranslatorById(id).validate();
+	}
+
+	/* ── Commands ─────────────────────────────────────────────────────────── */
+
+	/**
+	 * Registers the commands.
+	 *
+	 * No default hotkeys, per Obsidian's guidelines: the plugin has no way of
+	 * knowing what a given user has already bound, and quietly claiming a
+	 * combination is how plugins break each other. The command ids carry no
+	 * plugin prefix either, since Obsidian adds one.
+	 */
+	private addCommands(): void {
+		this.addCommand({
+			id: 'translate-selection',
+			name: t('command.translateSelection'),
+			checkCallback: (checking) => {
+				const snapshot = this.selectionManager.getCurrentSnapshot();
+				if (snapshot == null) return false;
+
+				if (!checking) this.ui.translateCurrent(snapshot);
+				return true;
+			},
+		});
+
+		this.addCommand({
+			id: 'toggle-auto-popup',
+			name: t('command.toggleAutoPopup'),
+			callback: async () => {
+				this.settings.autoPopupOnSelection = !this.settings.autoPopupOnSelection;
+				await this.saveSettings();
+				new Notice(
+					t(this.settings.autoPopupOnSelection ? 'notice.autoPopupOn' : 'notice.autoPopupOff')
+				);
+			},
+		});
+	}
+
+	/**
+	 * Handles the local trigger key while the button is showing.
+	 *
+	 * The safety check is the important part. A binding with no modifier would
+	 * insert its character into the note if the editor has focus, so it is
+	 * refused there and left to work in reading view and PDFs, where nothing can
+	 * be typed into. Consuming the event is what stops the character appearing
+	 * even when the binding is accepted.
+	 */
+	private handleTriggerKey(event: KeyboardEvent): void {
+		const binding = this.settings.triggerHotkey;
+		if (binding == null) return;
+		if (!this.ui.isIconActive()) return;
+		if (!matchesBinding(event, binding)) return;
+
+		const snapshot = this.selectionManager.getCurrentSnapshot();
+		if (snapshot == null) return;
+
+		if (!isBindingSafeFor(binding, snapshot.context)) {
+			debug('trigger key refused: it would type into the note', snapshot.context);
+			return;
+		}
+
+		event.preventDefault();
+		event.stopPropagation();
+		this.ui.triggerFromHotkey();
 	}
 
 	/**

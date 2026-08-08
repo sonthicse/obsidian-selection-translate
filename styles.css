@@ -321,6 +321,38 @@
 	outline-offset: 1px;
 }
 
+/* ── Options tab ──────────────────────────────────────────────────────────── */
+
+/*
+ * These live in the settings pane, not in the popup, so they take their colours
+ * from Obsidian's own variables rather than from the --st-* tokens: the pane
+ * belongs to the app and should follow the user's theme, unlike the popup.
+ */
+.st-setting-warning {
+	margin: -6px 0 12px;
+	padding: 8px 10px;
+	border-left: 3px solid var(--text-warning);
+	border-radius: 4px;
+	background: var(--background-secondary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+}
+
+.st-setting-status {
+	margin: -6px 0 12px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.st-setting-status.is-ok {
+	color: var(--text-success);
+}
+
+.st-setting-status.is-error {
+	color: var(--text-error);
+}
+
 /* ── Loading ──────────────────────────────────────────────────────────────── */
 
 .st-popup.is-loading .st-popup-loading {

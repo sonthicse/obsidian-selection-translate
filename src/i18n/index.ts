@@ -1,5 +1,10 @@
 import { en, type Messages } from './en';
+import { vi } from './vi';
 import { warnOnce } from '../utils/log';
+
+export type Locale = 'en' | 'vi';
+
+const CATALOGUES: Record<Locale, Messages> = { en, vi };
 
 /**
  * Lookup for every string the plugin shows.
@@ -13,6 +18,34 @@ let active: Messages = en;
 
 export function setMessages(messages: Messages): void {
 	active = messages;
+}
+
+/**
+ * Works out which language to show, following Obsidian when asked to.
+ *
+ * Obsidian records its interface language in `localStorage` under `language`,
+ * and leaves the key absent for English. Read from the given window rather than
+ * a global one so a popout resolves the same way, and guarded because
+ * localStorage throws rather than returning null when storage is unavailable.
+ */
+export function resolveLocale(setting: 'auto' | Locale, win: Window): Locale {
+	if (setting !== 'auto') return setting;
+
+	try {
+		const obsidianLanguage = win.localStorage.getItem('language');
+		if (obsidianLanguage != null && obsidianLanguage.toLowerCase().startsWith('vi')) return 'vi';
+	} catch {
+		// Storage blocked. English is the safe default.
+	}
+
+	return 'en';
+}
+
+/** Switches the active catalogue. Call after loading or changing settings. */
+export function applyLocale(setting: 'auto' | Locale, win: Window): Locale {
+	const locale = resolveLocale(setting, win);
+	setMessages(CATALOGUES[locale]);
+	return locale;
 }
 
 /**

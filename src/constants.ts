@@ -105,6 +105,20 @@ export const RETRY_DELAYS_MS = [400, 900, 2000];
 
 export const RETRYABLE_STATUSES = new Set([429, 503, 529]);
 
+/**
+ * How long to wait for one attempt before giving up on it.
+ *
+ * `requestUrl` accepts no timeout and cannot be aborted, so without this a
+ * request that never completes leaves the popup spinning forever with nothing
+ * the user can do but press Escape. Observed round trips to the free endpoint
+ * reached 27 seconds under load, so the ceiling is set well above normal but
+ * low enough that a hung request becomes a retryable error rather than a hang.
+ *
+ * Timing out only stops us waiting; the underlying request runs to completion
+ * somewhere below and its answer is discarded.
+ */
+export const REQUEST_TIMEOUT_MS = 15_000;
+
 /** Above this length the gtx endpoint is queried with POST, because the text
  *  rides in the URL otherwise and long URLs get truncated. */
 export const GTX_POST_THRESHOLD = 1500;
