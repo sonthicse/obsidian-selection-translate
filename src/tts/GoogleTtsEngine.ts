@@ -49,6 +49,14 @@ export class GoogleTtsEngine {
 		this.cancelled = true;
 
 		if (this.audio != null) {
+			/*
+			 * Handlers come off before the source is cleared. Assigning an empty
+			 * src fires an `error` event on the element, which would otherwise
+			 * be reported as a playback failure the user never caused — they
+			 * pressed stop, and being told the reading failed for it is wrong.
+			 */
+			this.audio.onended = null;
+			this.audio.onerror = null;
 			this.audio.pause();
 			this.audio.src = '';
 			this.audio = null;
@@ -75,6 +83,8 @@ export class GoogleTtsEngine {
 		});
 
 		let objectUrl: string;
+		// Hoisted so the playback handler below can report it on failure.
+		let byteLength = 0;
 		try {
 			const response = await requestUrl({
 				url: `${ENDPOINTS.googleTts}?${params.toString()}`,
@@ -82,7 +92,24 @@ export class GoogleTtsEngine {
 				throw: false,
 			});
 			if (response.status !== 200) {
-				debug('google tts refused the request', response.status);
+				debug('google tts refused the request', { status: response.status });
+				throw new SpeechUnavailableError('tts.failed');
+			}
+
+			/*
+			 * A 200 is not proof of audio. This endpoint answers a rejected
+			 * request with a short HTML page and a success status, which becomes
+			 * a blob the player refuses with an unhelpful error. Checking the
+			 * size turns that into a diagnosable failure: real speech for even
+			 * one word is several kilobytes.
+			 */
+			byteLength = response.arrayBuffer.byteLength;
+			if (byteLength < 512) {
+				debug('google tts returned a body too small to be audio', {
+					status: response.status,
+					byteLength,
+					contentType: response.headers?.['content-type'],
+				});
 				throw new SpeechUnavailableError('tts.failed');
 			}
 
@@ -102,9 +129,15 @@ export class GoogleTtsEngine {
 			this.audio = audio;
 
 			audio.onended = () => resolve();
-			audio.onerror = () => reject(new SpeechUnavailableError('tts.failed'));
+			audio.onerror = () => {
+				debug('google tts playback failed', { code: audio.error?.code, byteLength });
+				reject(new SpeechUnavailableError('tts.failed'));
+			};
 
-			void audio.play().catch(() => reject(new SpeechUnavailableError('tts.failed')));
+			void audio.play().catch((cause: unknown) => {
+				debug('google tts could not start playback', cause);
+				reject(new SpeechUnavailableError('tts.failed'));
+			});
 		}).finally(() => {
 			// Released as soon as the chunk has played. Holding every blob until
 			// the end would keep a whole page of audio in memory.

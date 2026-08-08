@@ -46,7 +46,17 @@ export interface SelectionManagerHandlers {
 /** Outcome of trying to read a selection out of a window. */
 type CaptureResult =
 	| { kind: 'snapshot'; snapshot: SelectionSnapshot }
-	| { kind: 'none'; reason: ClearReason }
+	| {
+			kind: 'none';
+			reason: ClearReason;
+			/**
+			 * Hide the floating UI but keep the snapshot.
+			 *
+			 * Set when the selection was lost to Obsidian's own chrome taking
+			 * focus rather than to the user selecting something else.
+			 */
+			retain?: boolean;
+	  }
 	// Selection is inside the plugin's own popup: neither a new request nor a
 	// reason to tear down what is on screen.
 	| { kind: 'ignore' };
@@ -325,7 +335,7 @@ export class SelectionManager {
 			}
 
 			if (this.current !== null) {
-				this.current = null;
+				if (result.retain !== true) this.current = null;
 				this.handlers.onClear(result.reason);
 			}
 			return;
@@ -371,7 +381,22 @@ export class SelectionManager {
 		let raw = this.inputSource.capture(win);
 		if (raw == null) raw = this.domSource.capture(win);
 		if (raw == null && settings.pdfSelectionFallback) raw = this.pdfSource.capture(win);
-		if (raw == null) return { kind: 'none', reason: 'empty' };
+
+		if (raw == null) {
+			/*
+			 * Opening the command palette focuses its input, which collapses the
+			 * selection. Forgetting the snapshot here would leave the "translate
+			 * selection" command with nothing to act on — and that command exists
+			 * precisely to act on what is selected, so it would never work.
+			 *
+			 * The floating UI is still dismissed; only the snapshot survives, and
+			 * only while the chrome that stole the focus is open.
+			 */
+			const focusMovedToChrome =
+				toElement(win.document.activeElement)?.closest(IGNORED_SELECTORS) != null;
+
+			return { kind: 'none', reason: 'empty', retain: focusMovedToChrome };
+		}
 
 		// Rule 3: never react to text inside our own popup, or translating a
 		// translation would loop indefinitely.
