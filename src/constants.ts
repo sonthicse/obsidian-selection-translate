@@ -114,3 +114,14 @@ export const TTS_CHUNK_SIZE = 180;
 
 /** A "single word" gets the dictionary treatment; anything longer does not. */
 export const SINGLE_WORD_MAX_LENGTH = 40;
+
+/**
+ * Absolute ceiling on a selection, independent of the user's own limit.
+ *
+ * Exists only to stop Ctrl+A on a book-length note from being snapshotted and
+ * normalised for no reason. The user-facing `maxSelectionLength` is enforced
+ * later, by the orchestrator, so that exceeding it produces the explanation the
+ * design doc promises rather than nothing at all: a selection that silently
+ * does nothing is indistinguishable from a broken plugin.
+ */
+export const HARD_SELECTION_CAP = 100_000;

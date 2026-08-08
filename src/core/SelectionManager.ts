@@ -1,5 +1,6 @@
 import {
 	DOUBLE_CLICK_GUARD_MS,
+	HARD_SELECTION_CAP,
 	IGNORED_SELECTORS,
 	RESIZE_DEBOUNCE_MS,
 	SELECTION_CHANGE_DEBOUNCE_MS,
@@ -305,6 +306,15 @@ export class SelectionManager {
 		if (result.kind === 'ignore') return;
 
 		if (result.kind === 'none') {
+			/*
+			 * Logged even when nothing was on screen to clear. Without this a
+			 * rejected selection produces no trace at all, so "I selected text
+			 * and nothing happened" cannot be told apart from "the plugin never
+			 * saw it" — which is exactly the dead end this used to create for a
+			 * selection above the length limit.
+			 */
+			debug('selection rejected', result.reason);
+
 			if (this.current !== null) {
 				this.current = null;
 				this.handlers.onClear(result.reason);
@@ -365,12 +375,20 @@ export class SelectionManager {
 			return { kind: 'none', reason: 'ignored-surface' };
 		}
 
-		// Rules 1 and 2: length bounds, measured on trimmed text so a selection
-		// of pure whitespace counts as empty.
+		/*
+		 * Rules 1 and 2: length bounds, measured on trimmed text so a selection
+		 * of pure whitespace counts as empty.
+		 *
+		 * Only the absolute cap is applied here. The user's own
+		 * `maxSelectionLength` is checked later, by the orchestrator, so that
+		 * exceeding it opens a popup saying by how much — rejecting it at this
+		 * point would produce no icon, no message and no log, which is
+		 * indistinguishable from the plugin being broken.
+		 */
 		const trimmed = raw.text.trim();
 		if (trimmed.length === 0) return { kind: 'none', reason: 'empty' };
 		if (trimmed.length < settings.minSelectionLength) return { kind: 'none', reason: 'too-short' };
-		if (raw.text.length > settings.maxSelectionLength) return { kind: 'none', reason: 'too-long' };
+		if (raw.text.length > HARD_SELECTION_CAP) return { kind: 'none', reason: 'too-long' };
 
 		const info = detectContext(raw.referenceNode, win.document.body);
 		if (info == null) return { kind: 'none', reason: 'undetectable' };

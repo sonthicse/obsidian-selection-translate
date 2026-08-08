@@ -1,5 +1,6 @@
+import type { App } from 'obsidian';
 import { ICON_SIZE, OCCLUSION_SELECTORS, OWN_UI_SELECTOR, VIEWPORT_MARGIN } from '../constants';
-import { StateMachine } from '../core/StateMachine';
+import { StateMachine, type MachineContext } from '../core/StateMachine';
 import type { SelectionCause } from '../core/SelectionManager';
 import type { SelectionTranslateSettings } from '../settings/settings';
 import {
@@ -11,18 +12,23 @@ import {
 } from '../types';
 import { debug } from '../utils/log';
 import { TriggerIcon } from './TriggerIcon';
+import { TranslatePopup } from './TranslatePopup';
 import {
 	DEFAULT_PLACEMENT_ORDER,
 	insetRect,
 	intersectRects,
 	place,
 	type Placement,
+	type Size,
 } from './Positioner';
 
 export interface UiControllerOptions {
+	app: App;
 	getSettings: () => SelectionTranslateSettings;
 	/** Invoked when the user asks for a translation. Wired to the orchestrator. */
 	onTranslateRequested: (snapshot: SelectionSnapshot) => void;
+	/** Opens the engine dropdown, offered when the current engine cannot help. */
+	onChangeProvider: () => void;
 }
 
 const OCCLUSION_QUERY = OCCLUSION_SELECTORS.join(', ');
@@ -38,12 +44,92 @@ const OCCLUSION_QUERY = OCCLUSION_SELECTORS.join(', ');
 export class UiController {
 	readonly machine = new StateMachine();
 	private readonly icon: TriggerIcon;
+	private readonly popup: TranslatePopup;
 
 	constructor(private readonly options: UiControllerOptions) {
 		this.icon = new TriggerIcon(
 			() => this.handleIconTrigger(),
 			() => this.options.getSettings().popupTheme === 'follow'
 		);
+
+		this.popup = new TranslatePopup(options.app, options.getSettings, {
+			place: (size) => this.placePopup(size),
+			onClose: () => this.dismiss(),
+			onRetry: () => this.retry(),
+			onOpenSettings: () => this.dismiss(),
+			onChangeProvider: () => {
+				this.dismiss();
+				this.options.onChangeProvider();
+			},
+		});
+
+		/*
+		 * The popup renders from the machine rather than from its callers. That
+		 * is the whole point of routing every change through one transition:
+		 * there is exactly one place that decides what is on screen, so a state
+		 * reached by an unusual path still renders correctly.
+		 */
+		this.machine.subscribe((context) => this.render(context));
+	}
+
+	/** Draws whatever the machine currently holds. */
+	private render(context: MachineContext): void {
+		switch (context.state) {
+			case 'idle':
+				this.icon.hide();
+				this.popup.close();
+				return;
+			case 'icon':
+				this.popup.close();
+				return;
+			case 'loading':
+				if (context.snapshot != null) this.popup.showLoading(context.snapshot);
+				return;
+			case 'result':
+				if (context.result != null) this.popup.showResult(context.result);
+				return;
+			case 'error':
+				if (context.error != null) this.popup.showError(context.error);
+				return;
+		}
+	}
+
+	/** Repeats the request that failed. */
+	private retry(): void {
+		const snapshot = this.machine.getSnapshot();
+		if (snapshot == null) return;
+
+		if (!this.machine.transition({ to: 'loading', snapshot })) return;
+		this.options.onTranslateRequested(snapshot);
+	}
+
+	/**
+	 * Where a popup of a given size should sit.
+	 *
+	 * Uses the same candidate search as the icon, which gives the flip-above
+	 * behaviour for free: a tall result near the bottom of the screen simply
+	 * fails the below-centre fit test and lands above the selection instead.
+	 */
+	private placePopup(size: Size): Rect {
+		const snapshot = this.machine.getSnapshot();
+		const settings = this.options.getSettings();
+
+		if (snapshot == null) {
+			return makeRect(VIEWPORT_MARGIN, VIEWPORT_MARGIN, size.width, size.height);
+		}
+
+		return place({
+			bbox: snapshot.bbox,
+			anchorRect: snapshot.anchorRect,
+			size,
+			boundary: this.computeBoundary(snapshot),
+			offset: settings.iconOffset,
+			order: DEFAULT_PLACEMENT_ORDER,
+			cursor: null,
+			// No occlusion test for the popup: it is the thing the user just
+			// asked for, so covering a toolbar with it is correct, and probing
+			// six candidates on every resize frame would not be free.
+		}).rect;
 	}
 
 	/** A usable selection appeared. Decides between showing the icon and translating. */
@@ -127,6 +213,7 @@ export class UiController {
 
 	destroy(): void {
 		this.icon.destroy();
+		this.popup.destroy();
 		this.machine.destroy();
 	}
 
@@ -134,7 +221,14 @@ export class UiController {
 
 	private handleIconTrigger(): void {
 		const snapshot = this.machine.getSnapshot();
-		if (snapshot == null) return;
+		if (snapshot == null) {
+			// An icon on screen with no selection behind it should not be
+			// reachable. Clear it rather than leaving a button that silently
+			// does nothing when pressed.
+			debug('icon triggered with no snapshot; clearing it');
+			this.icon.hide();
+			return;
+		}
 		this.requestTranslate(snapshot);
 	}
 
@@ -148,15 +242,17 @@ export class UiController {
 	/**
 	 * Tears the floating UI down.
 	 *
-	 * Returns early when there is nothing up. Clicks land outside the plugin
+	 * Hiding is unconditional, and the state change is what gets skipped when
+	 * there is nothing up. The order matters: clicks land outside the plugin
 	 * constantly, and asking the machine to go from idle to idle each time would
 	 * fill the debug log with rejected transitions, burying the ones that
-	 * actually indicate a bug.
+	 * indicate a real bug — but skipping the hide as well would mean an icon
+	 * that somehow outlived its state could never be cleared.
 	 */
 	private dismiss(): void {
+		this.icon.hide();
 		if (this.machine.getState() === 'idle') return;
 
-		this.icon.hide();
 		this.machine.transition({ to: 'idle' });
 	}
 

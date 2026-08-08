@@ -16,6 +16,19 @@ export class TriggerIcon {
 	private el: HTMLElement | null = null;
 	private ownerWin: Window | null = null;
 
+	/**
+	 * Handle of the frame scheduled to reveal the icon.
+	 *
+	 * Tracked so it can be cancelled. Revealing on the next frame is what gives
+	 * the opacity transition something to animate from, but it also opens a gap:
+	 * anything that hides the icon inside that gap used to be undone by the
+	 * frame firing afterwards, leaving a visible button with no state behind it
+	 * — unclickable, and impossible to dismiss because the controller believed
+	 * nothing was on screen. Scrolling during a long drag-selection hit this
+	 * gap routinely.
+	 */
+	private pendingFrame: number | null = null;
+
 	constructor(
 		private readonly onTrigger: () => void,
 		private readonly getFollowTheme: () => boolean
@@ -23,6 +36,7 @@ export class TriggerIcon {
 
 	/** Places the icon at a viewport rect inside the given window. */
 	show(win: Window, rect: Rect): void {
+		this.cancelPendingFrame();
 		const el = this.ensureElement(win);
 
 		// The only inline styles the plugin writes: coordinates computed at
@@ -31,13 +45,22 @@ export class TriggerIcon {
 		el.style.top = `${Math.round(rect.top)}px`;
 
 		el.toggleClass('mod-follow-theme', this.getFollowTheme());
-		// Deferred to the next frame so the opacity transition has a starting
-		// value to animate from; setting both in one frame skips the fade.
-		win.requestAnimationFrame(() => el.addClass('is-visible'));
+		this.pendingFrame = win.requestAnimationFrame(() => {
+			this.pendingFrame = null;
+			el.addClass('is-visible');
+		});
 	}
 
 	hide(): void {
+		this.cancelPendingFrame();
 		this.el?.removeClass('is-visible');
+	}
+
+	private cancelPendingFrame(): void {
+		if (this.pendingFrame !== null) {
+			this.ownerWin?.cancelAnimationFrame(this.pendingFrame);
+			this.pendingFrame = null;
+		}
 	}
 
 	/** True while the icon is on screen and can be triggered. */

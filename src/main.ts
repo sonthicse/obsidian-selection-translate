@@ -1,4 +1,5 @@
 import { Plugin } from 'obsidian';
+import { PLUGIN_ID } from './constants';
 import { applyCssVariables, clearCssVariables } from './utils/dom';
 import { debug, resetWarnings, setDebugLogging } from './utils/log';
 import { normalizeSettings, type SelectionTranslateSettings } from './settings/settings';
@@ -33,27 +34,29 @@ export default class SelectionTranslatePlugin extends Plugin {
 		this.registry = new ProviderRegistry(() => this.settings);
 		this.orchestrator = new TranslationOrchestrator(() => this.settings, this.registry, {
 			onResult: (snapshot, result) => {
-				// Phase 5 replaces this with the popup.
 				debug('result', {
 					provider: result.provider,
 					fromCache: result.fromCache,
 					elapsedMs: result.elapsedMs,
-					translated: result.translated,
-					phonetic: result.phonetic,
 					entries: result.entries?.length ?? 0,
+					// The translation itself is not logged: it is the user's own
+					// note content, and a debug flag is not consent to spill it
+					// into a console log that ends up attached to bug reports.
 				});
 				this.ui.handleResult(snapshot, result);
 			},
 			onError: (snapshot, error) => {
-				debug('error', error);
+				debug('error', error.messageKey);
 				this.ui.handleError(snapshot, error);
 			},
 		});
 		this.register(() => this.orchestrator.destroy());
 
 		this.ui = new UiController({
+			app: this.app,
 			getSettings: () => this.settings,
 			onTranslateRequested: (snapshot) => this.orchestrator.translate(snapshot),
+			onChangeProvider: () => this.openPluginSettings(),
 		});
 		this.register(() => this.ui.destroy());
 
@@ -118,6 +121,22 @@ export default class SelectionTranslatePlugin extends Plugin {
 		setDebugLogging(this.settings.debugLog);
 		this.refreshCssVariables();
 		this.orchestrator.applySettings();
+	}
+
+	/**
+	 * Opens this plugin's own options tab.
+	 *
+	 * `App.setting` is real and stable but missing from the published types, so
+	 * it is reached through a narrow structural cast rather than `any`.
+	 */
+	private openPluginSettings(): void {
+		const host = this.app as unknown as {
+			setting?: { open(): void; openTabById(id: string): void };
+		};
+		if (host.setting == null) return;
+
+		host.setting.open();
+		host.setting.openTabById(PLUGIN_ID);
 	}
 
 	private attachWindow(win: Window): void {
