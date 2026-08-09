@@ -18,7 +18,7 @@ Tài liệu này nói chính xác dữ liệu nào rời khỏi máy bạn, đi 
 
 | Dữ liệu | Ghi chú |
 |---|---|
-| Đoạn văn bản đã bôi đen | Sau khi bóc cú pháp Markdown, nếu bật tuỳ chọn đó. Bấm **Xem bản gốc** trong popup để thấy chính xác thứ đã gửi. |
+| Đoạn văn bản đã bôi đen | Sau khi bóc cú pháp Markdown, nếu bật tuỳ chọn đó. Muốn thấy chính xác thứ đã gửi: tắt *Bóc cú pháp Markdown trước khi dịch* để gửi nguyên văn, hoặc bật *Ghi log gỡ lỗi* rồi đọc trong console. |
 | Mã ngôn ngữ nguồn và đích | Ví dụ `en`, `vi`, `auto`. |
 | Khoá API của bạn | **Chỉ** khi dùng DeepL hoặc Google Cloud, và **chỉ** gửi tới chính dịch vụ đã cấp khoá đó. |
 

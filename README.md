@@ -4,6 +4,11 @@ Select any text in Obsidian and translate it in place — in notes, in PDFs, in 
 
 *[Tiếng Việt](README.vi.md)*
 
+<!-- TODO: retake these three images. All of them still show the "Show original"
+     button, which 0.2.0 removed, and the GIF predates the button and popup
+     following the selection while scrolling. Deliberately not edited by hand —
+     a doctored screenshot of a UI is worse than an out-of-date one. -->
+
 ![Demo: selecting a word and reading its translation](docs/images/demo.gif)
 
 | Single word | Sentence |
@@ -13,7 +18,7 @@ Select any text in Obsidian and translate it in place — in notes, in PDFs, in 
 ## Features
 
 - **Works everywhere text does.** Reading view, Live Preview, Source mode, PDF pages, properties (both names and values), tables, callouts, code blocks, links and popout windows.
-- **A button, not an interruption.** Selecting text shows a small button beside it. It moves out of the way of menus, tooltips and the PDF toolbar rather than covering them.
+- **A button, not an interruption.** Selecting text shows a small button beside it. It moves out of the way of menus, tooltips and the PDF toolbar rather than covering them, and it stays with the text as you scroll.
 - **Dictionary detail for single words.** Pronunciation, part of speech and alternative meanings, not just a one-line translation.
 - **Three engines.** Google without a key, Google Cloud Translation, or DeepL. The right server for a DeepL key is chosen from the key itself.
 - **Read aloud.** Through your system voice, offline, or through Google.
@@ -29,13 +34,13 @@ Settings → Community plugins → Browse → search for **Selection Translate**
 
 ### From a release
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/sonthicse/obsidian-selection-translate/releases/latest).
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/sonthicse/osidian-selection-translate/releases/latest).
 2. Put them in `<vault>/.obsidian/plugins/selection-translate/`.
 3. Settings → Community plugins → turn off Restricted mode → enable **Selection Translate**.
 
 ### Beta versions through BRAT
 
-Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), then *Add beta plugin* with `sonthicse/obsidian-selection-translate`.
+Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), then *Add beta plugin* with `sonthicse/osidian-selection-translate`.
 
 Full instructions, including building from source, are in [docs/INSTALL.md](docs/INSTALL.md) (Vietnamese).
 
@@ -50,6 +55,10 @@ Other ways in:
 - **Double-click a word** to translate it immediately (turn on *Translate on double click*).
 - **Translate on selection** skips the button entirely (turn on *Translate as soon as text is selected*).
 - **The command palette** has *Selection Translate: Translate selection*, which you can bind to a hotkey in Settings → Hotkeys. No hotkey is assigned by default.
+
+The button and the popup are anchored to the text you selected, not to the
+screen. Scrolling carries them along; scroll the selection out of view and they
+go with it, scroll back and they return where they were.
 
 Close the popup with Escape, by clicking elsewhere, or with its close button.
 

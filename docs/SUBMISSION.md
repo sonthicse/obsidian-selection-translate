@@ -62,6 +62,7 @@ curl -s https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/co
 **Repo**
 
 - [ ] Repo **public**
+- [ ] **Tên repo khớp với mọi URL trong dự án.** Repo hiện tên `osidian-selection-translate` — thiếu chữ `b`. `package.json`, banner trong `esbuild.config.mjs`, README và tài liệu đã được sửa cho khớp với tên thật, nên mọi liên kết đều hoạt động. **Đề xuất:** đổi tên repo trên GitHub thành `obsidian-selection-translate` rồi cập nhật ngược lại các URL đó cùng `authorUrl`; GitHub tự chuyển hướng tên cũ nên không gãy gì. Việc này nên xong **trước khi** nộp lên community list, vì URL repo là thứ người ta nhìn thấy
 - [ ] Có `LICENSE` (MIT)
 - [ ] 🤖 Đã commit `package-lock.json`
 - [ ] `README.md` có mục **Network use** liệt kê **đủ 6 host**
@@ -104,11 +105,15 @@ git push && git push --tags
 - [ ] **Không** đóng gói dưới dạng zip — Obsidian không đọc được zip
 - [ ] Release **không** đánh dấu là draft hay pre-release
 
-Nếu workflow thất bại, xoá tag rồi làm lại:
+Nếu workflow thất bại, **không cần xoá tag**. Vào tab Actions → *Release* → *Run workflow*, nhập tag vào ô `tag`. Workflow chạy lại trên đúng commit của tag đó, nhận lấy release đã tồn tại thay vì báo lỗi vì nó đã tồn tại, và ghi đè asset bằng `--clobber`.
+
+> Đây chính là chỗ `0.1.1` đã trượt. Tag đúng, workflow có chạy, nhưng job chết sau ba giây mà chưa kịp lấy runner nào — không có log, không có bước nào chạy. Release `0.1.1` sau đó được tạo tay trên giao diện web, nên nó tồn tại mà không có asset nào; và ở phiên bản workflow cũ, chạy lại cũng vô ích vì `gh release create` báo lỗi ngay khi release đã có sẵn.
+
+Muốn vá một release cũ đang thiếu asset:
 
 ```bash
-git tag -d 0.1.0
-git push --delete origin 0.1.0
+npm run build
+gh release upload 0.1.1 main.js manifest.json styles.css --clobber
 ```
 
 ---
@@ -132,7 +137,7 @@ Repo phải thuộc chính tài khoản GitHub vừa liên kết — ở đây l
 Vào mục **Plugins** rồi chọn nút thêm plugin mới — tài liệu chính thức gọi là **"Add your plugin"**, giao diện có thể hiển thị là *New plugin*. Nhập URL repo:
 
 ```
-https://github.com/sonthicse/obsidian-selection-translate
+https://github.com/sonthicse/osidian-selection-translate
 ```
 
 ### 4. Hệ thống tự kiểm tra

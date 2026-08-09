@@ -7,6 +7,50 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-08-09
+
+A behaviour release rather than a bug-fix one: the button and popup now follow
+the text you selected, and the "Show original" toggle is gone.
+
+### Changed
+
+- **The button and the popup stay with the selection while you scroll.**
+  Previously the button vanished at the first scroll event and the popup simply
+  stayed where it was while the text moved out from under it. Both now track the
+  selection, disappear when it scrolls out of view, and come back when it
+  returns. Only Escape, a click elsewhere, clearing the selection, or switching
+  note, file or layout closes them.
+
+### Removed
+
+- **The "Show original" toggle in the result popup.** It restated text that is
+  still highlighted on screen a few pixels away, and it cost a line of vertical
+  space in every result.
+
+  If you relied on it to see what the Markdown normaliser actually sent — for
+  instance to explain a surprising translation — turn off *Remove Markdown
+  before translating* to send the selection verbatim, or turn on *Debug logging*
+  and read the request in the developer console. Reading aloud is unaffected: it
+  still speaks the original text, not the translation.
+
+### Fixed
+
+- The trigger button no longer appears when you rename a file, folder or canvas
+  in either sidebar. Renaming turns the tree item into an editable field with
+  its name pre-selected, which the plugin read as an ordinary selection.
+- Hovering the button or anything inside the popup no longer shows a tooltip,
+  and no longer shows two stacked on top of each other. Every control keeps its
+  screen-reader name.
+- The button is no longer see-through on hover under the *Match Obsidian* theme,
+  and no longer turns into a blank white square when a dark Obsidian theme is
+  paired with the white popup.
+- Releases now carry `main.js`, `manifest.json` and `styles.css` reliably: the
+  workflow adopts a release that already exists instead of failing on it, can be
+  re-run against an existing tag, and fails loudly if any asset is missing.
+- Cleared the findings from Obsidian's automated plugin review, and added
+  `eslint-plugin-obsidianmd` plus the type-aware TypeScript rules to
+  `npm run lint` so the next batch is caught before submission rather than after.
+
 ## [0.1.0] — 2026-08-08
 
 First release.
@@ -48,5 +92,6 @@ First release.
 - Restoring default options deliberately preserves API keys.
 - Translations are never written to `data.json`, which syncs between devices.
 
-[Unreleased]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.1.0...HEAD
-[0.1.0]: https://github.com/sonthicse/obsidian-selection-translate/releases/tag/0.1.0
+[Unreleased]: https://github.com/sonthicse/osidian-selection-translate/compare/0.2.0...HEAD
+[0.2.0]: https://github.com/sonthicse/osidian-selection-translate/compare/0.1.0...0.2.0
+[0.1.0]: https://github.com/sonthicse/osidian-selection-translate/releases/tag/0.1.0

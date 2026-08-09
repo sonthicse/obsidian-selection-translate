@@ -4,12 +4,17 @@ Bôi đen bất kỳ đoạn văn bản nào trong Obsidian rồi dịch tại c
 
 *[English](README.md)*
 
+<!-- TODO: chụp lại ba ảnh này. Cả ba vẫn còn nút "Show original" đã bị bỏ ở
+     0.2.0, và ảnh GIF được quay trước khi nút và popup biết bám theo vùng bôi
+     đen lúc cuộn. Cố ý không sửa tay — một ảnh chụp giao diện bị chỉnh sửa còn
+     tệ hơn một ảnh cũ. -->
+
 ![Minh hoạ: bôi đen một từ và xem bản dịch](docs/images/demo.gif)
 
 ## Tính năng
 
 - **Chạy ở mọi nơi có chữ.** Chế độ đọc, Live Preview, Source mode, trang PDF, thuộc tính (cả tên lẫn giá trị), bảng, callout, code block, liên kết và cửa sổ popout.
-- **Một nút bấm, không phải một thứ chen ngang.** Bôi đen thì hiện một nút nhỏ bên cạnh. Nút tự né menu, tooltip và thanh công cụ PDF thay vì che chúng.
+- **Một nút bấm, không phải một thứ chen ngang.** Bôi đen thì hiện một nút nhỏ bên cạnh. Nút tự né menu, tooltip và thanh công cụ PDF thay vì che chúng, và bám theo vùng bôi đen khi bạn cuộn.
 - **Chi tiết từ điển cho từ đơn.** Phiên âm, loại từ và các nghĩa khác, không chỉ một dòng dịch.
 - **Ba công cụ dịch.** Google không cần khoá, Google Cloud Translation, hoặc DeepL. Máy chủ đúng cho khoá DeepL được chọn từ chính khoá đó.
 - **Đọc thành tiếng.** Bằng giọng hệ thống (ngoại tuyến) hoặc bằng Google.
@@ -25,13 +30,13 @@ Settings → Community plugins → Browse → tìm **Selection Translate** → I
 
 ### Từ một bản release
 
-1. Tải `main.js`, `manifest.json` và `styles.css` từ [release mới nhất](https://github.com/sonthicse/obsidian-selection-translate/releases/latest).
+1. Tải `main.js`, `manifest.json` và `styles.css` từ [release mới nhất](https://github.com/sonthicse/osidian-selection-translate/releases/latest).
 2. Đặt vào `<vault>/.obsidian/plugins/selection-translate/`.
 3. Settings → Community plugins → tắt Restricted mode → bật **Selection Translate**.
 
 ### Bản beta qua BRAT
 
-Cài [BRAT](https://github.com/TfTHacker/obsidian42-brat), rồi *Add beta plugin* với `sonthicse/obsidian-selection-translate`.
+Cài [BRAT](https://github.com/TfTHacker/obsidian42-brat), rồi *Add beta plugin* với `sonthicse/osidian-selection-translate`.
 
 Hướng dẫn đầy đủ, gồm cả build từ mã nguồn, ở [docs/INSTALL.md](docs/INSTALL.md).
 
@@ -46,6 +51,10 @@ Các cách khác:
 - **Nháy đúp một từ** để dịch ngay (bật *Dịch khi nháy đúp*).
 - **Dịch ngay khi bôi đen** bỏ qua hẳn nút bấm (bật *Dịch ngay khi bôi đen*).
 - **Command palette** có *Selection Translate: Dịch vùng chọn*, bạn có thể gán phím tắt ở Settings → Hotkeys. Plugin không tự đặt phím tắt nào.
+
+Nút và popup neo vào vùng bạn bôi đen chứ không neo vào màn hình. Cuộn thì
+chúng trôi theo; cuộn vùng bôi đen ra khỏi màn hình thì chúng đi theo, cuộn về
+thì chúng quay lại đúng chỗ cũ.
 
 Đóng popup bằng Escape, bằng cách click ra ngoài, hoặc bằng nút đóng.
 

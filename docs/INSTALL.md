@@ -22,7 +22,7 @@ Cập nhật về sau diễn ra tự động qua Obsidian.
 
 Dùng khi plugin chưa lên store, hoặc bạn muốn ghim một phiên bản cụ thể.
 
-1. Mở [trang Releases](https://github.com/sonthicse/obsidian-selection-translate/releases/latest).
+1. Mở [trang Releases](https://github.com/sonthicse/osidian-selection-translate/releases/latest).
 2. Ở mục **Assets**, tải đúng **ba tệp**:
    - `main.js`
    - `manifest.json`
@@ -62,7 +62,7 @@ BRAT theo dõi repo GitHub và tự cập nhật bản beta cho bạn.
 4. Nhập:
 
    ```
-   sonthicse/obsidian-selection-translate
+   sonthicse/osidian-selection-translate
    ```
 
 5. Bấm **Add Plugin**. BRAT tải bản release mới nhất và bật plugin.
@@ -85,8 +85,8 @@ Dùng khi bạn muốn sửa mã, hoặc muốn tự kiểm chứng thứ mình 
 ### Các bước
 
 ```bash
-git clone https://github.com/sonthicse/obsidian-selection-translate.git
-cd obsidian-selection-translate
+git clone https://github.com/sonthicse/osidian-selection-translate.git
+cd osidian-selection-translate
 
 npm install
 npm run build
@@ -102,14 +102,14 @@ Cách gọn nhất là clone **thẳng vào** thư mục plugin của một vaul
 cd <vault>/.obsidian/plugins
 
 # Chú ý tham số cuối: thư mục phải đặt tên theo plugin `id`, không theo tên repo.
-git clone https://github.com/sonthicse/obsidian-selection-translate.git selection-translate
+git clone https://github.com/sonthicse/osidian-selection-translate.git selection-translate
 cd selection-translate
 
 npm install
 npm run dev      # build lại mỗi khi sửa file
 ```
 
-> Repo tên `obsidian-selection-translate` nhưng plugin `id` là `selection-translate`.
+> Repo tên `osidian-selection-translate` nhưng plugin `id` là `selection-translate`.
 > `git clone` mặc định đặt tên thư mục theo repo, và Obsidian trông đợi thư mục
 > trùng với `id` — nên phải chỉ định tên thư mục ở cuối lệnh. Bỏ qua chỗ này thì
 > plugin vẫn có thể nạp được, nhưng sẽ lệch với bản cài từ store hoặc từ BRAT.

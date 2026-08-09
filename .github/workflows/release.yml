@@ -7,6 +7,15 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
+  # A re-run handle. The 0.1.1 release went out with no assets because this job
+  # died before it ever reached a runner, and the only recovery then was to
+  # delete the tag and push it again. Now the same tag can simply be re-run.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and attach assets to, e.g. 0.2.0'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,8 +24,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
 
+    env:
+      # One definition for both trigger types: the pushed tag, or the one typed
+      # into the manual run.
+      TAG: ${{ inputs.tag || github.ref_name }}
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Without this a manual run would build whatever the default branch
+          # currently holds and attach it to an older tag.
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -37,7 +55,6 @@ jobs:
       # mismatch is caught here instead.
       - name: Check the tag matches the manifest
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
           MANIFEST=$(node -p "require('./manifest.json').version")
           if [ "$TAG" != "$MANIFEST" ]; then
             echo "Tag $TAG does not match manifest version $MANIFEST" >&2
@@ -45,14 +62,38 @@ jobs:
           fi
           echo "Releasing $TAG"
 
-      # Attached as loose files, not a zip. Obsidian's installer fetches
-      # main.js, manifest.json and styles.css individually from the release, and
-      # a zip is simply invisible to it.
-      - name: Create the release
+      # Creating and uploading are separate so that a release which already
+      # exists — made by hand in the UI, or left behind by a half-finished run —
+      # is adopted rather than fought with. `gh release create` fails outright
+      # when the release is already there, and that failure is exactly how 0.1.1
+      # ended up published with no assets attached to it.
+      - name: Create the release if it does not exist
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${GITHUB_REF#refs/tags/}" \
-            --title "${GITHUB_REF#refs/tags/}" \
-            --generate-notes \
-            main.js manifest.json styles.css
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "$TAG" --generate-notes --draft=false
+
+      # Attached as loose files, not a zip. Obsidian's installer fetches
+      # main.js, manifest.json and styles.css individually from the release, and
+      # a zip is simply invisible to it. `--clobber` is what makes a re-run safe.
+      - name: Attach the build artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" main.js manifest.json styles.css --clobber
+
+      # Failing here costs a re-run; failing Obsidian's review costs a whole new
+      # version. An empty release looks perfectly healthy from the outside, so
+      # the only way to know is to ask what is actually attached.
+      - name: Check every asset arrived
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          echo "Attached: $(echo "$ASSETS" | tr '\n' ' ')"
+          for required in main.js manifest.json styles.css; do
+            if ! echo "$ASSETS" | grep -qx "$required"; then
+              echo "Release $TAG is missing $required" >&2
+              exit 1
+            fi
+          done
