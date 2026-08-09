@@ -117,8 +117,6 @@ describe('message catalogue coverage', () => {
 			'popup.copy',
 			'popup.settings',
 			'popup.close',
-			'popup.showSource',
-			'popup.hideSource',
 			'popup.otherMeanings',
 		];
 

@@ -367,7 +367,6 @@ export class TranslatePopup {
 			entryEl.createDiv({ cls: 'st-meanings', text: entry.meanings.join(', ') });
 		}
 
-		this.buildSourceToggle(body, result.sourceText);
 		this.buildFooter(parent, result);
 	}
 
@@ -404,35 +403,6 @@ export class TranslatePopup {
 
 		this.button(header, ICON.settings, t('popup.settings'), () => this.openSettings());
 		this.button(header, ICON.close, t('popup.close'), () => this.handlers.onClose());
-	}
-
-	/**
-	 * A collapsed view of the text that was actually sent.
-	 *
-	 * Worth having because the normalizer rewrites the selection before it
-	 * leaves — stripping markdown, joining wrapped lines — and a surprising
-	 * translation is usually explained by seeing what went out.
-	 */
-	private buildSourceToggle(parent: HTMLElement, sourceText: string): void {
-		const wrapper = parent.createDiv({ cls: 'st-source' });
-
-		const toggle = wrapper.createEl('button', {
-			cls: 'st-source-toggle',
-			text: t('popup.showSource'),
-			attr: { type: 'button' },
-		});
-		const content = wrapper.createDiv({ cls: 'st-source-text', text: sourceText });
-		content.hide();
-
-		toggle.addEventListener('click', () => {
-			const showing = content.isShown();
-			if (showing) {
-				content.hide();
-			} else {
-				content.show();
-			}
-			toggle.setText(showing ? t('popup.showSource') : t('popup.hideSource'));
-		});
 	}
 
 	private buildFooter(parent: HTMLElement, result: TranslationResult): void {

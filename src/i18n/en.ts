@@ -21,8 +21,6 @@ export const en = {
 	'popup.copyFailed': 'Could not copy to the clipboard.',
 	'popup.settings': 'Open plugin options',
 	'popup.close': 'Close',
-	'popup.showSource': 'Show original',
-	'popup.hideSource': 'Hide original',
 	'popup.otherMeanings': 'Other meanings',
 	'popup.fromCache': 'cached',
 	'popup.elapsed': '{ms} ms',

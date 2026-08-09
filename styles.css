@@ -269,42 +269,6 @@
 	font-size: 0.95em;
 }
 
-/* ── Original text, collapsed by default ──────────────────────────────────── */
-
-.st-source {
-	margin-top: 10px;
-}
-
-.st-source-toggle {
-	padding: 0;
-	border: none;
-	background: transparent;
-	box-shadow: none;
-	color: var(--st-muted);
-	font-size: 0.85em;
-	text-decoration: underline;
-	cursor: pointer;
-}
-
-.st-source-toggle:hover {
-	color: var(--st-fg);
-}
-
-.st-source-toggle:focus-visible {
-	outline: 2px solid var(--st-accent);
-	outline-offset: 2px;
-}
-
-.st-source-text {
-	margin-top: 6px;
-	padding: 6px 8px;
-	border-radius: 6px;
-	background: var(--st-hover);
-	color: var(--st-muted);
-	font-size: 0.9em;
-	white-space: pre-wrap;
-}
-
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 
 .st-popup-footer {

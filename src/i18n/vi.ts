@@ -18,8 +18,6 @@ export const vi = {
 	'popup.copyFailed': 'Không sao chép được vào bộ nhớ tạm.',
 	'popup.settings': 'Mở tuỳ chọn plugin',
 	'popup.close': 'Đóng',
-	'popup.showSource': 'Xem bản gốc',
-	'popup.hideSource': 'Ẩn bản gốc',
 	'popup.otherMeanings': 'Các nghĩa khác',
 	'popup.fromCache': 'đã lưu',
 	'popup.elapsed': '{ms} ms',
