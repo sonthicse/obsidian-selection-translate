@@ -20,7 +20,16 @@ export function isDebugLogging(): boolean {
 	return debugEnabled;
 }
 
-/** Diagnostic trace. Silent unless the user opted in. */
+/**
+ * Diagnostic trace. Silent unless the user opted in.
+ *
+ * The `console.log` below is what Obsidian's "avoid unnecessary logging" rule
+ * exists to catch, and it is deliberate here: nothing reaches it unless the
+ * user has switched the `debugLog` setting on, which they only do to collect
+ * information for a bug report. That gate is the whole reason this function
+ * exists, and it is why the rule is turned off for this file alone in
+ * eslint.config.mjs rather than silenced with an inline disable comment.
+ */
 export function debug(...args: unknown[]): void {
 	if (!debugEnabled) return;
 	console.log(PREFIX, ...args);

@@ -51,7 +51,7 @@ export function detectContext(node: Node | null, fallbackContainer: HTMLElement)
 	const el = toElement(node);
 	if (el == null) return null;
 
-	const containerEl = (el.closest(CONTAINER_SELECTORS) as HTMLElement | null) ?? fallbackContainer;
+	const containerEl = el.closest<HTMLElement>(CONTAINER_SELECTORS) ?? fallbackContainer;
 	const inProperties = el.closest(PROPERTIES_SELECTOR) != null;
 
 	const context = detectSurface(el);

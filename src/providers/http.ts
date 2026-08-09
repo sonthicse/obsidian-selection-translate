@@ -1,6 +1,6 @@
 import { requestUrl, type RequestUrlParam, type RequestUrlResponse } from 'obsidian';
 import { REQUEST_TIMEOUT_MS, RETRYABLE_STATUSES, RETRY_DELAYS_MS } from '../constants';
-import { sleep } from '../utils/debounce';
+import { AMBIENT_TIMERS, sleep, type TimerHost } from '../utils/debounce';
 import { debug } from '../utils/log';
 import { ProviderError } from './TranslationProvider';
 
@@ -17,7 +17,10 @@ import { ProviderError } from './TranslationProvider';
  * than an exception to guess at — the difference between "your key is wrong"
  * and "something went wrong".
  */
-export async function requestWithRetry(param: RequestUrlParam): Promise<RequestUrlResponse> {
+export async function requestWithRetry(
+	param: RequestUrlParam,
+	timers: TimerHost = AMBIENT_TIMERS
+): Promise<RequestUrlResponse> {
 	let lastResponse: RequestUrlResponse | null = null;
 
 	// One initial attempt plus one per backoff delay.
@@ -25,12 +28,12 @@ export async function requestWithRetry(param: RequestUrlParam): Promise<RequestU
 		if (attempt > 0) {
 			const delay = RETRY_DELAYS_MS[attempt - 1] ?? 0;
 			debug('retrying request', { attempt, delay, status: lastResponse?.status });
-			await sleep(delay);
+			await sleep(delay, timers);
 		}
 
 		let response: RequestUrlResponse;
 		try {
-			response = await withTimeout(requestUrl({ ...param, throw: false }));
+			response = await withTimeout(requestUrl({ ...param, throw: false }), timers);
 		} catch (cause) {
 			// A timeout is already a ProviderError and carries its own message.
 			if (cause instanceof ProviderError) throw cause;
@@ -69,11 +72,11 @@ export async function requestWithRetry(param: RequestUrlParam): Promise<RequestU
  * three-quarter-minute stare at a spinner, which is worse than failing once and
  * offering the button.
  */
-async function withTimeout<T>(promise: Promise<T>): Promise<T> {
-	let timer: ReturnType<typeof setTimeout> | undefined;
+async function withTimeout<T>(promise: Promise<T>, timers: TimerHost): Promise<T> {
+	let timer: number | undefined;
 
 	const timeout = new Promise<never>((_resolve, reject) => {
-		timer = setTimeout(() => {
+		timer = timers.setTimeout(() => {
 			debug('request timed out', REQUEST_TIMEOUT_MS);
 			reject(new ProviderError('timeout'));
 		}, REQUEST_TIMEOUT_MS);
@@ -82,7 +85,7 @@ async function withTimeout<T>(promise: Promise<T>): Promise<T> {
 	try {
 		return await Promise.race([promise, timeout]);
 	} finally {
-		if (timer !== undefined) clearTimeout(timer);
+		if (timer !== undefined) timers.clearTimeout(timer);
 	}
 }
 

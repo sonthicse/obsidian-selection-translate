@@ -79,7 +79,7 @@ export default class SelectionTranslatePlugin extends Plugin {
 			onViewportChange: (kind) => this.ui.handleViewportChange(kind),
 			onEscape: () => this.ui.handleDismiss(),
 			onKeyDown: (event) => this.handleTriggerKey(event),
-		});
+		}, window);
 		// Ties teardown to the plugin's own lifecycle, so unload releases every
 		// listener even though they are not individually registerDomEvent'd.
 		this.register(() => this.selectionManager.destroy());

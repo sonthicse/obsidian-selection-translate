@@ -335,7 +335,11 @@ export class TranslatePopup {
 				this.resizeTimer = null;
 			}
 
-			el.style.height = 'auto';
+			// Removing the property rather than assigning 'auto': `.st-popup`
+			// declares no height of its own, so dropping it lands on auto anyway,
+			// and a static value in a style assignment is a plugin-guideline
+			// violation the automated review flags.
+			el.style.removeProperty('height');
 			// The content may have reflowed into a different height, so the
 			// placement is worth one more pass.
 			const rect = el.getBoundingClientRect();

@@ -151,7 +151,9 @@ export function parseDeepL(raw: unknown): ProviderResponse | null {
 	if (!Array.isArray(translations) || translations.length === 0) return null;
 
 	// Only one string is ever sent, so only the first translation is expected.
-	const first = translations[0];
+	// Annotated `unknown` because `Array.isArray` narrows an `unknown` to `any[]`,
+	// which would make every read off this element an unchecked `any`.
+	const first: unknown = translations[0];
 	if (first == null || typeof first !== 'object') return null;
 
 	const text = (first as { text?: unknown }).text;

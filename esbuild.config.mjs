@@ -1,6 +1,6 @@
 import esbuild from 'esbuild';
 import process from 'node:process';
-import builtins from 'builtin-modules';
+import { builtinModules } from 'node:module';
 
 const banner = `/*
 Selection Translate for Obsidian — bundled build artifact.
@@ -33,8 +33,8 @@ const external = [
   '@lezer/highlight',
   '@lezer/lr',
   '@lezer/*',
-  ...builtins,
-  ...builtins.map((name) => `node:${name}`),
+  ...builtinModules,
+  ...builtinModules.map((name) => `node:${name}`),
 ];
 
 const context = await esbuild.context({

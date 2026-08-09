@@ -199,6 +199,19 @@ Những điều thường bị yêu cầu sửa:
 
 ---
 
+## TODO: những cảnh báo còn treo, chờ nâng `minAppVersion`
+
+`npm run lint` chạy cả `eslint-plugin-obsidianmd`, và bốn nhóm cảnh báo dưới đây **cố ý** còn đó. Cả bốn đều chỉ về một phía: API mới hơn sàn `minAppVersion` hiện tại là `1.5.0`. Sửa chúng bây giờ nghĩa là nâng sàn, và nâng sàn nghĩa là cắt mất người dùng bản cũ — cái giá đó lớn hơn giá trị của việc dọn sạch cảnh báo.
+
+| Cảnh báo | Cần bản nào | Ghi chú |
+|---|---|---|
+| `settings-tab/prefer-setting-definitions`, `display` deprecated | 1.13.0 | Chuyển `display()` → `getSettingDefinitions()`. Đây là việc lớn nhất trong nhóm: viết lại toàn bộ `SettingTab.ts` theo API khai báo, đổi lại là tuỳ chọn của plugin xuất hiện trong ô tìm kiếm settings của Obsidian |
+| `setWarning` deprecated | 1.13.0 | Đổi sang `setDestructive()`. Gọi nó ở 1.5.0 là gọi một method không tồn tại — hỏng ngay lúc dựng pane tuỳ chọn |
+| `prefer-get-language` | 1.8.7 | Đổi `localStorage.getItem('language')` sang `getLanguage()` |
+| `no-global-this` trong `utils/debounce.ts` | — | Không liên quan phiên bản. `globalThis` là *mặc định* cho `TimerHost`; runtime Obsidian luôn truyền window thật xuống, còn unit test chạy dưới `environment: 'node'` nơi không có `window` nào để truyền |
+
+Khi nào quyết định nâng sàn: nâng `minAppVersion` trong `manifest.json`, thêm entry tương ứng vào `versions.json`, rồi xử lý ba hàng đầu cùng một lượt.
+
 ## Sau khi phát hành
 
 - Theo dõi Issues.

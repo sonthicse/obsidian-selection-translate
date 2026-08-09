@@ -14,7 +14,7 @@ import type { RawSelection } from '../selection/SelectionSource';
 import type { SelectionSnapshot } from '../types';
 import type { SelectionTranslateSettings } from '../settings/settings';
 import { collectScrollableAncestors, isInsideOwnUi, last, toElement, unionRects } from '../utils/dom';
-import { debounce } from '../utils/debounce';
+import { AMBIENT_TIMERS, debounce, type TimerHost } from '../utils/debounce';
 import { debug } from '../utils/log';
 
 /** What prompted a selection to be evaluated. */
@@ -117,17 +117,31 @@ export class SelectionManager {
 	private readonly onSelectionChangeDebounced: ((win: Window) => void) & { cancel: () => void };
 	private readonly onResizeDebounced: (() => void) & { cancel: () => void };
 
+	/**
+	 * @param timers Window whose timers the debounces run on. Defaults to the
+	 * ambient globals so the unit tests, which have no window, still work; the
+	 * plugin passes the real one, because a popout's timers die with it.
+	 */
 	constructor(
 		private readonly getSettings: () => SelectionTranslateSettings,
-		private readonly handlers: SelectionManagerHandlers
+		private readonly handlers: SelectionManagerHandlers,
+		timers: TimerHost = AMBIENT_TIMERS
 	) {
-		this.onSelectionChangeDebounced = debounce((win: Window) => {
-			this.evaluate(win, 'selectionchange');
-		}, SELECTION_CHANGE_DEBOUNCE_MS);
+		this.onSelectionChangeDebounced = debounce(
+			(win: Window) => {
+				this.evaluate(win, 'selectionchange');
+			},
+			SELECTION_CHANGE_DEBOUNCE_MS,
+			timers
+		);
 
-		this.onResizeDebounced = debounce(() => {
-			this.handlers.onViewportChange('resize');
-		}, RESIZE_DEBOUNCE_MS);
+		this.onResizeDebounced = debounce(
+			() => {
+				this.handlers.onViewportChange('resize');
+			},
+			RESIZE_DEBOUNCE_MS,
+			timers
+		);
 	}
 
 	/** The most recent usable selection, or null. Backs the Obsidian command. */
@@ -458,7 +472,10 @@ export class SelectionManager {
 			// Remembered so focus can be handed back when the popup closes.
 			activeElement: win.document.activeElement,
 			cursor: this.lastCursor,
-			getLiveRects: raw.getLiveRects,
+			// Wrapped, not passed by reference: the sources implement this as a
+			// closure and detaching it from its object is a scoping hazard the
+			// linter is right to flag.
+			getLiveRects: () => raw.getLiveRects(),
 			// Recorded here, not on first scroll: the offsets have to be the ones
 			// in force when `rects` above was measured, or the two disagree by
 			// however far the user scrolled in between.

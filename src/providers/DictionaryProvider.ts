@@ -114,7 +114,9 @@ export class FreeDictionaryProvider implements DictionaryProvider {
 export function parseFreeDictionary(raw: unknown): DictionaryLookup | null {
 	if (!Array.isArray(raw) || raw.length === 0) return null;
 
-	const first = raw[0];
+	// See DeepLProvider: `Array.isArray` narrows `unknown` to `any[]`, so the
+	// element needs an explicit `unknown` to stay checked.
+	const first: unknown = raw[0];
 	if (first == null || typeof first !== 'object') return null;
 
 	const lookup: DictionaryLookup = {};

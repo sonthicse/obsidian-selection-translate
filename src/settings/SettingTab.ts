@@ -13,6 +13,11 @@ import {
 	type UiLanguage,
 } from './settings';
 
+/** The settings whose value is a boolean, i.e. the ones a toggle can drive. */
+type BooleanSettingKey = {
+	[K in keyof SelectionTranslateSettings]: SelectionTranslateSettings[K] extends boolean ? K : never;
+}[keyof SelectionTranslateSettings];
+
 /**
  * The options tab.
  *
@@ -250,7 +255,6 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 				slider
 					.setLimits(SETTING_LIMITS.minSelectionLength.min, 20, 1)
 					.setValue(this.plugin.settings.minSelectionLength)
-					.setDynamicTooltip()
 					.onChange(async (value) => this.save('minSelectionLength', value))
 			);
 
@@ -287,7 +291,6 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 				slider
 					.setLimits(SETTING_LIMITS.iconOffset.min, SETTING_LIMITS.iconOffset.max, 1)
 					.setValue(this.plugin.settings.iconOffset)
-					.setDynamicTooltip()
 					.onChange(async (value) => this.save('iconOffset', value))
 			);
 	}
@@ -297,7 +300,10 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 	private addScope(containerEl: HTMLElement): void {
 		new Setting(containerEl).setName(t('settings.scopeHeading')).setHeading();
 
-		const toggles: Array<[string, keyof SelectionTranslateSettings]> = [
+		// Narrowed to the boolean-valued keys, which is what lets `save(key, value)`
+		// type-check without an escape hatch: with the full key union the compiler
+		// has to assume the setting might hold a string or a hotkey binding.
+		const toggles: Array<[string, BooleanSettingKey]> = [
 			['settings.enableInReading', 'enableInReading'],
 			['settings.enableInEditing', 'enableInEditing'],
 			['settings.enableInProperties', 'enableInProperties'],
@@ -307,8 +313,8 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 		for (const [labelKey, key] of toggles) {
 			new Setting(containerEl).setName(t(labelKey)).addToggle((toggle) =>
 				toggle
-					.setValue(this.plugin.settings[key] as boolean)
-					.onChange(async (value) => this.save(key, value as never))
+					.setValue(this.plugin.settings[key])
+					.onChange(async (value) => this.save(key, value))
 			);
 		}
 
@@ -334,7 +340,6 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 				slider
 					.setLimits(SETTING_LIMITS.fontSize.min, SETTING_LIMITS.fontSize.max, 1)
 					.setValue(this.plugin.settings.fontSize)
-					.setDynamicTooltip()
 					.onChange(async (value) => this.save('fontSize', value))
 			);
 
@@ -385,7 +390,6 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 				slider
 					.setLimits(SETTING_LIMITS.ttsRate.min, SETTING_LIMITS.ttsRate.max, 0.1)
 					.setValue(this.plugin.settings.ttsRate)
-					.setDynamicTooltip()
 					.onChange(async (value) => this.save('ttsRate', value))
 			);
 	}
@@ -431,6 +435,14 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 			.addButton((button) =>
 				button
 					.setButtonText(t('settings.resetButton'))
+					/*
+					 * `setDestructive()` is the modern spelling and this should use
+					 * it — but it landed in 1.13.0 and this plugin supports 1.5.0,
+					 * where the method is simply absent and calling it would throw
+					 * while the options pane is being built. The deprecated call is
+					 * the one that works on every version we claim to support, and
+					 * it moves when minAppVersion does.
+					 */
 					.setWarning()
 					.onClick(async () => {
 						// API keys survive a reset. They are the one setting that

@@ -107,8 +107,10 @@ function measureInputSelection(
 	if (win == null) return [];
 
 	const computed = win.getComputedStyle(el);
-	const mirror = doc.createElement('div');
-	mirror.className = 'st-input-mirror';
+	// Built through Obsidian's helper and attached straight away: the mirror is
+	// hidden by `.st-input-mirror`, so being in the document early costs nothing
+	// and it has to be there before anything can be measured.
+	const mirror = doc.body.createDiv({ cls: 'st-input-mirror' });
 
 	for (const property of MIRRORED_PROPERTIES) {
 		mirror.style.setProperty(property, computed.getPropertyValue(property));
@@ -123,17 +125,14 @@ function measureInputSelection(
 		mirror.style.setProperty('height', computed.getPropertyValue('height'));
 	}
 
-	const value = el.value;
-	const marker = doc.createElement('span');
-	marker.textContent = value.slice(start, end);
-
-	mirror.appendChild(doc.createTextNode(value.slice(0, start)));
-	mirror.appendChild(marker);
-	// The trailing text matters: without it the last line's box collapses and a
+	// Appended in reading order, because each helper adds to the end: the text
+	// before the selection, the measurable span, then the text after. The
+	// trailing text matters — without it the last line's box collapses and a
 	// selection ending at the value's end measures short.
+	const value = el.value;
+	mirror.appendChild(doc.createTextNode(value.slice(0, start)));
+	const marker = mirror.createSpan({ text: value.slice(start, end) });
 	mirror.appendChild(doc.createTextNode(value.slice(end)));
-
-	doc.body.appendChild(mirror);
 
 	let rects: Rect[] = [];
 	try {

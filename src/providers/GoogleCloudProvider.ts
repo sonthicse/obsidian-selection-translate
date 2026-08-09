@@ -149,7 +149,9 @@ export function parseGoogleCloud(raw: unknown, requestedSource: SourceLangCode):
 	const translations = (data as { translations?: unknown }).translations;
 	if (!Array.isArray(translations) || translations.length === 0) return null;
 
-	const first = translations[0];
+	// See DeepLProvider: `Array.isArray` narrows `unknown` to `any[]`, so the
+	// element needs an explicit `unknown` to stay checked.
+	const first: unknown = translations[0];
 	if (first == null || typeof first !== 'object') return null;
 
 	const text = (first as { translatedText?: unknown }).translatedText;
