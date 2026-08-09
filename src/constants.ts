@@ -34,7 +34,12 @@ export const SURFACE_SELECTORS = {
 } as const;
 
 /** Surfaces where a selection must be ignored outright: transient UI whose text
- *  is chrome, not content. */
+ *  is chrome, not content.
+ *
+ *  The file-explorer entries are here because renaming turns a tree item into a
+ *  contenteditable and highlights the whole name for you. That reads as a
+ *  perfectly ordinary selection, so without these the trigger icon pops up over
+ *  a rename box every single time. */
 export const IGNORED_SELECTORS = [
 	'.modal',
 	'.suggestion-container',
@@ -43,7 +48,29 @@ export const IGNORED_SELECTORS = [
 	'.setting-item',
 	'.workspace-tab-header',
 	'.status-bar',
+	'.nav-files-container',
+	'.nav-file-title',
+	'.nav-folder-title',
+	'.tree-item-inner',
+	'.is-being-renamed',
+	'.workspace-drawer',
+	'.workspace-tab-header-inner-title',
+	'.view-header-title',
+	'.canvas-node-label',
+	'.titlebar',
+	'.vertical-tab-nav-item',
 ].join(', ');
+
+/**
+ * The two side panels, matched structurally rather than by what they contain.
+ *
+ * Every class name above is a DOM contract Obsidian never promised to keep, and
+ * the rename box is exactly the kind of thing that gets restyled between
+ * releases. The split containers are far more stable, and nothing a user means
+ * to translate lives in a sidebar — so treating the whole region as chrome
+ * survives the next time the nav tree is rewritten.
+ */
+export const SIDEBAR_SELECTORS = '.workspace-split.mod-left-split, .workspace-split.mod-right-split';
 
 /* ── Positioning ──────────────────────────────────────────────────────────── */
 

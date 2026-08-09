@@ -4,6 +4,7 @@ import {
 	IGNORED_SELECTORS,
 	RESIZE_DEBOUNCE_MS,
 	SELECTION_CHANGE_DEBOUNCE_MS,
+	SIDEBAR_SELECTORS,
 } from '../constants';
 import { detectContext, isContextEnabled, type ContextInfo } from './ContextDetector';
 import { DomSelectionSource } from '../selection/DomSelectionSource';
@@ -406,6 +407,14 @@ export class SelectionManager {
 		// popups — is UI text, not content the user means to translate.
 		const referenceEl = toElement(raw.referenceNode);
 		if (referenceEl?.closest(IGNORED_SELECTORS) != null) {
+			return { kind: 'none', reason: 'ignored-surface' };
+		}
+
+		// Rule 4b: the same judgement, made structurally. Rule 4 names the classes
+		// Obsidian happens to use today; this one only needs the side panels to
+		// still be side panels, so a rewritten nav tree cannot quietly reopen the
+		// hole it closes.
+		if (referenceEl?.closest(SIDEBAR_SELECTORS) != null) {
 			return { kind: 'none', reason: 'ignored-surface' };
 		}
 
