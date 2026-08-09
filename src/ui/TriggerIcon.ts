@@ -1,4 +1,5 @@
 import { CLS } from '../constants';
+import { t } from '../i18n';
 import type { Rect } from '../types';
 import { ICON, applyIcon } from './icons';
 
@@ -91,11 +92,19 @@ export class TriggerIcon {
 		this.destroy();
 		this.ownerWin = win;
 
+		/*
+		 * No `aria-label` and no `title`. Obsidian hangs a tooltip handler off
+		 * every element with an `aria-label`, and the icon sits directly under
+		 * the pointer the moment it appears, so either attribute means a tooltip
+		 * covering the text the user just selected. The name goes in a visually
+		 * hidden span, which screen readers announce and hovering never reveals.
+		 */
 		const el = win.document.body.createEl('button', {
 			cls: CLS.icon,
-			attr: { type: 'button', 'aria-label': 'Translate selection' },
+			attr: { type: 'button' },
 		});
-		applyIcon(el, ICON.translate);
+		applyIcon(el.createSpan({ cls: 'st-icon-glyph' }), ICON.translate);
+		el.createSpan({ cls: 'st-sr-only', text: t('icon.label') });
 
 		/*
 		 * The critical line in this file.

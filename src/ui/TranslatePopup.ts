@@ -53,6 +53,15 @@ export class TranslatePopup {
 	/** Released whenever the content is replaced or the popup closes. */
 	private unsubscribeSpeaking: (() => void) | null = null;
 
+	/**
+	 * Id of the screen-reader label the dialog points at.
+	 *
+	 * The label is a child node rather than an `aria-label`, so it has to be
+	 * re-created every time the content is replaced — `empty()` takes it with
+	 * everything else.
+	 */
+	private labelId = '';
+
 	/** Focused element from before the popup opened, restored on close. */
 	private previousFocus: Element | null = null;
 	/** Whether focus was ever moved into the popup, so it is only restored if taken. */
@@ -87,10 +96,11 @@ export class TranslatePopup {
 
 		el.addClass('is-loading');
 		el.empty();
+		this.addDialogLabel(el);
 
 		const body = el.createDiv({ cls: 'st-popup-loading' });
 		body.setAttribute('role', 'status');
-		body.setAttribute('aria-label', t('popup.loading'));
+		body.createSpan({ cls: 'st-sr-only', text: t('popup.loading') });
 
 		const dots = body.createDiv({ cls: 'st-dots' });
 		for (let i = 0; i < 3; i++) dots.createSpan({ cls: 'st-dot' });
@@ -149,12 +159,25 @@ export class TranslatePopup {
 
 		const el = win.document.body.createDiv({ cls: CLS.popup });
 		el.setAttribute('role', 'dialog');
-		el.setAttribute('aria-label', t('icon.label'));
+		/*
+		 * Named by a hidden child, not by `aria-label`. Obsidian attaches its own
+		 * tooltip handler to every element carrying an `aria-label`, so putting
+		 * one on the popup shell fired a tooltip from anywhere inside it —
+		 * including the instant it opened, since the popup grows out from under
+		 * the pointer.
+		 */
+		this.labelId = `st-popup-label-${++labelSeq}`;
+		el.setAttribute('aria-labelledby', this.labelId);
 		el.toggleClass('mod-follow-theme', this.getSettings().popupTheme === 'follow');
 
 		this.el = el;
 		this.claimScope();
 		return el;
+	}
+
+	/** Re-attaches the dialog's accessible name after the content was replaced. */
+	private addDialogLabel(el: HTMLElement): void {
+		el.createSpan({ cls: 'st-sr-only', text: t('icon.label'), attr: { id: this.labelId } });
 	}
 
 	/**
@@ -233,6 +256,7 @@ export class TranslatePopup {
 
 		el.removeClass('is-loading');
 		el.empty();
+		this.addDialogLabel(el);
 		for (const node of measured.nodes) el.appendChild(node);
 
 		this.pendingFrame = win.requestAnimationFrame(() => {
@@ -361,10 +385,12 @@ export class TranslatePopup {
 		});
 
 		const renderSpeakState = (speaking: boolean): void => {
-			applyIcon(speakButton, speaking ? ICON.stopSpeaking : ICON.speak);
-			const label = t(speaking ? 'popup.stopSpeaking' : 'popup.speak');
-			speakButton.setAttribute('aria-label', label);
-			speakButton.setAttribute('title', label);
+			const glyph = speakButton.querySelector<HTMLElement>('.st-icon-glyph');
+			const name = speakButton.querySelector<HTMLElement>('.st-sr-only');
+			if (glyph == null || name == null) return;
+
+			applyIcon(glyph, speaking ? ICON.stopSpeaking : ICON.speak);
+			name.textContent = t(speaking ? 'popup.stopSpeaking' : 'popup.speak');
 		};
 
 		renderSpeakState(this.handlers.isSpeaking());
@@ -459,12 +485,25 @@ export class TranslatePopup {
 		}
 	}
 
+	/**
+	 * A header button, labelled for screen readers but silent on hover.
+	 *
+	 * Neither `title` nor `aria-label` is set: the first draws Chromium's own
+	 * tooltip and the second makes Obsidian draw one of its own, so a button
+	 * carrying both produced two overlapping tooltips. The name lives in a
+	 * visually hidden span instead, which assistive technology reads and no
+	 * pointer ever triggers.
+	 *
+	 * The glyph gets its own span because `setIcon` empties whatever element it
+	 * draws into. Drawing straight onto the button would delete the hidden label
+	 * every time {@link buildHeader} re-renders the speak state.
+	 */
 	private button(parent: HTMLElement, icon: IconName, label: string, onClick: () => void): HTMLElement {
-		const button = parent.createEl('button', {
-			cls: 'st-btn',
-			attr: { type: 'button', 'aria-label': label, title: label },
-		});
-		applyIcon(button, icon);
+		const button = parent.createEl('button', { cls: 'st-btn', attr: { type: 'button' } });
+
+		applyIcon(button.createSpan({ cls: 'st-icon-glyph' }), icon);
+		button.createSpan({ cls: 'st-sr-only', text: label });
+
 		button.addEventListener('click', (event) => {
 			event.preventDefault();
 			onClick();
@@ -493,6 +532,9 @@ export class TranslatePopup {
 		this.handlers.onOpenSettings();
 	}
 }
+
+/** Makes each popup's hidden label id unique, popouts included. */
+let labelSeq = 0;
 
 /** Human-readable engine name for the footer badge. */
 function providerLabel(id: string): string {
