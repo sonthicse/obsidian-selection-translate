@@ -142,7 +142,7 @@ describe('DeepLProvider.translate', () => {
 		const [param] = requestUrlMock.mock.calls[0] ?? [];
 		expect(param?.url).toBe('https://api-free.deepl.com/v2/translate');
 		expect(param?.headers?.Authorization).toBe(`DeepL-Auth-Key ${FREE_KEY}`);
-		expect(JSON.parse(String(param?.body))).toEqual({
+		expect(sentBody()).toEqual({
 			text: ['information'],
 			target_lang: 'VI',
 			source_lang: 'EN',
@@ -161,7 +161,7 @@ describe('DeepLProvider.translate', () => {
 
 		await provider().translate({ ...request, source: 'auto' });
 
-		const body = JSON.parse(String(requestUrlMock.mock.calls[0]?.[0]?.body));
+		const body = sentBody();
 		// Sending "auto" as a value is an error; the field must be absent.
 		expect(body).not.toHaveProperty('source_lang');
 	});
@@ -171,7 +171,7 @@ describe('DeepLProvider.translate', () => {
 
 		await provider().translate({ ...request, source: 'en', target: 'en' });
 
-		const body = JSON.parse(String(requestUrlMock.mock.calls[0]?.[0]?.body));
+		const body = sentBody();
 		expect(body.target_lang).toBe('EN-US');
 		// DeepL rejects EN-US as a source.
 		expect(body.source_lang).toBe('EN');
@@ -289,3 +289,17 @@ describe('ProviderError', () => {
 		expect(new ProviderError('network')).toBeInstanceOf(Error);
 	});
 });
+
+/**
+ * The JSON body of a recorded request.
+ *
+ * Worth a helper rather than `String(...)` at each call site: `body` is typed
+ * `string | ArrayBuffer`, and stringifying the buffer arm would quietly produce
+ * "[object ArrayBuffer]" and a test that passes for the wrong reason.
+ */
+function sentBody(call = 0): Record<string, unknown> {
+	const body = requestUrlMock.mock.calls[call]?.[0]?.body;
+	if (typeof body !== 'string') throw new Error('expected a string request body');
+
+	return JSON.parse(body) as Record<string, unknown>;
+}

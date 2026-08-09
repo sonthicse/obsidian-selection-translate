@@ -43,12 +43,12 @@ export function makeResponse(status: number, body: unknown, headers: Record<stri
 		// providers must never rely on that, so the stub just exposes null.
 		get json(): unknown {
 			try {
-				return JSON.parse(text);
+				return JSON.parse(text) as unknown;
 			} catch {
 				return null;
 			}
 		},
-		arrayBuffer: new TextEncoder().encode(text).buffer as ArrayBuffer,
+		arrayBuffer: new TextEncoder().encode(text).buffer,
 	};
 }
 

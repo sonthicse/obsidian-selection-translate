@@ -125,7 +125,7 @@ describe('GoogleCloudProvider.translate', () => {
 
 		const [param] = requestUrlMock.mock.calls[0] ?? [];
 		expect(param?.url).toContain(`key=${KEY}`);
-		expect(JSON.parse(String(param?.body))).toEqual({
+		expect(sentBody()).toEqual({
 			q: 'information',
 			target: 'vi',
 			source: 'en',
@@ -139,7 +139,7 @@ describe('GoogleCloudProvider.translate', () => {
 
 		await provider().translate({ ...request, source: 'auto' });
 
-		expect(JSON.parse(String(requestUrlMock.mock.calls[0]?.[0]?.body))).not.toHaveProperty('source');
+		expect(sentBody()).not.toHaveProperty('source');
 	});
 
 	it('reports a rejected key and an exhausted quota differently', async () => {
@@ -182,3 +182,17 @@ describe('GoogleCloudProvider.validate', () => {
 		expect(result.i18nKey).toBe('settings.testInvalidKey');
 	});
 });
+
+/**
+ * The JSON body of a recorded request.
+ *
+ * Worth a helper rather than `String(...)` at each call site: `body` is typed
+ * `string | ArrayBuffer`, and stringifying the buffer arm would quietly produce
+ * "[object ArrayBuffer]" and a test that passes for the wrong reason.
+ */
+function sentBody(call = 0): Record<string, unknown> {
+	const body = requestUrlMock.mock.calls[call]?.[0]?.body;
+	if (typeof body !== 'string') throw new Error('expected a string request body');
+
+	return JSON.parse(body) as Record<string, unknown>;
+}
