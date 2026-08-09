@@ -21,6 +21,7 @@
 	--st-accent: #2563eb;
 	--st-danger: #b91c1c;
 	--st-hover: #f3f4f6;
+	--st-icon-hover-fg: #111111;
 }
 
 /*
@@ -38,6 +39,7 @@
 	--st-accent: var(--text-accent);
 	--st-danger: var(--text-error);
 	--st-hover: var(--background-modifier-hover);
+	--st-icon-hover-fg: var(--text-normal);
 }
 
 /* ── Accessible names ─────────────────────────────────────────────────────── */
@@ -125,8 +127,30 @@
 	pointer-events: none;
 }
 
+/*
+ * Both halves of this rule fix a separate bug, and neither is optional.
+ *
+ * The background is painted in two layers because `--st-hover` is
+ * `--background-modifier-hover` under the follow-theme variant, and that value
+ * carries alpha. Assigning it to `background` replaced the opaque fill outright,
+ * so the note showed straight through the icon. Tinting over `--st-bg` with a
+ * gradient layer keeps the fill opaque whatever alpha the theme supplies.
+ *
+ * The colour is stated explicitly because `.st-icon` is a <button> in
+ * document.body and therefore inherits Obsidian's global styling. Obsidian's own
+ * `button:hover` sets `color: var(--text-normal)` at specificity (0,1,1), which
+ * beats `.st-icon` at (0,1,0) — so with a dark theme behind a white popup the
+ * glyph went near-white on white and the icon read as a blank square. The
+ * `.svg-icon` rule is needed for the same reason one level down.
+ */
 .st-icon:hover {
-	background: var(--st-hover);
+	background-color: var(--st-bg);
+	background-image: linear-gradient(var(--st-hover), var(--st-hover));
+	color: var(--st-icon-hover-fg);
+}
+
+.st-icon:hover .svg-icon {
+	color: var(--st-icon-hover-fg);
 }
 
 .st-icon:focus-visible {
