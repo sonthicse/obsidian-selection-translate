@@ -4,11 +4,6 @@ Select any text in Obsidian and translate it in place — in notes, in PDFs, in 
 
 *[Tiếng Việt](README.vi.md)*
 
-<!-- TODO: retake these three images. All of them still show the "Show original"
-     button, which 0.2.0 removed, and the GIF predates the button and popup
-     following the selection while scrolling. Deliberately not edited by hand —
-     a doctored screenshot of a UI is worse than an out-of-date one. -->
-
 ![Demo: selecting a word and reading its translation](docs/images/demo.gif)
 
 | Single word | Sentence |
