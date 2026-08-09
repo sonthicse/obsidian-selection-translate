@@ -34,13 +34,13 @@ Settings → Community plugins → Browse → search for **Selection Translate**
 
 ### From a release
 
-1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/sonthicse/osidian-selection-translate/releases/latest).
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/sonthicse/obsidian-selection-translate/releases/latest).
 2. Put them in `<vault>/.obsidian/plugins/selection-translate/`.
 3. Settings → Community plugins → turn off Restricted mode → enable **Selection Translate**.
 
 ### Beta versions through BRAT
 
-Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), then *Add beta plugin* with `sonthicse/osidian-selection-translate`.
+Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), then *Add beta plugin* with `sonthicse/obsidian-selection-translate`.
 
 Full instructions, including building from source, are in [docs/INSTALL.md](docs/INSTALL.md) (Vietnamese).
 

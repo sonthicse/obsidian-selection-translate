@@ -5,8 +5,8 @@ Cảm ơn bạn đã quan tâm. Tài liệu này nói cách chạy dự án và 
 ## Thiết lập
 
 ```bash
-git clone https://github.com/sonthicse/osidian-selection-translate.git
-cd osidian-selection-translate
+git clone https://github.com/sonthicse/obsidian-selection-translate.git
+cd obsidian-selection-translate
 npm install
 ```
 
@@ -32,7 +32,7 @@ Cách gọn nhất là clone thẳng vào thư mục plugin của một vault d�
 cd <vault-thu-nghiem>/.obsidian/plugins
 
 # Thư mục đặt theo plugin `id`, không theo tên repo — Obsidian trông đợi vậy.
-git clone https://github.com/sonthicse/osidian-selection-translate.git selection-translate
+git clone https://github.com/sonthicse/obsidian-selection-translate.git selection-translate
 cd selection-translate
 npm install && npm run dev
 ```
@@ -99,7 +99,7 @@ Phần thân commit nên giải thích **vì sao**, không phải **cái gì** �
 
 ## Báo lỗi
 
-Dùng [issue template](https://github.com/sonthicse/osidian-selection-translate/issues/new/choose). Kèm log console (bật *Ghi log gỡ lỗi*) sẽ giúp ích rất nhiều.
+Dùng [issue template](https://github.com/sonthicse/obsidian-selection-translate/issues/new/choose). Kèm log console (bật *Ghi log gỡ lỗi*) sẽ giúp ích rất nhiều.
 
 ⚠️ **Đọc lại log trước khi dán.** Log có chứa tối đa 80 ký tự đầu của đoạn bạn đã bôi đen. Log không bao giờ chứa khoá API.
 

@@ -62,7 +62,7 @@ curl -s https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/co
 **Repo**
 
 - [ ] Repo **public**
-- [ ] **Tên repo khớp với mọi URL trong dự án.** Repo hiện tên `osidian-selection-translate` — thiếu chữ `b`. `package.json`, banner trong `esbuild.config.mjs`, README và tài liệu đã được sửa cho khớp với tên thật, nên mọi liên kết đều hoạt động. **Đề xuất:** đổi tên repo trên GitHub thành `obsidian-selection-translate` rồi cập nhật ngược lại các URL đó cùng `authorUrl`; GitHub tự chuyển hướng tên cũ nên không gãy gì. Việc này nên xong **trước khi** nộp lên community list, vì URL repo là thứ người ta nhìn thấy
+- [x] **Tên repo khớp với mọi URL trong dự án.** Repo đã đổi tên thành `obsidian-selection-translate` (trước đó thiếu chữ `b`). `package.json`, banner trong `esbuild.config.mjs`, README và tài liệu đã được cập nhật theo tên mới, nên mọi liên kết đều hoạt động.
 - [ ] Có `LICENSE` (MIT)
 - [ ] 🤖 Đã commit `package-lock.json`
 - [ ] `README.md` có mục **Network use** liệt kê **đủ 6 host**
@@ -137,7 +137,7 @@ Repo phải thuộc chính tài khoản GitHub vừa liên kết — ở đây l
 Vào mục **Plugins** rồi chọn nút thêm plugin mới — tài liệu chính thức gọi là **"Add your plugin"**, giao diện có thể hiển thị là *New plugin*. Nhập URL repo:
 
 ```
-https://github.com/sonthicse/osidian-selection-translate
+https://github.com/sonthicse/obsidian-selection-translate
 ```
 
 ### 4. Hệ thống tự kiểm tra
