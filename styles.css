@@ -111,6 +111,20 @@
 	pointer-events: auto;
 }
 
+/*
+ * The anchored text has scrolled out of the visible part of its leaf.
+ *
+ * Declared after `.is-visible` deliberately — the two have equal specificity,
+ * so source order is what decides, and this one has to win. Both properties are
+ * needed: an opacity-0 element still swallows clicks and still registers as an
+ * obstacle when the positioner probes with elementsFromPoint.
+ */
+.st-icon.is-anchor-hidden,
+.st-popup.is-anchor-hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
 .st-icon:hover {
 	background: var(--st-hover);
 }

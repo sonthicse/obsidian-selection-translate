@@ -1,5 +1,5 @@
 import { OWN_UI_SELECTOR } from '../constants';
-import { makeRect, type Rect } from '../types';
+import { makeRect, type Rect, type ScrollAnchor } from '../types';
 import type { SelectionTranslateSettings } from '../settings/settings';
 
 /**
@@ -77,6 +77,59 @@ export function unionRects(rects: Rect[]): Rect {
 	}
 
 	return makeRect(left, top, right - left, bottom - top);
+}
+
+const SCROLLABLE_OVERFLOW = new Set(['auto', 'scroll']);
+
+/**
+ * Every scrollable box between a node and its leaf, with their current offsets.
+ *
+ * This is the fallback tier of anchor tracking, and it exists because CM6
+ * virtualizes: scroll far enough and the text nodes a `Range` points at are
+ * destroyed outright, so re-measuring the range yields nothing. Scroll offsets
+ * survive that — the container is still there whatever it currently renders —
+ * which also makes this the only tier that works on a PDF page.
+ *
+ * Walks up to and including `stopAt` so the leaf's own scroller counts; the
+ * real scroller in an editor is `.cm-scroller`, nested well inside the leaf.
+ */
+export function collectScrollableAncestors(
+	el: Element | null,
+	stopAt?: Element | null
+): ScrollAnchor[] {
+	const anchors: ScrollAnchor[] = [];
+	const win = el?.ownerDocument.defaultView;
+	if (el == null || win == null) return anchors;
+
+	let node: Element | null = el;
+	while (node != null) {
+		const style = win.getComputedStyle(node);
+		if (SCROLLABLE_OVERFLOW.has(style.overflowY) || SCROLLABLE_OVERFLOW.has(style.overflowX)) {
+			anchors.push({ el: node, scrollLeft: node.scrollLeft, scrollTop: node.scrollTop });
+		}
+		if (node === stopAt) break;
+		node = node.parentElement;
+	}
+
+	return anchors;
+}
+
+/**
+ * How far the anchored content has travelled since the snapshot was taken.
+ *
+ * Scrolling a container down by ten pixels moves its content up by ten, hence
+ * the subtraction order. Nested scrollers compose, so the deltas add.
+ */
+export function scrollDelta(anchors: readonly ScrollAnchor[]): { dx: number; dy: number } {
+	let dx = 0;
+	let dy = 0;
+
+	for (const anchor of anchors) {
+		dx += anchor.scrollLeft - anchor.el.scrollLeft;
+		dy += anchor.scrollTop - anchor.el.scrollTop;
+	}
+
+	return { dx, dy };
 }
 
 /** Copies a live DOMRect into a detached plain {@link Rect}.

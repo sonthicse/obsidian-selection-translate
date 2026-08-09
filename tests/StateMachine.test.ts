@@ -16,6 +16,9 @@ function snapshot(id = 1): SelectionSnapshot {
 		containerEl: {} as HTMLElement,
 		activeElement: null,
 		cursor: null,
+		// Anchor tracking is a UiController concern; the machine only carries it.
+		getLiveRects: () => null,
+		scrollAnchors: [],
 		id,
 	};
 }

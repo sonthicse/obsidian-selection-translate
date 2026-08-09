@@ -3,9 +3,12 @@ import { makeRect, type Rect } from '../src/types';
 import {
 	DEFAULT_PLACEMENT_ORDER,
 	clampToBoundary,
+	computeCandidate,
 	fitsInside,
 	insetRect,
 	intersectRects,
+	isAnchorVisible,
+	offsetRect,
 	place,
 	type PlacementRequest,
 } from '../src/ui/Positioner';
@@ -131,6 +134,83 @@ describe('place', () => {
 		for (const [probed] of isOccluded.mock.calls) {
 			expect(fitsInside(probed, boundary)).toBe(true);
 		}
+	});
+});
+
+/*
+ * The scroll path does not re-run `place`. It recomputes the one candidate the
+ * first search chose, against an anchor that has moved — which is what keeps the
+ * icon from flipping sides halfway down a scroll gesture.
+ */
+describe('computeCandidate, as used while scrolling', () => {
+	/** The same selection, `dy` pixels further up the viewport. */
+	function scrolled(dy: number): PlacementRequest {
+		const bbox = offsetRect(makeRect(400, 300, 200, 20), 0, dy);
+		return request({ bbox, anchorRect: bbox });
+	}
+
+	it('reproduces what the full search chose, at the anchor’s new position', () => {
+		const chosen = place(request());
+		const after = computeCandidate(chosen.placement, scrolled(-120));
+
+		expect(after).not.toBeNull();
+		expect(after?.left).toBe(chosen.rect.left);
+		expect(after?.top).toBe(chosen.rect.top - 120);
+	});
+
+	it('stays on the chosen side even where the search would now pick another', () => {
+		// Scrolled almost to the top: below-centre is still the sticky choice,
+		// and a fresh search would agree only by luck. What matters is that the
+		// side never changes mid-gesture.
+		const nearTop = scrolled(-290);
+
+		expect(place(nearTop).placement).toBe('below-center');
+		expect(computeCandidate('above-center', nearTop)?.top).toBe(10 - 8 - 24);
+	});
+
+	it('lets the element travel off screen instead of clamping to the edge', () => {
+		// Deliberately not clamped: an icon pinned to the top edge while its text
+		// scrolls away points at the wrong words, which is worse than no icon.
+		const rect = computeCandidate('below-center', scrolled(-900));
+
+		expect(rect).not.toBeNull();
+		expect(rect?.top).toBeLessThan(0);
+	});
+
+	it('returns null for the cursor placement when there is no pointer', () => {
+		expect(computeCandidate('cursor', request({ cursor: null }))).toBeNull();
+	});
+});
+
+describe('isAnchorVisible', () => {
+	const bounds = makeRect(0, 100, 800, 500);
+
+	it('is true while any part of the selection reaches the visible region', () => {
+		expect(isAnchorVisible(makeRect(10, 300, 100, 20), bounds)).toBe(true);
+		// Straddling the top edge still counts: part of the text is on screen.
+		expect(isAnchorVisible(makeRect(10, 90, 100, 20), bounds)).toBe(true);
+	});
+
+	it('is false once the selection has scrolled clear of the region', () => {
+		expect(isAnchorVisible(makeRect(10, -40, 100, 20), bounds)).toBe(false);
+		expect(isAnchorVisible(makeRect(10, 700, 100, 20), bounds)).toBe(false);
+	});
+
+	it('is false when the leaf itself is off screen', () => {
+		// A leaf with no viewport overlap yields null bounds rather than a rect.
+		expect(isAnchorVisible(makeRect(10, 300, 100, 20), null)).toBe(false);
+	});
+
+	it('treats a selection merely touching the edge as gone', () => {
+		// Zero-area overlap is not visibility, and matching intersectRects here
+		// keeps the gate consistent with every other boundary decision.
+		expect(isAnchorVisible(makeRect(10, 600, 100, 20), bounds)).toBe(false);
+	});
+});
+
+describe('offsetRect', () => {
+	it('translates every edge and leaves the size alone', () => {
+		expect(offsetRect(makeRect(10, 20, 30, 40), -5, 7)).toEqual(makeRect(5, 27, 30, 40));
 	});
 });
 

@@ -89,8 +89,16 @@ export function place(request: PlacementRequest, isOccluded: HitTest = () => fal
 	};
 }
 
-/** Geometry for one placement, or null when its inputs are unavailable. */
-function computeCandidate(placement: Placement, request: PlacementRequest): Rect | null {
+/**
+ * Geometry for one placement, or null when its inputs are unavailable.
+ *
+ * Exported for the scroll path, which re-runs a single already-chosen candidate
+ * rather than the whole search. Deliberately without clamping or the occlusion
+ * probe: clamping is what would pin the icon to the screen edge instead of
+ * letting it drift off with the text it belongs to, and `elementsFromPoint` on
+ * every animation frame is not something to pay for sixty times a second.
+ */
+export function computeCandidate(placement: Placement, request: PlacementRequest): Rect | null {
 	const { bbox, anchorRect, size, offset } = request;
 	const centerX = bbox.left + bbox.width / 2 - size.width / 2;
 	const endX = anchorRect.right - size.width / 2;
@@ -158,6 +166,25 @@ export function intersectRects(a: Rect, b: Rect): Rect | null {
 
 	if (right <= left || bottom <= top) return null;
 	return makeRect(left, top, right - left, bottom - top);
+}
+
+/** Translates a rect, preserving its size. */
+export function offsetRect(rect: Rect, dx: number, dy: number): Rect {
+	return makeRect(rect.left + dx, rect.top + dy, rect.width, rect.height);
+}
+
+/**
+ * Whether an element anchored to `bbox` should be drawn at all.
+ *
+ * The floating UI follows its text off the screen rather than sticking to an
+ * edge, so once the text is no longer within the visible part of its leaf the
+ * icon is pointing at nothing — and worse, would be sitting on the tab header
+ * or the PDF toolbar. Hiding it is purely a display decision: the state machine
+ * stays in `icon` or `result` throughout, so scrolling back reveals the same UI
+ * rather than a new one.
+ */
+export function isAnchorVisible(bbox: Rect, visibleBounds: Rect | null): boolean {
+	return visibleBounds != null && intersectRects(bbox, visibleBounds) != null;
 }
 
 /** Shrinks a rect by a uniform margin, never past zero size. */

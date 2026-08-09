@@ -20,9 +20,7 @@ export class PdfSelectionSource implements SelectionSource {
 
 	capture(win: Window): RawSelection | null {
 		const doc = win.document;
-		const spans = doc.querySelectorAll<HTMLElement>(
-			`${SURFACE_SELECTORS.pdfTextLayer} .selected, ${SURFACE_SELECTORS.pdfTextLayer} .highlight.selected`
-		);
+		const spans = doc.querySelectorAll<HTMLElement>(SELECTED_SPANS);
 		if (spans.length === 0) return null;
 
 		const pieces: string[] = [];
@@ -46,6 +44,26 @@ export class PdfSelectionSource implements SelectionSource {
 		const text = pieces.join(' ').replace(/\s+/g, ' ').trim();
 		if (text.length === 0 || rects.length === 0) return null;
 
-		return { text, rects, referenceNode, sourceId: this.id };
+		// Re-querying rather than holding the span list: PDF.js rebuilds a page's
+		// text layer when the page is re-rendered, so the elements captured here
+		// are replaced by equivalent ones the highlight has moved onto.
+		return { text, rects, getLiveRects: () => remeasure(doc), referenceNode, sourceId: this.id };
+	}
+}
+
+const SELECTED_SPANS = `${SURFACE_SELECTORS.pdfTextLayer} .selected, ${SURFACE_SELECTORS.pdfTextLayer} .highlight.selected`;
+
+/** Current geometry of the highlighted spans, or null when none are left. */
+function remeasure(doc: Document): Rect[] | null {
+	try {
+		const rects: Rect[] = [];
+		doc.querySelectorAll<HTMLElement>(SELECTED_SPANS).forEach((span) => {
+			const rect = span.getBoundingClientRect();
+			if (rect.width > 0 && rect.height > 0) rects.push(freezeRect(rect));
+		});
+
+		return rects.length > 0 ? rects : null;
+	} catch {
+		return null;
 	}
 }

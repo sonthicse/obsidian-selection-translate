@@ -126,6 +126,27 @@ export class TranslatePopup {
 		this.el.style.top = `${Math.round(rect.top)}px`;
 	}
 
+	/** Current on-screen size, or null when the popup is closed. */
+	getSize(): Size | null {
+		if (this.el == null) return null;
+
+		const rect = this.el.getBoundingClientRect();
+		return { width: rect.width, height: rect.height };
+	}
+
+	/** See {@link TriggerIcon.setAnchorHidden}: display only, no state change. */
+	setAnchorHidden(hidden: boolean): void {
+		this.el?.toggleClass('is-anchor-hidden', hidden);
+	}
+
+	/** Re-runs the full placement search at the popup's current size. */
+	replace(): void {
+		const size = this.getSize();
+		if (size == null) return;
+
+		this.moveTo(this.handlers.place(size));
+	}
+
 	/** Closes the popup and hands focus back if it was taken. */
 	close(): void {
 		if (this.el == null) return;

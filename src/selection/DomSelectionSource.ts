@@ -24,12 +24,39 @@ export class DomSelectionSource implements SelectionSource {
 		const text = readText(selection, range);
 		if (text.length === 0) return null;
 
+		/*
+		 * A private clone, because the live Range belongs to the Selection and
+		 * collapses the moment the user clicks the trigger icon. The clone keeps
+		 * pointing at the same nodes for as long as they exist, which is what
+		 * lets the icon follow reflow exactly rather than by scroll arithmetic.
+		 */
+		const tracked = range.cloneRange();
+
 		return {
 			text,
 			rects: collectRects(range),
+			getLiveRects: () => measureAgain(tracked),
 			referenceNode: range.commonAncestorContainer,
 			sourceId: this.id,
 		};
+	}
+}
+
+/**
+ * Re-measures a tracked range, or null once its nodes are gone.
+ *
+ * CM6 recycles the DOM for lines scrolled out of view, so this stops answering
+ * after a screen or two — by design. Null is the signal to fall back to scroll
+ * offsets, not an error.
+ */
+function measureAgain(range: Range): Rect[] | null {
+	try {
+		if (!range.startContainer.isConnected) return null;
+
+		const rects = collectRects(range);
+		return rects.length > 0 ? rects : null;
+	} catch {
+		return null;
 	}
 }
 

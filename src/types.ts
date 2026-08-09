@@ -28,6 +28,18 @@ export function makeRect(x: number, y: number, width: number, height: number): R
 	return { x, y, width, height, left: x, top: y, right: x + width, bottom: y + height };
 }
 
+/**
+ * A scroller, remembered together with the offsets it had at snapshot time.
+ *
+ * The element reference is the whole point: the offsets are read again later to
+ * work out how far the content underneath a selection has travelled.
+ */
+export interface ScrollAnchor {
+	el: Element;
+	scrollLeft: number;
+	scrollTop: number;
+}
+
 /** Languages offered as a translation source. */
 export type SourceLangCode = 'auto' | 'en' | 'es' | 'fr' | 'de' | 'ru' | 'vi';
 
@@ -80,6 +92,22 @@ export interface SelectionSnapshot {
 	/** Last known pointer position, for the cursor-following icon placement.
 	 *  Null when the selection was made with the keyboard. */
 	cursor: { x: number; y: number } | null;
+	/**
+	 * Re-measures the selection against live layout, or null when it cannot.
+	 *
+	 * The first of the two tiers that keep the floating UI attached to its text
+	 * while the user scrolls. Accurate even when the page reflows, but only
+	 * available while the selection's own nodes are still in the document — CM6
+	 * destroys them a screen or two out, and this returns null from then on.
+	 */
+	getLiveRects(): Rect[] | null;
+	/**
+	 * Scrollers between the selection and its leaf, with their offsets frozen.
+	 *
+	 * The second tier: shifting {@link bbox} by how far these have moved is
+	 * immune to virtualization, because it never asks the text where it is.
+	 */
+	scrollAnchors: ScrollAnchor[];
 	/** Monotonic id, for correlating a snapshot with the request it triggered. */
 	id: number;
 }

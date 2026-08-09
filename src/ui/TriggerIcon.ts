@@ -25,8 +25,12 @@ export class TriggerIcon {
 	 * anything that hides the icon inside that gap used to be undone by the
 	 * frame firing afterwards, leaving a visible button with no state behind it
 	 * — unclickable, and impossible to dismiss because the controller believed
-	 * nothing was on screen. Scrolling during a long drag-selection hit this
-	 * gap routinely.
+	 * nothing was on screen. A selection collapsing mid-drag hits this gap
+	 * routinely.
+	 *
+	 * Scrolling no longer lands here at all: the icon now follows its text
+	 * instead of being dismissed, and moving it goes through {@link moveTo},
+	 * which never touches the reveal frame.
 	 */
 	private pendingFrame: number | null = null;
 
@@ -40,11 +44,8 @@ export class TriggerIcon {
 		this.cancelPendingFrame();
 		const el = this.ensureElement(win);
 
-		// The only inline styles the plugin writes: coordinates computed at
-		// runtime, which no stylesheet could express.
-		el.style.left = `${Math.round(rect.left)}px`;
-		el.style.top = `${Math.round(rect.top)}px`;
-
+		this.moveTo(rect);
+		el.removeClass('is-anchor-hidden');
 		el.toggleClass('mod-follow-theme', this.getFollowTheme());
 		this.pendingFrame = win.requestAnimationFrame(() => {
 			this.pendingFrame = null;
@@ -52,9 +53,31 @@ export class TriggerIcon {
 		});
 	}
 
+	/** Moves an already-shown icon, without disturbing its reveal animation. */
+	moveTo(rect: Rect): void {
+		if (this.el == null) return;
+
+		// The only inline styles the plugin writes: coordinates computed at
+		// runtime, which no stylesheet could express.
+		this.el.style.left = `${Math.round(rect.left)}px`;
+		this.el.style.top = `${Math.round(rect.top)}px`;
+	}
+
+	/**
+	 * Hides the icon while keeping it live.
+	 *
+	 * Used when the text it points at has scrolled out of the visible part of
+	 * its leaf. The state machine is untouched, so scrolling back brings the
+	 * same icon and the same pending selection back rather than starting over.
+	 */
+	setAnchorHidden(hidden: boolean): void {
+		this.el?.toggleClass('is-anchor-hidden', hidden);
+	}
+
 	hide(): void {
 		this.cancelPendingFrame();
 		this.el?.removeClass('is-visible');
+		this.el?.removeClass('is-anchor-hidden');
 	}
 
 	private cancelPendingFrame(): void {
@@ -64,9 +87,13 @@ export class TriggerIcon {
 		}
 	}
 
-	/** True while the icon is on screen and can be triggered. */
+	/** True while the icon is on screen and can be triggered.
+	 *
+	 *  An anchor-hidden icon does not count: the hotkey must not fire at a button
+	 *  the user cannot see. */
 	isVisible(): boolean {
-		return this.el?.hasClass('is-visible') ?? false;
+		if (this.el == null) return false;
+		return this.el.hasClass('is-visible') && !this.el.hasClass('is-anchor-hidden');
 	}
 
 	getElement(): HTMLElement | null {

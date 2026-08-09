@@ -16,6 +16,15 @@ export interface RawSelection {
 	 * For `<input>` this is the element itself, which has no child text nodes.
 	 */
 	referenceNode: Node | null;
+	/**
+	 * Re-measures the same selection against current layout, or null on failure.
+	 *
+	 * Each source keeps whatever handle it can — a cloned Range, the element and
+	 * its offsets, the highlighted spans — and every implementation is expected
+	 * to return null rather than throw when that handle has gone stale, because
+	 * the caller has a scroll-offset fallback ready for exactly that case.
+	 */
+	getLiveRects(): Rect[] | null;
 	/** Which source produced this, for debug logging. */
 	sourceId: SelectionSourceId;
 }

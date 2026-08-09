@@ -22,15 +22,33 @@ export class InputSelectionSource implements SelectionSource {
 		const end = active.selectionEnd;
 		if (start == null || end == null || start === end) return null;
 
-		const text = active.value.slice(Math.min(start, end), Math.max(start, end));
+		const from = Math.min(start, end);
+		const to = Math.max(start, end);
+
+		const text = active.value.slice(from, to);
 		if (text.length === 0) return null;
 
 		return {
 			text,
-			rects: measureInputSelection(active, Math.min(start, end), Math.max(start, end)),
+			rects: measureInputSelection(active, from, to),
+			// The element and the two offsets are all the mirror technique needs,
+			// so re-measuring is simply running it again against current layout.
+			getLiveRects: () => remeasure(active, from, to),
 			referenceNode: active,
 			sourceId: this.id,
 		};
+	}
+}
+
+/** Re-runs the mirror measurement, or null once the element has been detached. */
+function remeasure(el: HTMLInputElement | HTMLTextAreaElement, start: number, end: number): Rect[] | null {
+	try {
+		if (!el.isConnected || el.value.length < end) return null;
+
+		const rects = measureInputSelection(el, start, end);
+		return rects.length > 0 ? rects : null;
+	} catch {
+		return null;
 	}
 }
 

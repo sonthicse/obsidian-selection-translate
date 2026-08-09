@@ -103,7 +103,7 @@ Sở hữu **toàn bộ** việc gắn sự kiện DOM. Bảy loại: `mouseup`,
 Ba quyết định không hiển nhiên:
 
 - **Chụp snapshot ngay lập tức.** Nhấn chuột lên nút dịch sẽ thu gọn vùng chọn *trước khi* handler click chạy. Bất cứ thứ gì đọc từ `getSelection()` lúc click đều đã mất. Có `preventDefault()` trên `mousedown` như lớp thứ hai, nhưng snapshot mới là thứ giữ cho request đúng.
-- **Rect được đóng băng** thành `Rect` thuần. `DOMRect` từ `getClientRects()` phản chiếu layout sống — giữ nguyên nó nghĩa là hình học đã lưu **tự đổi khi người dùng cuộn**.
+- **Rect được đóng băng** thành `Rect` thuần. `DOMRect` từ `getClientRects()` phản chiếu layout sống — giữ nguyên nó nghĩa là hình học đã lưu **tự đổi khi người dùng cuộn**. Rect đóng băng là *điểm mốc*, không phải toạ độ cuối cùng: xem phần bám theo vùng chọn bên dưới.
 - **Không dùng `registerDomEvent`.** Obsidian chỉ giải phóng chúng lúc unload; một phiên mở/đóng popout nhiều lần sẽ tích luỹ đăng ký trỏ vào document đã chết. Thay bằng listener có teardown theo dõi, và `plugin.register(() => destroy())` để dọn dẹp lúc unload **vẫn tự động**.
 
 Có một trường hợp tinh tế: khi command palette lấy focus, vùng chọn bị thu gọn. Manager phân biệt "mất selection vì chrome Obsidian" với "người dùng chọn thứ khác" và **giữ lại snapshot** ở trường hợp đầu — nếu không, command *Dịch vùng chọn* sẽ không bao giờ có gì để dịch.
@@ -131,6 +131,25 @@ Hàm **thuần**: nhận hình học + callback `hitTest`, trả hình học. M�
 Fallback khi không candidate nào vừa là **kẹp** candidate ưu tiên vào biên, không phải bỏ cuộc: icon ép sát mép vẫn dùng được, còn không có icon thì trông như plugin hỏng.
 
 Icon và popup đều `position: fixed`. Không phải lựa chọn thẩm mỹ: trang PDF mang CSS transform để zoom, và phần tử `absolute` là hậu duệ của phần tử có transform sẽ thừa hưởng transform đó, phải bù trừ thủ công và hỏng lại ở mức zoom tiếp theo.
+
+### Bám theo vùng chọn khi cuộn
+
+Icon và popup neo vào vùng bôi đen chứ không vào một toạ độ màn hình. Cuộn thì chúng trôi theo; cuộn hẳn ra ngoài thì chúng ẩn đi rồi hiện lại khi cuộn về. Chỉ Escape, click ra ngoài, mất vùng chọn, hoặc đổi leaf/file/layout mới thực sự đóng chúng.
+
+Nguồn toạ độ có **hai tầng**, và tầng hai không phải để cho chắc — nó là bắt buộc:
+
+| Tầng | Cách đo | Vì sao cần |
+|---|---|---|
+| 1. `snapshot.getLiveRects()` | Đo lại `Range`/`<input>`/span PDF đã theo dõi | Chính xác tuyệt đối, đúng cả khi layout reflow chứ không riêng khi cuộn |
+| 2. `scrollDelta(snapshot.scrollAnchors)` | Dời rect đóng băng đi đúng quãng các scroller đã chạy | CM6 **virtualize**: cuộn xa vài màn hình là text node bị huỷ, `Range` chết hẳn và tầng 1 trả `null` từ đó trở đi |
+
+Ba chi tiết quyết định việc này trông mượt hay giật:
+
+- **Một `requestAnimationFrame` tại một thời điểm.** Một cử chỉ cuộn bắn hàng trăm event; gộp lại thành tối đa một frame là khác biệt giữa "bám theo" và "chạy đuổi".
+- **Placement dính.** Lần đặt đầu tiên chạy `place()` đầy đủ rồi **ghi nhớ** candidate thắng cuộc; nhánh cuộn chỉ tính lại đúng candidate đó. Chạy lại cả cuộc tìm mỗi frame là đúng luật nhưng khiến icon lật từ dưới lên trên giữa chừng.
+- **Nhánh cuộn không kẹp biên và không dò vật cản.** Kẹp biên chính là thứ ghim icon vào mép màn hình trong khi chữ của nó đã trôi đi mất, còn `elementsFromPoint` sáu lần mỗi frame thì không rẻ. Thay vào đó là một cổng hiển thị: bbox không giao với phần leaf đang thấy được thì gắn class `is-anchor-hidden`. Máy trạng thái **không đổi** trong suốt quá trình — đây thuần tuý là chuyện vẽ.
+
+Resize đi đường khác: nó đổi chính cái boundary, nên candidate đã chọn có thể sai thật, và nó xứng đáng với một lượt `place()` đầy đủ.
 
 ### `ui/TranslatePopup.ts`
 

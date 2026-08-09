@@ -13,7 +13,7 @@ import { PdfSelectionSource } from '../selection/PdfSelectionSource';
 import type { RawSelection } from '../selection/SelectionSource';
 import type { SelectionSnapshot } from '../types';
 import type { SelectionTranslateSettings } from '../settings/settings';
-import { isInsideOwnUi, last, toElement, unionRects } from '../utils/dom';
+import { collectScrollableAncestors, isInsideOwnUi, last, toElement, unionRects } from '../utils/dom';
 import { debounce } from '../utils/debounce';
 import { debug } from '../utils/log';
 
@@ -458,6 +458,11 @@ export class SelectionManager {
 			// Remembered so focus can be handed back when the popup closes.
 			activeElement: win.document.activeElement,
 			cursor: this.lastCursor,
+			getLiveRects: raw.getLiveRects,
+			// Recorded here, not on first scroll: the offsets have to be the ones
+			// in force when `rects` above was measured, or the two disagree by
+			// however far the user scrolled in between.
+			scrollAnchors: collectScrollableAncestors(toElement(raw.referenceNode), info.containerEl),
 			id: ++this.snapshotSeq,
 		};
 	}
