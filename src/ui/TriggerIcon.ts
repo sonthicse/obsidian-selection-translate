@@ -2,6 +2,7 @@ import { CLS } from '../constants';
 import { t } from '../i18n';
 import type { Rect } from '../types';
 import { ICON, applyIcon } from './icons';
+import type { ClipInsets } from './Positioner';
 
 /**
  * The small floating button shown beside a selection.
@@ -36,7 +37,8 @@ export class TriggerIcon {
 
 	constructor(
 		private readonly onTrigger: () => void,
-		private readonly getFollowTheme: () => boolean
+		private readonly getFollowTheme: () => boolean,
+		private readonly onWheel: (event: WheelEvent) => void
 	) {}
 
 	/** Places the icon at a viewport rect inside the given window. */
@@ -61,6 +63,19 @@ export class TriggerIcon {
 		// runtime, which no stylesheet could express.
 		this.el.style.left = `${Math.round(rect.left)}px`;
 		this.el.style.top = `${Math.round(rect.top)}px`;
+	}
+
+	/**
+	 * Hides the part of the icon that has left the visible region.
+	 *
+	 * Custom properties rather than a `clip-path` written from here: the shape
+	 * belongs in the stylesheet, and only the two lengths are runtime geometry.
+	 */
+	setClip(insets: ClipInsets): void {
+		if (this.el == null) return;
+
+		this.el.style.setProperty('--st-clip-top', `${Math.round(insets.top)}px`);
+		this.el.style.setProperty('--st-clip-bottom', `${Math.round(insets.bottom)}px`);
 	}
 
 	/**
@@ -157,6 +172,14 @@ export class TriggerIcon {
 			event.stopPropagation();
 			this.onTrigger();
 		});
+
+		/*
+		 * The icon appears directly under the pointer, so it intercepts the very
+		 * next wheel notch. Fixed positioning puts it outside the note's scroll
+		 * chain, so the gesture has to be forwarded by hand — and non-passive,
+		 * because a passive listener may not suppress the default.
+		 */
+		el.addEventListener('wheel', (event) => this.onWheel(event), { passive: false });
 
 		this.el = el;
 		return el;

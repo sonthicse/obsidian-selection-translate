@@ -98,6 +98,14 @@
 	opacity: 0;
 	transition: opacity 120ms ease;
 	/*
+	 * The element now follows its text past the edge of the leaf instead of
+	 * disappearing at it, so the part that has left has to be cut away or it
+	 * would paint over the tab header and the PDF toolbar. Both lengths are
+	 * written from the controller, which is the only place that knows how far
+	 * the element overhangs; the shape stays here.
+	 */
+	clip-path: inset(var(--st-clip-top, 0px) 0 var(--st-clip-bottom, 0px) 0);
+	/*
 	 * A hidden icon must be invisible to hit-testing, not merely transparent.
 	 * An opacity-0 element is still hit-tested, so it would both swallow clicks
 	 * meant for the text underneath and register as an obstacle when the
@@ -177,6 +185,11 @@
 	font-size: var(--st-font-size, 14px);
 	line-height: 1.5;
 	overflow: hidden;
+	/* See `.st-icon`: the overhang past the visible part of the leaf, cut away
+	 * so the popup slides under the tab header rather than over it. Deliberately
+	 * not transitioned — it tracks the scroll frame by frame, and easing it
+	 * would lag a gesture the user is making right now. */
+	clip-path: inset(var(--st-clip-top, 0px) 0 var(--st-clip-bottom, 0px) 0);
 	transition:
 		width 180ms ease,
 		height 180ms ease;

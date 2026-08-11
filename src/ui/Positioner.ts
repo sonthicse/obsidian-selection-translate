@@ -174,17 +174,69 @@ export function offsetRect(rect: Rect, dx: number, dy: number): Rect {
 }
 
 /**
- * Whether an element anchored to `bbox` should be drawn at all.
+ * Whether two rects touch at all, edge contact included.
  *
- * The floating UI follows its text off the screen rather than sticking to an
- * edge, so once the text is no longer within the visible part of its leaf the
- * icon is pointing at nothing — and worse, would be sitting on the tab header
- * or the PDF toolbar. Hiding it is purely a display decision: the state machine
+ * Distinct from {@link intersectRects}, which needs a region with area to
+ * return and so calls a rect resting exactly on a boundary "outside". That is
+ * the right answer when the question is how much overlap there is, and the
+ * wrong one when the question is whether to draw something: at one-pixel scroll
+ * steps the element would blink off for the single frame its edge lands on the
+ * boundary.
+ */
+export function overlaps(a: Rect, b: Rect): boolean {
+	return a.left <= b.right && b.left <= a.right && a.top <= b.bottom && b.top <= a.bottom;
+}
+
+/**
+ * Whether a floating element should be drawn at all.
+ *
+ * The rect is the element's own, not its selection's. Measuring the selection
+ * instead is what made the popup vanish mid-screen: the default placement puts
+ * it a whole popup-height below the text, so scrolling down took the selection
+ * past the top of the leaf while the popup was still fully visible — and the
+ * asymmetry reversed under `above-center`, which is the tell that the wrong
+ * rectangle was being measured rather than the top edge being special.
+ *
+ * So the element stays on screen as long as any part of *it* still reaches into
+ * the visible part of the leaf, and leaves the top edge exactly the way it
+ * leaves the bottom one. Hiding is purely a display decision: the state machine
  * stays in `icon` or `result` throughout, so scrolling back reveals the same UI
  * rather than a new one.
  */
-export function isAnchorVisible(bbox: Rect, visibleBounds: Rect | null): boolean {
-	return visibleBounds != null && intersectRects(bbox, visibleBounds) != null;
+export function isRectVisible(rect: Rect, visibleBounds: Rect | null): boolean {
+	return visibleBounds != null && overlaps(rect, visibleBounds);
+}
+
+/** How much of a rect hangs off the top and bottom of the visible region. */
+export interface ClipInsets {
+	top: number;
+	bottom: number;
+}
+
+/**
+ * The part of a floating element that should not be painted.
+ *
+ * An element half out of its leaf now stays on screen — {@link isRectVisible} —
+ * which without this would draw it over the tab header or the PDF toolbar, the
+ * very chrome the placement search works to avoid. Clipping the overhang makes
+ * it slide under the header instead. Horizontal edges are left alone: nothing
+ * sits beside a leaf that the popup could cover.
+ *
+ * Returned as plain numbers so the caller can hand them to CSS; deciding how
+ * much to hide is geometry, and drawing is the stylesheet's business.
+ */
+export function clipInsets(rect: Rect, visibleBounds: Rect | null): ClipInsets {
+	if (visibleBounds == null) return { top: 0, bottom: 0 };
+
+	return {
+		top: clampInset(visibleBounds.top - rect.top, rect.height),
+		bottom: clampInset(rect.bottom - visibleBounds.bottom, rect.height),
+	};
+}
+
+/** An inset is never negative, and never eats more than the element it clips. */
+function clampInset(overhang: number, height: number): number {
+	return Math.min(Math.max(overhang, 0), Math.max(height, 0));
 }
 
 /** Shrinks a rect by a uniform margin, never past zero size. */

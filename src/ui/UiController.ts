@@ -1,5 +1,12 @@
 import type { App } from 'obsidian';
-import { ICON_SIZE, OCCLUSION_SELECTORS, OWN_UI_SELECTOR, VIEWPORT_MARGIN } from '../constants';
+import {
+	ICON_SIZE,
+	OCCLUSION_SELECTORS,
+	OWN_UI_SELECTOR,
+	SCROLLER_SELECTORS,
+	VIEWPORT_MARGIN,
+	WHEEL_LINE_HEIGHT_FALLBACK,
+} from '../constants';
 import { StateMachine, type MachineContext } from '../core/StateMachine';
 import type { SelectionCause } from '../core/SelectionManager';
 import type { SelectionTranslateSettings } from '../settings/settings';
@@ -10,16 +17,23 @@ import {
 	type TranslationResult,
 	type UiErrorInfo,
 } from '../types';
-import { last, scrollDelta, unionRects } from '../utils/dom';
+import { last, scrollDelta, toElement, unionRects } from '../utils/dom';
 import { debug } from '../utils/log';
+import {
+	canScrollBy,
+	findScrollTarget,
+	normalizeWheelDelta,
+	type ScrollMetrics,
+} from '../utils/scroll';
 import { TriggerIcon } from './TriggerIcon';
 import { TranslatePopup } from './TranslatePopup';
 import {
 	DEFAULT_PLACEMENT_ORDER,
+	clipInsets,
 	computeCandidate,
 	insetRect,
 	intersectRects,
-	isAnchorVisible,
+	isRectVisible,
 	offsetRect,
 	place,
 	type Placement,
@@ -90,7 +104,8 @@ export class UiController {
 	constructor(private readonly options: UiControllerOptions) {
 		this.icon = new TriggerIcon(
 			() => this.handleIconTrigger(),
-			() => this.options.getSettings().popupTheme === 'follow'
+			() => this.options.getSettings().popupTheme === 'follow',
+			(event) => this.handleWheel(event)
 		);
 
 		this.popup = new TranslatePopup(options.app, options.getSettings, {
@@ -106,6 +121,7 @@ export class UiController {
 				const win = this.machine.getSnapshot()?.win;
 				if (win != null) this.options.onSpeak(win, text, lang);
 			},
+			onWheel: (event) => this.handleWheel(event),
 			isSpeaking: () => this.options.tts.isSpeaking(),
 			subscribeSpeaking: (listener) => this.options.tts.subscribe(listener),
 		});
@@ -172,6 +188,13 @@ export class UiController {
 		// Remembered so the scroll path can reproduce this decision instead of
 		// making a fresh one every frame.
 		this.popupPlacement = result.placement;
+		// Asked here as well as on the scroll path, so opening a popup and
+		// resizing one answer the question the same way: a popup placed for a
+		// selection that has already left the leaf must not draw over the tab
+		// header just because no scroll has happened yet.
+		const bounds = this.visibleBounds(snapshot);
+		this.popup.setAnchorHidden(!isRectVisible(result.rect, bounds));
+		this.popup.setClip(clipInsets(result.rect, bounds));
 		return result.rect;
 	}
 
@@ -228,6 +251,87 @@ export class UiController {
 			return;
 		}
 		this.scheduleReanchor();
+	}
+
+	/**
+	 * The wheel turned over the floating UI. Hands the gesture to the note.
+	 *
+	 * The popup and the icon are children of `document.body` with fixed
+	 * positioning — see {@link TriggerIcon} for why that is not negotiable — so
+	 * the scroll chain Chromium walks for them is `.st-popup → body → html`, none
+	 * of which scrolls in Obsidian. The scroller that should have moved is
+	 * `.cm-scroller` or the PDF container, neither of which is an ancestor of the
+	 * popup, so without this the wheel does nothing at all while the pointer sits
+	 * over a result — and the popup is exactly where the pointer sits, because it
+	 * opens under it.
+	 *
+	 * Nothing here stops propagation. The `scroll` event the forwarded gesture
+	 * produces is fired at the real scroller, which is outside our own UI, so
+	 * {@link SelectionManager.handleScroll} still reports it and the popup keeps
+	 * tracking its text.
+	 */
+	handleWheel(event: WheelEvent): void {
+		// Ctrl+wheel is the zoom gesture in both Obsidian and the PDF viewer.
+		// Forwarding it as scroll would move the note out from under a zoom.
+		if (event.ctrlKey) return;
+
+		const snapshot = this.machine.getSnapshot();
+		if (snapshot == null) return;
+
+		// Every line below touches DOM the plugin does not own, on a listener that
+		// fires continuously; one throw here would break scrolling for the rest of
+		// the session.
+		try {
+			const win = snapshot.win;
+			const read = (el: Element): ScrollMetrics => readScrollMetrics(win, el);
+			const { dx, dy } = normalizeWheelDelta(
+				event.deltaX,
+				event.deltaY,
+				event.deltaMode,
+				lineHeightOf(win),
+				win.innerHeight
+			);
+
+			const start = toElement(event.target as Node | null);
+			const ownRoot = start?.closest(OWN_UI_SELECTOR) ?? null;
+
+			// Our own content gets first refusal, so a long result scrolls inside
+			// the popup and only chains outward once it has reached its end. The
+			// browser does that natively, hence leaving the event untouched.
+			if (findScrollTarget(start, dx, dy, read, ownRoot) != null) return;
+
+			const target = this.outerScroller(snapshot, dx, dy, read);
+			if (target == null) return;
+
+			target.scrollBy({ left: dx, top: dy });
+			event.preventDefault();
+		} catch (cause) {
+			debug('wheel forwarding failed', cause);
+		}
+	}
+
+	/**
+	 * The surface behind the popup that should take a forwarded gesture.
+	 *
+	 * The snapshot's own anchors come first because they are the boxes the
+	 * selection actually sits in, innermost first, and they already survive CM6
+	 * recycling the text — but not the leaf being torn down, hence the connected
+	 * check. The named scrollers are the fallback for a selection whose anchors
+	 * are all at their end or were never scrollable, and the leaf itself is the
+	 * last resort so the gesture is never simply swallowed.
+	 */
+	private outerScroller(
+		snapshot: SelectionSnapshot,
+		dx: number,
+		dy: number,
+		read: (el: Element) => ScrollMetrics
+	): Element | null {
+		for (const anchor of snapshot.scrollAnchors) {
+			if (!anchor.el.isConnected) continue;
+			if (canScrollBy(read(anchor.el), dx, dy)) return anchor.el;
+		}
+
+		return snapshot.containerEl.querySelector(SCROLLER_SELECTORS) ?? snapshot.containerEl;
 	}
 
 	/**
@@ -300,37 +404,40 @@ export class UiController {
 	 * Runs once per animation frame at most, so everything it does has to be
 	 * cheap: two rect reads, one candidate computation, one class toggle. No
 	 * clamping and no occlusion probe — see {@link computeCandidate}.
+	 *
+	 * The rect is computed before the visibility question is asked, because the
+	 * answer is about the rect and not about the selection behind it. It is then
+	 * applied even while hidden: moving an invisible element costs two style
+	 * writes, and skipping them means scrolling back shows the popup at last
+	 * frame's coordinates and only catches up on the frame after.
 	 */
 	private reanchor(): void {
 		const snapshot = this.machine.getSnapshot();
 		if (snapshot == null) return;
 
 		const geometry = this.anchorGeometry(snapshot);
-		const visible = isAnchorVisible(geometry.bbox, this.visibleBounds(snapshot));
 		const showingIcon = this.machine.getState() === 'icon';
+
+		const size = showingIcon ? { width: ICON_SIZE, height: ICON_SIZE } : this.popup.getSize();
+		if (size == null) return;
+
+		const placement = showingIcon ? this.iconPlacement : this.popupPlacement;
+		const rect = this.stickyRect(snapshot, geometry, placement, size);
+		if (rect == null) return;
+
+		const bounds = this.visibleBounds(snapshot);
+		const visible = isRectVisible(rect, bounds);
 
 		if (showingIcon) {
 			this.icon.setAnchorHidden(!visible);
-		} else {
-			this.popup.setAnchorHidden(!visible);
-		}
-		// Off screen: the coordinates are irrelevant and computing them is waste.
-		if (!visible) return;
-
-		if (showingIcon) {
-			const rect = this.stickyRect(snapshot, geometry, this.iconPlacement, {
-				width: ICON_SIZE,
-				height: ICON_SIZE,
-			});
-			if (rect != null) this.icon.moveTo(rect);
+			this.icon.setClip(clipInsets(rect, bounds));
+			this.icon.moveTo(rect);
 			return;
 		}
 
-		const size = this.popup.getSize();
-		if (size == null) return;
-
-		const rect = this.stickyRect(snapshot, geometry, this.popupPlacement, size);
-		if (rect != null) this.popup.moveTo(rect);
+		this.popup.setAnchorHidden(!visible);
+		this.popup.setClip(clipInsets(rect, bounds));
+		this.popup.moveTo(rect);
 	}
 
 	/** The one remembered candidate, recomputed against the current anchor. */
@@ -478,9 +585,11 @@ export class UiController {
 		debug('icon placed', { placement: result.placement, clamped: result.clamped });
 
 		this.icon.show(snapshot.win, result.rect);
-		// Matters on the resize path, where the selection may already have been
+		// Matters on the resize path, where the icon may already have been
 		// scrolled out of its leaf before the window changed size.
-		this.icon.setAnchorHidden(!isAnchorVisible(geometry.bbox, this.visibleBounds(snapshot)));
+		const bounds = this.visibleBounds(snapshot);
+		this.icon.setAnchorHidden(!isRectVisible(result.rect, bounds));
+		this.icon.setClip(clipInsets(result.rect, bounds));
 	}
 
 	/**
@@ -543,6 +652,40 @@ function readLiveRects(snapshot: SelectionSnapshot): Rect[] | null {
 	} catch {
 		return null;
 	}
+}
+
+/** Live measurements of one box, in the shape the scroll rules expect. */
+function readScrollMetrics(win: Window, el: Element): ScrollMetrics {
+	const style = win.getComputedStyle(el);
+
+	return {
+		scrollTop: el.scrollTop,
+		scrollHeight: el.scrollHeight,
+		clientHeight: el.clientHeight,
+		scrollLeft: el.scrollLeft,
+		scrollWidth: el.scrollWidth,
+		clientWidth: el.clientWidth,
+		overflowX: style.overflowX,
+		overflowY: style.overflowY,
+	};
+}
+
+/**
+ * How tall one line is in this window, for wheels that report lines.
+ *
+ * Read from the document rather than assumed, because the user's font size is
+ * what a line delta is supposed to mean. `line-height: normal` computes to the
+ * keyword rather than a length, which is the case the fallback covers.
+ */
+function lineHeightOf(win: Window): number {
+	const style = win.getComputedStyle(win.document.body);
+	const lineHeight = Number.parseFloat(style.lineHeight);
+	if (Number.isFinite(lineHeight) && lineHeight > 0) return lineHeight;
+
+	const fontSize = Number.parseFloat(style.fontSize);
+	if (Number.isFinite(fontSize) && fontSize > 0) return fontSize * 1.2;
+
+	return WHEEL_LINE_HEIGHT_FALLBACK;
 }
 
 /**

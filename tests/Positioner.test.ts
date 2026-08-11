@@ -3,12 +3,14 @@ import { makeRect, type Rect } from '../src/types';
 import {
 	DEFAULT_PLACEMENT_ORDER,
 	clampToBoundary,
+	clipInsets,
 	computeCandidate,
 	fitsInside,
 	insetRect,
 	intersectRects,
-	isAnchorVisible,
+	isRectVisible,
 	offsetRect,
+	overlaps,
 	place,
 	type PlacementRequest,
 } from '../src/ui/Positioner';
@@ -182,29 +184,107 @@ describe('computeCandidate, as used while scrolling', () => {
 	});
 });
 
-describe('isAnchorVisible', () => {
+describe('isRectVisible', () => {
+	/** A leaf whose top edge sits 100px down, just below the tab header. */
 	const bounds = makeRect(0, 100, 800, 500);
 
-	it('is true while any part of the selection reaches the visible region', () => {
-		expect(isAnchorVisible(makeRect(10, 300, 100, 20), bounds)).toBe(true);
-		// Straddling the top edge still counts: part of the text is on screen.
-		expect(isAnchorVisible(makeRect(10, 90, 100, 20), bounds)).toBe(true);
+	it('is true while any part of the element reaches the visible region', () => {
+		expect(isRectVisible(makeRect(10, 300, 100, 20), bounds)).toBe(true);
+		// Straddling the top edge still counts: part of the popup is on screen.
+		expect(isRectVisible(makeRect(10, 90, 100, 20), bounds)).toBe(true);
 	});
 
-	it('is false once the selection has scrolled clear of the region', () => {
-		expect(isAnchorVisible(makeRect(10, -40, 100, 20), bounds)).toBe(false);
-		expect(isAnchorVisible(makeRect(10, 700, 100, 20), bounds)).toBe(false);
+	it('is false once the element has scrolled clear of the region', () => {
+		expect(isRectVisible(makeRect(10, -40, 100, 20), bounds)).toBe(false);
+		expect(isRectVisible(makeRect(10, 700, 100, 20), bounds)).toBe(false);
 	});
 
 	it('is false when the leaf itself is off screen', () => {
 		// A leaf with no viewport overlap yields null bounds rather than a rect.
-		expect(isAnchorVisible(makeRect(10, 300, 100, 20), null)).toBe(false);
+		expect(isRectVisible(makeRect(10, 300, 100, 20), null)).toBe(false);
 	});
 
-	it('treats a selection merely touching the edge as gone', () => {
-		// Zero-area overlap is not visibility, and matching intersectRects here
-		// keeps the gate consistent with every other boundary decision.
-		expect(isAnchorVisible(makeRect(10, 600, 100, 20), bounds)).toBe(false);
+	it('keeps an element resting exactly on an edge on screen', () => {
+		// Zero-area contact has to count, or a one-pixel scroll step blinks the
+		// popup off for the single frame its edge lands on the boundary.
+		expect(isRectVisible(makeRect(10, 600, 100, 20), bounds)).toBe(true);
+		expect(isRectVisible(makeRect(10, 80, 100, 20), bounds)).toBe(true);
+	});
+
+	/*
+	 * The bug this replaced, in both directions.
+	 *
+	 * The gate used to be handed the selection's bbox. With the default
+	 * below-centre placement the popup trails the text by its own height, so
+	 * scrolling down hid a popup sitting in plain sight the moment the text it
+	 * belonged to crossed the top of the leaf — while scrolling up looked fine,
+	 * because there the popup led the text off the bottom instead.
+	 */
+	describe('the anchor and the element disagree', () => {
+		it('draws a popup still inside the leaf whose selection has left the top', () => {
+			const anchor = makeRect(400, 60, 200, 20);
+			const popup = makeRect(400, 96, 200, 140);
+
+			expect(isRectVisible(anchor, bounds)).toBe(false);
+			expect(isRectVisible(popup, bounds)).toBe(true);
+		});
+
+		it('hides the popup only once it has left the top edge itself', () => {
+			expect(isRectVisible(makeRect(400, -80, 200, 140), bounds)).toBe(false);
+		});
+
+		it('draws a popup still inside the leaf whose selection has left the bottom', () => {
+			// The mirrored pair, as produced by an above-centre placement.
+			const anchor = makeRect(400, 620, 200, 20);
+			const popup = makeRect(400, 470, 200, 140);
+
+			expect(isRectVisible(anchor, bounds)).toBe(false);
+			expect(isRectVisible(popup, bounds)).toBe(true);
+		});
+
+		it('hides the popup only once it has left the bottom edge itself', () => {
+			expect(isRectVisible(makeRect(400, 640, 200, 140), bounds)).toBe(false);
+		});
+	});
+});
+
+describe('overlaps', () => {
+	it('agrees with intersectRects wherever there is area to share', () => {
+		expect(overlaps(makeRect(0, 0, 100, 100), makeRect(50, 50, 100, 100))).toBe(true);
+		expect(overlaps(makeRect(0, 0, 10, 10), makeRect(50, 50, 10, 10))).toBe(false);
+	});
+
+	it('differs from it on edge contact, which is the whole reason it exists', () => {
+		const a = makeRect(0, 0, 10, 10);
+		const b = makeRect(10, 0, 10, 10);
+
+		expect(intersectRects(a, b)).toBeNull();
+		expect(overlaps(a, b)).toBe(true);
+	});
+});
+
+describe('clipInsets', () => {
+	const bounds = makeRect(0, 100, 800, 500);
+
+	it('clips nothing while the element is wholly inside the region', () => {
+		expect(clipInsets(makeRect(400, 200, 200, 140), bounds)).toEqual({ top: 0, bottom: 0 });
+	});
+
+	it('clips exactly the overhang at either edge', () => {
+		// 40px above the leaf's top edge, and 40px below its bottom one.
+		expect(clipInsets(makeRect(400, 60, 200, 140), bounds)).toEqual({ top: 40, bottom: 0 });
+		expect(clipInsets(makeRect(400, 500, 200, 140), bounds)).toEqual({ top: 0, bottom: 40 });
+	});
+
+	it('never clips more than the element is tall', () => {
+		// Fully outside: the element is hidden by its class anyway, and an inset
+		// larger than the box is not a shape the browser can draw.
+		const insets = clipInsets(makeRect(400, -400, 200, 140), bounds);
+		expect(insets.top).toBe(140);
+	});
+
+	it('clips nothing when the leaf is off screen entirely', () => {
+		expect(clipInsets(makeRect(400, 200, 200, 140), null)).toEqual({ top: 0, bottom: 0 });
 	});
 });
 

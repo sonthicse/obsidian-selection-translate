@@ -7,6 +7,22 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-08-11
+
+### Fixed
+
+- **The wheel scrolls the note again while the pointer is over the popup.**
+  The popup opens directly under the pointer, and scrolling with it there did
+  nothing at all — in the editor, in reading view and on a PDF page alike. A
+  result too long to fit still scrolls inside the popup first, and only carries
+  on scrolling the note once it reaches its end. Ctrl+wheel still zooms.
+- **The button and the popup now leave the top edge of a tab the way they leave
+  the bottom one.** Scrolling up used to make them disappear outright the moment
+  the selected text passed under the tab header, while the popup itself was
+  still sitting in plain sight in the middle of the note. They now stay on
+  screen until they reach the edge themselves, slide under the header rather
+  than over it, and come back the same way.
+
 ## [0.2.0] — 2026-08-09
 
 A behaviour release rather than a bug-fix one: the button and popup now follow

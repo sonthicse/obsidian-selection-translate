@@ -99,6 +99,26 @@ export const OCCLUSION_SELECTORS = [
 	`.${CLS.popup}`,
 ];
 
+/**
+ * The scrollers a leaf is known to hold, innermost first.
+ *
+ * Consulted when a wheel gesture over the floating UI has to be handed to the
+ * surface behind it and the snapshot's own scroll anchors cannot take it — a
+ * selection made in a leaf that was not scrollable at the time, for instance.
+ * Like SURFACE_SELECTORS, these are DOM contracts Obsidian does not guarantee.
+ */
+export const SCROLLER_SELECTORS = '.cm-scroller, .markdown-preview-view, .pdf-viewer-container';
+
+/**
+ * Pixels per line when a wheel reports its delta in lines and the document
+ * refuses to say how tall a line is.
+ *
+ * Chromium always reports pixels, so this is only reached on the Linux and
+ * driver combinations that still emit line deltas; being slightly out is far
+ * better than treating "3 lines" as three pixels.
+ */
+export const WHEEL_LINE_HEIGHT_FALLBACK = 16;
+
 export const ICON_SIZE = 24;
 export const POPUP_MIN_WIDTH = 180;
 export const POPUP_LOADING_HEIGHT = 64;

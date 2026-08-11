@@ -5,7 +5,7 @@ import type { SelectionTranslateSettings } from '../settings/settings';
 import type { Rect, SelectionSnapshot, TranslationResult, UiErrorInfo } from '../types';
 import { debug, logError } from '../utils/log';
 import { ICON, applyIcon, type IconName } from './icons';
-import type { Size } from './Positioner';
+import type { ClipInsets, Size } from './Positioner';
 
 export interface PopupHandlers {
 	/** Asks the controller where a popup of this size should sit. */
@@ -16,6 +16,8 @@ export interface PopupHandlers {
 	onChangeProvider(): void;
 	/** Starts reading the source text, or stops if it is already reading. */
 	onSpeak(text: string, lang: string): void;
+	/** A wheel gesture landed on the popup and has to reach the note behind it. */
+	onWheel(event: WheelEvent): void;
 	isSpeaking(): boolean;
 	/** Notifies while the popup is open, so the button can flip to "stop". */
 	subscribeSpeaking(listener: (speaking: boolean) => void): () => void;
@@ -139,6 +141,14 @@ export class TranslatePopup {
 		this.el?.toggleClass('is-anchor-hidden', hidden);
 	}
 
+	/** See {@link TriggerIcon.setClip}: the overhang past the leaf, in CSS. */
+	setClip(insets: ClipInsets): void {
+		if (this.el == null) return;
+
+		this.el.style.setProperty('--st-clip-top', `${Math.round(insets.top)}px`);
+		this.el.style.setProperty('--st-clip-bottom', `${Math.round(insets.bottom)}px`);
+	}
+
 	/** Re-runs the full placement search at the popup's current size. */
 	replace(): void {
 		const size = this.getSize();
@@ -190,6 +200,14 @@ export class TranslatePopup {
 		this.labelId = `st-popup-label-${++labelSeq}`;
 		el.setAttribute('aria-labelledby', this.labelId);
 		el.toggleClass('mod-follow-theme', this.getSettings().popupTheme === 'follow');
+
+		/*
+		 * Explicitly non-passive. The popup does not sit in the scroll chain of
+		 * the surface it annotates, so the controller has to move that surface by
+		 * hand and suppress the default — and a passive listener is forbidden from
+		 * calling `preventDefault`, which browsers otherwise assume for `wheel`.
+		 */
+		el.addEventListener('wheel', (event) => this.handlers.onWheel(event), { passive: false });
 
 		this.el = el;
 		this.claimScope();
