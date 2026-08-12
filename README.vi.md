@@ -43,7 +43,7 @@ Hướng dẫn đầy đủ, gồm cả build từ mã nguồn, ở [docs/INSTAL
 ## Cách dùng
 
 1. Bôi đen một đoạn. Một nút nhỏ hiện lên bên cạnh.
-2. Bấm vào nút, hoặc bấm phím kích hoạt bạn đã đặt.
+2. Bấm vào nút, hoặc bấm phím tắt bạn đã gán cho command *Translate selection*.
 3. Popup hiện bản dịch, và nếu là từ đơn thì kèm phiên âm cùng các nghĩa.
 
 Các cách khác:

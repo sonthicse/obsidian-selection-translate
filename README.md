@@ -42,7 +42,7 @@ Full instructions, including building from source, are in [docs/INSTALL.md](docs
 ## Usage
 
 1. Select some text. A small button appears beside it.
-2. Click it, or press your configured trigger key.
+2. Click it, or press the hotkey you bound to *Translate selection*.
 3. The popup shows the translation, and for a single word its pronunciation and meanings.
 
 Other ways in:
