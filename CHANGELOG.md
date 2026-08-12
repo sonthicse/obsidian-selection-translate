@@ -7,6 +7,30 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **Setting a trigger key now tells you if Obsidian already uses it.** A line
+  under the field names the commands the combination belongs to. It is a
+  warning, not a refusal: the trigger key only exists for the few seconds the
+  button is on screen, so sharing a combination with a command you rarely press
+  is a perfectly reasonable thing to want.
+- **A button beside it opens Obsidian's own hotkeys page**, so checking what is
+  taken does not mean hunting for the right settings pane first.
+
+### Changed
+
+- **The plugin's two commands are now always named in English** in Obsidian's
+  hotkeys page and command palette — "Translate selection" and "Toggle
+  translate on selection". They used to follow the plugin's interface language,
+  but only from the next restart, so the names on that page were regularly not
+  the language you had chosen. Vietnamese users will notice the change; nothing
+  about the commands themselves, their hotkeys or their behaviour is affected.
+- **The trigger key is now handled through Obsidian's own keyboard system.**
+  Nothing to do differently — but it now behaves like every other shortcut in
+  the app, and the key is genuinely Obsidian's again the moment the button goes
+  away. A key with no modifier is still refused while editing, and still types
+  its character into the note as it always did.
+
 ### Fixed
 
 - **The popup and the trigger icon no longer paint over the row of tabs.**

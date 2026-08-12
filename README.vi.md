@@ -50,7 +50,7 @@ Các cách khác:
 
 - **Nháy đúp một từ** để dịch ngay (bật *Dịch khi nháy đúp*).
 - **Dịch ngay khi bôi đen** bỏ qua hẳn nút bấm (bật *Dịch ngay khi bôi đen*).
-- **Command palette** có *Selection Translate: Dịch vùng chọn*, bạn có thể gán phím tắt ở Settings → Hotkeys. Plugin không tự đặt phím tắt nào.
+- **Command palette** có *Selection Translate: Translate selection*, bạn có thể gán phím tắt ở Settings → Hotkeys. Plugin không tự đặt phím tắt nào. Tên command luôn là tiếng Anh, kể cả khi giao diện plugin đang là tiếng Việt.
 
 Nút và popup neo vào vùng bạn bôi đen chứ không neo vào màn hình. Cuộn thì
 chúng trôi theo; cuộn vùng bôi đen ra khỏi màn hình thì chúng đi theo, cuộn về

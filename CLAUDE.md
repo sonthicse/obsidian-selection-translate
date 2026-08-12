@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Tài liệu này viết bằng tiếng Việt vì bộ tài liệu phát triển của dự án (`docs/DEV-PLAN.md`, `docs/CONTRIBUTING.md`, `docs/SUBMISSION.md`) dùng tiếng Việt. **Mã nguồn, comment trong code, chuỗi UI tiếng Anh, CHANGELOG và README vẫn viết bằng tiếng Anh** — đừng dịch chúng.
 >
-> Trạng thái khi viết: version `0.2.3`, sau **E1** (chưa phát hành; E1 + E2 cùng đi trong `0.3.0`). **53 file TS** trong `src/` (7 740 LOC), **17 file test**, **327 test**, **132 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
+> Trạng thái khi viết: version `0.2.3`, sau **E2** (chưa phát hành; E1 + E2 cùng đi trong `0.3.0`). **53 file TS** trong `src/` (8 030 LOC), **17 file test**, **341 test**, **132 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
+>
+> Số chuỗi UI **không đổi** qua E2 dù E2-T5 xoá hai key `command.*`: E2-T2 và E2-T3 thêm lại đúng hai key (`settings.hotkeyConflict`, `settings.openHotkeys`). Con số E4 lập kế hoạch trên (8 × 132) vì thế vẫn đúng.
 
 ---
 
@@ -27,19 +29,23 @@ Chiều phụ thuộc: `selection/` → `core/` → `providers/`, và `ui/` treo
 **Bất biến này nay đã được CI ép, không còn dựa vào kỷ luật** — `no-restricted-imports` trong [`eslint.config.mjs:87-101`](eslint.config.mjs#L87-L101) (providers cấm import `ui|selection|core`) và [`:104-118`](eslint.config.mjs#L104-L118) (ui cấm import `providers`). Một import sai làm `npm run lint` đỏ ngay.
 
 ```
-src/main.ts (247)          vòng đời plugin, command, ghép các khối, this.register() teardown
+src/main.ts (223)          vòng đời plugin, command, ghép các khối, this.register() teardown
 
 src/selection/             đọc vùng chọn từ từng bề mặt
   SelectionSource.ts       giao diện chung
   DomSelectionSource.ts · InputSelectionSource.ts · PdfSelectionSource.ts
 
 src/core/                  logic không biết gì về hình dạng màn hình
-  SelectionManager.ts (480)  sự kiện DOM, snapshot, chọn nguồn selection
+  SelectionManager.ts (483)  sự kiện DOM, snapshot, chọn nguồn selection
   SelectionRules.ts   (117)  ⟵ tách ở E0. Bộ luật thuần, 17 test
   ContextDetector.ts         nhận diện bề mặt + containerEl (leaf) + contentEl (biên)
   StateMachine.ts            idle → icon → loading → result | error
   TranslationOrchestrator.ts token, cache, normalize
-  LruCache.ts · TextNormalizer.ts · HotkeyManager.ts
+  HotkeyManager.ts    (350)  TOÀN BỘ chuyện trigger key: luật thuần (matchesBinding,
+                             isBindingSafeFor, isBindingRisky) + TriggerKeyScope
+                             (⟵ E2, vòng đời Scope) + phát hiện trùng phím
+                             (findHotkeyConflicts thuần, readObsidianHotkeys cast hẹp)
+  LruCache.ts · TextNormalizer.ts
 
 src/providers/             chỉ nhận/trả dữ liệu thuần, test được dưới Node
   TranslationProvider.ts     interface + ProviderError + toUiError
@@ -48,7 +54,8 @@ src/providers/             chỉ nhận/trả dữ liệu thuần, test được
   ProviderRegistry.ts · langMap.ts · http.ts
 
 src/ui/                    tầng duy nhất được chạm DOM của popup/icon
-  UiController.ts     (683)  điều phối: state machine, placement search, dismiss
+  UiController.ts     (706)  điều phối: state machine, placement search, dismiss,
+                             và vòng đời TriggerKeyScope (claim ở state `icon`)
   FloatingLayer.ts    (106)  ⟵ tách ở E0. Sở hữu icon + popup; mọi câu hỏi hình học.
                              applyGeometry() là cổng DUY NHẤT set vị trí/clip/visibility
   TranslatePopup.ts   (376)  vòng đời element, đo kích thước, animation grow
@@ -61,7 +68,8 @@ src/settings/
                              language.ts, provider.ts, activation.ts, scope.ts,
                              appearance.ts, speech.ts, advanced.ts
   settings.ts                kiểu + DEFAULT_SETTINGS + SETTING_LIMITS + normalizeSettings
-  HotkeyRecorder.ts
+  HotkeyRecorder.ts   (130)  ô ghi phím + 2 cảnh báo (phím trơn, trùng phím) +
+                             nút mở trang Hotkeys của Obsidian
 
 src/i18n/                  en.ts (nguồn chân lý) · vi.ts · index.ts (t, resolveLocale)
 src/tts/                   TtsService · WebSpeechEngine · GoogleTtsEngine
@@ -159,7 +167,7 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 > Mục này **không có trong đặc tả gốc của E8**; đường đi đã đổi ở E0 khi `SettingTab.ts` tách thành `sections/`.
 
 1. [`src/settings/settings.ts`](src/settings/settings.ts) — trường trong `SelectionTranslateSettings` (nhóm theo comment `/* Languages */`, `/* Activation */`…) và giá trị trong `DEFAULT_SETTINGS`. Nếu là số: thêm `SETTING_LIMITS` + một lời gọi `clamp` trong `normalizeSettings()`.
-2. `src/settings/sections/<đúng section>.ts` — vẽ control. **Chỉ ghi qua `ctx.save(key, value)`**; không chạm `plugin.settings` trực tiếp. Cần vẽ lại cả tab (control này quyết định control khác có tồn tại không) thì gọi `ctx.redisplay()`.
+2. `src/settings/sections/<đúng section>.ts` — vẽ control. **Chỉ ghi qua `ctx.save(key, value)`**; không chạm `plugin.settings` trực tiếp. Cần vẽ lại cả tab (control này quyết định control khác có tồn tại không) thì gọi `ctx.redisplay()`. `ctx.app` có sẵn từ E2 cho hai việc chính đáng — đọc thứ Obsidian đã gắn, và mở một pane của chính Obsidian — **không** phải đường vòng để ghi settings.
 
    | Section | Giữ setting nào |
    |---|---|
@@ -210,6 +218,28 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 **6.9. `containerEl` và `contentEl` là hai thứ khác nhau, đừng dùng lẫn.** `containerEl` = `.workspace-leaf-content`, dùng để **nhận diện leaf và tìm scroller**. `contentEl` = phần chứa nội dung, và là thứ **duy nhất** được dùng làm biên đặt vị trí + biên cắt. Bảng map ở [`src/core/ContextDetector.ts`](src/core/ContextDetector.ts) (`CONTENT_SELECTORS`): leaf → `.view-content`, note nhúng → `.markdown-embed-content`, hover preview → `.hover-popover`. Lý do tồn tại: `.workspace-leaf-content` **bao gồm cả `.view-header`**, nên đo biên từ nó thì popup vẽ đè lên hàng nút back/tiêu đề mà không bị coi là thừa — chính là lỗi E1 sửa. PDF là ca duy nhất phải trừ thêm: `.pdf-toolbar` nằm **bên trong** `.view-content`, nên [`FloatingLayer.contentRect()`](src/ui/FloatingLayer.ts#L55) cắt phần trên bằng `trimTop()`.
 
 **6.10. `clipInsets(rect, null)` cắt sạch, không trả `{0,0}`.** Trước E1 nó trả 0 và chỉ an toàn nhờ `isRectVisible(rect, null)` luôn ẩn element trong cùng ca đó — hai nửa che cho nhau. Nay mỗi nửa tự đúng. Lưu ý kỹ thuật: nó trả `top = rect.height` và để `bottom = 0`, **cố ý không** cho hai inset chồng nhau, vì `inset()` với các cạnh chồng nhau không phải hình dạng mà mọi trình duyệt bắt buộc phải đồng ý với nhau.
+
+### Ba cái mới — **phát hiện từ E2, không có trong kế hoạch gốc**
+
+**6.11. `app.hotkeyManager` là API không công khai — hỏng thì chỉ được mất cảnh báo.** Nó không có trong `obsidian.d.ts` và có thể đổi hình dạng ở bất kỳ bản Obsidian nào. Nơi duy nhất được biết hình dạng của nó là [`readObsidianHotkeys()`](src/core/HotkeyManager.ts) — **bọc toàn bộ trong `try/catch`, đọc qua cast cấu trúc hẹp (không `any`), hỏng thì trả mảng rỗng**. Trigger key **không bao giờ** hỏi câu hỏi này, nên mất nó chỉ mất cảnh báo trùng phím, không ảnh hưởng việc bấm phím lẫn việc dựng pane tuỳ chọn. Có test cho ca "không tồn tại" và ca "đọc thì ném" trong `tests/HotkeyManager.test.ts`.
+
+Hình dạng thật, xác minh trên **Obsidian 1.13.6** (giải nén `obsidian-1.13.6.asar`, đọc `app.js`) — chép lại vì không tra được ở đâu khác:
+
+| Thứ | Hình dạng |
+|---|---|
+| `hotkeyManager.defaultKeys` | `Record<commandId, Hotkey[]>` — mặc định do command khai |
+| `hotkeyManager.customKeys` | **getter** trả bản sao nông của một store khoá bằng `Symbol('customKeys')`; cùng kiểu |
+| Luật hợp nhất | override thay thế **hoàn toàn** default; `customKeys[id] = []` nghĩa là người dùng đã **xoá** phím đó. Đây đúng là luật `bake()` của Obsidian dùng |
+| Tên command | `app.commands.commands[id].name`, **đã kèm tiền tố tên plugin** (`Plugin.addCommand` tự ghép `manifest.name + ": "`) |
+| `Hotkey.modifiers` | so sánh sau khi "compile": `Mod` → `Meta` (macOS) / `Ctrl`, rồi **sort rồi join `,`** |
+
+**6.12. `Scope` callback trả `undefined` mới là "để phím đi tiếp" — trả `true` là nuốt phím.** `Scope.handleKey` của Obsidian: nếu handler khớp và trả về **bất kỳ giá trị nào khác `undefined`** thì đó là câu trả lời cuối cùng và vòng lặp dừng ngay — không xét handler sau, không lên scope cha. Chỉ `undefined` mới đi tiếp. Vậy nên ca **"phím trơn trong Live Preview"** — phải để người dùng gõ được chữ — là `return undefined`, không phải `return true`. Trả `false` nghĩa là "đã xử lý", và Obsidian **tự gọi** `preventDefault()` + `stopPropagation()`.
+
+⚠️ [`TranslatePopup.claimScope()`](src/ui/TranslatePopup.ts) có hai handler trả `true`; ở đó vô hại (scope không có cha, handler đăng ký cho phím cụ thể) nhưng **đừng chép mẫu đó cho một handler bắt-tất-cả**.
+
+**6.13. `new Scope()` không cha sẽ chặn mọi phím tắt của Obsidian trong lúc nó active.** Obsidian đăng ký chính bộ hotkey của nó bằng `app.scope.register(null, null, …)`, và `handleKey` chỉ lên cha khi không handler nào trả lời. Vì vậy [`TriggerKeyScope.claim()`](src/core/HotkeyManager.ts) dựng `new Scope(app.scope)`. Thêm nữa: `pushScope` đẩy vào **stack riêng của `activeWindow`** (Obsidian giữ `WeakMap<Window, …>`), nên popout có stack riêng — đẩy đúng lúc cửa sổ đó đang active là đủ, không cần làm gì thêm cho popout.
+
+Hệ quả vận hành: **rò một scope là hỏng bàn phím của người dùng ở mọi chỗ khác.** `TriggerKeyScope` chỉ được claim/release từ một chỗ duy nhất — nhánh `state === 'icon'` trong `UiController.render()` — cộng một `release()` vô điều kiện trong `UiController.destroy()`, vốn được nối vào `this.register()` ở `main.ts`.
 
 ---
 
