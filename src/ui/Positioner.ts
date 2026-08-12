@@ -221,10 +221,12 @@ export function isRectVisible(rect: Rect, visibleBounds: Rect | null): boolean {
 	return visibleBounds != null && overlaps(rect, visibleBounds);
 }
 
-/** How much of a rect hangs off the top and bottom of the visible region. */
+/** How much of a rect hangs off each edge of the visible region. */
 export interface ClipInsets {
 	top: number;
+	right: number;
 	bottom: number;
+	left: number;
 }
 
 /**
@@ -233,8 +235,13 @@ export interface ClipInsets {
  * An element half out of its leaf now stays on screen — {@link isRectVisible} —
  * which without this would draw it over the tab header or the PDF toolbar, the
  * very chrome the placement search works to avoid. Clipping the overhang makes
- * it slide under the header instead. Horizontal edges are left alone: nothing
- * sits beside a leaf that the popup could cover.
+ * it slide under the header instead.
+ *
+ * All four edges, not just the horizontal pair. Something does sit beside a
+ * leaf: the other half of a vertical split, whose text a popup would otherwise
+ * cover as its own leaf narrows. The same two insets are what a right-to-left
+ * interface needs, where the side an element overflows is the mirror of this
+ * one.
  *
  * Returned as plain numbers so the caller can hand them to CSS; deciding how
  * much to hide is geometry, and drawing is the stylesheet's business.
@@ -246,17 +253,19 @@ export function clipInsets(rect: Rect, visibleBounds: Rect | null): ClipInsets {
 	// case, which is precisely the pairing a future caller would separate.
 	// One full-height inset empties the box on its own; insets that overlap each
 	// other are a shape browsers are not required to agree about.
-	if (visibleBounds == null) return { top: rect.height, bottom: 0 };
+	if (visibleBounds == null) return { top: rect.height, right: 0, bottom: 0, left: 0 };
 
 	return {
 		top: clampInset(visibleBounds.top - rect.top, rect.height),
+		right: clampInset(rect.right - visibleBounds.right, rect.width),
 		bottom: clampInset(rect.bottom - visibleBounds.bottom, rect.height),
+		left: clampInset(visibleBounds.left - rect.left, rect.width),
 	};
 }
 
 /** An inset is never negative, and never eats more than the element it clips. */
-function clampInset(overhang: number, height: number): number {
-	return Math.min(Math.max(overhang, 0), Math.max(height, 0));
+function clampInset(overhang: number, extent: number): number {
+	return Math.min(Math.max(overhang, 0), Math.max(extent, 0));
 }
 
 /** Shrinks a rect by a uniform margin, never past zero size. */

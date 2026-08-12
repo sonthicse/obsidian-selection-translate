@@ -247,6 +247,32 @@ describe('isRectVisible', () => {
 			expect(isRectVisible(makeRect(400, 640, 200, 140), bounds)).toBe(false);
 		});
 	});
+
+	it('never blinks while scrolling one pixel at a time past the top edge', () => {
+		// The regression guard for the whole gesture rather than for single
+		// positions: visibility may change once, in one direction, and the clip
+		// may only ever grow on the way out. A frame that flipped either back
+		// would be the flicker `overlaps` exists to prevent.
+		let visible = true;
+		let flips = 0;
+		let previousTop = 0;
+
+		for (let top = 300; top >= -200; top--) {
+			const rect = makeRect(400, top, 200, 140);
+			const now = isRectVisible(rect, bounds);
+
+			if (now !== visible) {
+				flips++;
+				visible = now;
+			}
+			const inset = clipInsets(rect, bounds).top;
+			expect(inset).toBeGreaterThanOrEqual(previousTop);
+			previousTop = inset;
+		}
+
+		expect(flips).toBe(1);
+		expect(visible).toBe(false);
+	});
 });
 
 describe('overlaps', () => {
@@ -267,21 +293,43 @@ describe('overlaps', () => {
 describe('clipInsets', () => {
 	const bounds = makeRect(0, 100, 800, 500);
 
+	const nothing = { top: 0, right: 0, bottom: 0, left: 0 };
+
 	it('clips nothing while the element is wholly inside the region', () => {
-		expect(clipInsets(makeRect(400, 200, 200, 140), bounds)).toEqual({ top: 0, bottom: 0 });
+		expect(clipInsets(makeRect(400, 200, 200, 140), bounds)).toEqual(nothing);
 	});
 
 	it('clips exactly the overhang at either edge', () => {
 		// 40px above the leaf's top edge, and 40px below its bottom one.
-		expect(clipInsets(makeRect(400, 60, 200, 140), bounds)).toEqual({ top: 40, bottom: 0 });
-		expect(clipInsets(makeRect(400, 500, 200, 140), bounds)).toEqual({ top: 0, bottom: 40 });
+		expect(clipInsets(makeRect(400, 60, 200, 140), bounds)).toEqual({ ...nothing, top: 40 });
+		expect(clipInsets(makeRect(400, 500, 200, 140), bounds)).toEqual({ ...nothing, bottom: 40 });
 	});
 
-	it('never clips more than the element is tall', () => {
+	it('clips the horizontal overhang too, which is what a vertical split needs', () => {
+		// A leaf occupying the left half of the window: an element pushed past
+		// its inner edge would otherwise paint over the note beside it.
+		const half = makeRect(0, 100, 400, 500);
+
+		expect(clipInsets(makeRect(-30, 200, 200, 140), half)).toEqual({ ...nothing, left: 30 });
+		expect(clipInsets(makeRect(280, 200, 200, 140), half)).toEqual({ ...nothing, right: 80 });
+	});
+
+	it('clips both axes at once in a corner', () => {
+		const half = makeRect(0, 100, 400, 500);
+
+		expect(clipInsets(makeRect(320, 40, 200, 140), half)).toEqual({
+			top: 60,
+			right: 120,
+			bottom: 0,
+			left: 0,
+		});
+	});
+
+	it('never clips more than the element measures on that axis', () => {
 		// Fully outside: the element is hidden by its class anyway, and an inset
 		// larger than the box is not a shape the browser can draw.
-		const insets = clipInsets(makeRect(400, -400, 200, 140), bounds);
-		expect(insets.top).toBe(140);
+		expect(clipInsets(makeRect(400, -400, 200, 140), bounds).top).toBe(140);
+		expect(clipInsets(makeRect(-900, 200, 200, 140), bounds).left).toBe(200);
 	});
 
 	it('clips everything when the leaf is off screen entirely', () => {
@@ -290,7 +338,7 @@ describe('clipInsets', () => {
 		// for one without the other.
 		const rect = makeRect(400, 200, 200, 140);
 
-		expect(clipInsets(rect, null)).toEqual({ top: 140, bottom: 0 });
+		expect(clipInsets(rect, null)).toEqual({ top: 140, right: 0, bottom: 0, left: 0 });
 		expect(isRectVisible(rect, null)).toBe(false);
 	});
 });

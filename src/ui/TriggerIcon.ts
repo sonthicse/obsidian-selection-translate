@@ -81,7 +81,9 @@ export class TriggerIcon {
 		if (this.el == null) return;
 
 		this.el.style.setProperty('--st-clip-top', `${Math.round(insets.top)}px`);
+		this.el.style.setProperty('--st-clip-right', `${Math.round(insets.right)}px`);
 		this.el.style.setProperty('--st-clip-bottom', `${Math.round(insets.bottom)}px`);
+		this.el.style.setProperty('--st-clip-left', `${Math.round(insets.left)}px`);
 	}
 
 	/**

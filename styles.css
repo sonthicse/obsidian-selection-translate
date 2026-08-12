@@ -100,11 +100,16 @@
 	/*
 	 * The element now follows its text past the edge of the leaf instead of
 	 * disappearing at it, so the part that has left has to be cut away or it
-	 * would paint over the tab header and the PDF toolbar. Both lengths are
-	 * written from the controller, which is the only place that knows how far
-	 * the element overhangs; the shape stays here.
+	 * would paint over the tab header and the PDF toolbar. All four lengths are
+	 * written from the floating layer, which is the only place that knows how
+	 * far the element overhangs; the shape stays here. The horizontal pair
+	 * earns its keep in a vertical split, where the leaf beside this one is
+	 * what the element would otherwise cover.
 	 */
-	clip-path: inset(var(--st-clip-top, 0px) 0 var(--st-clip-bottom, 0px) 0);
+	clip-path: inset(
+		var(--st-clip-top, 0px) var(--st-clip-right, 0px) var(--st-clip-bottom, 0px)
+			var(--st-clip-left, 0px)
+	);
 	/*
 	 * A hidden icon must be invisible to hit-testing, not merely transparent.
 	 * An opacity-0 element is still hit-tested, so it would both swallow clicks
@@ -185,11 +190,15 @@
 	font-size: var(--st-font-size, 14px);
 	line-height: 1.5;
 	overflow: hidden;
-	/* See `.st-icon`: the overhang past the visible part of the leaf, cut away
-	 * so the popup slides under the tab header rather than over it. Deliberately
+	/* See `.st-icon`: the overhang past the visible part of the leaf, on all
+	 * four edges, cut away so the popup slides under the tab header and under
+	 * the neighbouring leaf rather than over them. Deliberately
 	 * not transitioned — it tracks the scroll frame by frame, and easing it
 	 * would lag a gesture the user is making right now. */
-	clip-path: inset(var(--st-clip-top, 0px) 0 var(--st-clip-bottom, 0px) 0);
+	clip-path: inset(
+		var(--st-clip-top, 0px) var(--st-clip-right, 0px) var(--st-clip-bottom, 0px)
+			var(--st-clip-left, 0px)
+	);
 	transition:
 		width 180ms ease,
 		height 180ms ease;
