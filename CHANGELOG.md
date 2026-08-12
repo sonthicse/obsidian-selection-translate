@@ -7,6 +7,46 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-08-12
+
+Housekeeping. Nothing here changes what the plugin does, with one small
+exception noted below — the work was an audit of why an earlier submission to
+the community store failed, and a restructuring of the four largest files so
+the features planned next do not each have to do it themselves.
+
+### Fixed
+
+- **A sideways wheel gesture in page mode no longer scrolls by the wrong
+  amount.** It was measured against the window's height instead of its width.
+  Rare — it needs a mouse driver or desktop that reports page-sized deltas for
+  a horizontal gesture — but wrong by a third on a typical window.
+
+### Changed
+
+- The options page now leads with the choice of translation engine, and says
+  plainly that the default one runs on an endpoint Google does not document,
+  support, or publish terms for. Whether that suits you is your call to make;
+  DeepL and Google Cloud are one dropdown away. Also spelled out in README and
+  `docs/PRIVACY.md`.
+
+### Internal
+
+Not user-visible, but recorded because the next few releases build on it:
+
+- `UiController`, `TranslatePopup`, `SettingTab` and `SelectionManager` were
+  split along the seams they already had. Deciding whether to draw the floating
+  UI and deciding how much of it to clip are now one call rather than three
+  separate ones — which is what was letting the popup paint over the tab header.
+- The selection rules — what makes a selection worth reacting to, and in what
+  order — became a pure function with 17 tests. 297 tests become 314.
+- `npm run verify` gained four gates: the layer boundary between UI and
+  providers, i18n placeholder parity, README's host list against the hosts the
+  code actually contacts, and dead links in `docs/`. Each was confirmed to fail
+  on a real violation before being committed.
+- Four unreachable methods and two unused UI strings removed.
+- `docs/REVIEW-FINDINGS.md` and `docs/CODE-REVIEW.md` record the investigation
+  and the review that argued for all of the above.
+
 ## [0.2.2] — 2026-08-11
 
 ### Fixed
@@ -108,6 +148,8 @@ First release.
 - Restoring default options deliberately preserves API keys.
 - Translations are never written to `data.json`, which syncs between devices.
 
-[Unreleased]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.2.0...HEAD
+[Unreleased]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.2.3...HEAD
+[0.2.3]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.2.2...0.2.3
+[0.2.2]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.2.0...0.2.2
 [0.2.0]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.1.0...0.2.0
 [0.1.0]: https://github.com/sonthicse/obsidian-selection-translate/releases/tag/0.1.0
