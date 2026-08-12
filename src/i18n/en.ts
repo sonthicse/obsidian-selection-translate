@@ -95,6 +95,9 @@ export const en = {
 	'settings.noHotkey': 'Not set',
 	'settings.hotkeyUnsafe':
 		'A key with no modifier would type into your note while editing. Add Ctrl, Alt or Shift.',
+	'settings.hotkeyConflict':
+		'Obsidian already uses this combination for {commands}. Both still work: this one only while the button is showing.',
+	'settings.openHotkeys': 'Open Obsidian hotkeys',
 	'settings.minLength': 'Shortest selection',
 	'settings.minLengthDesc': 'Selections shorter than this are ignored.',
 	'settings.maxLength': 'Longest selection',

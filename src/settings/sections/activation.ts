@@ -27,6 +27,7 @@ export function addActivationSection(containerEl: HTMLElement, ctx: SectionConte
 		);
 
 	addHotkeyRecorder(containerEl, {
+		app: ctx.app,
 		getBinding: () => ctx.settings.triggerHotkey,
 		setBinding: (binding) => ctx.save('triggerHotkey', binding),
 	});

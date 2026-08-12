@@ -65,6 +65,7 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 		const plugin = this.plugin;
 
 		return {
+			app: this.app,
 			get settings(): SelectionTranslateSettings {
 				return plugin.settings;
 			},

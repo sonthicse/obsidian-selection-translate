@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { App } from 'obsidian';
 import {
 	bindingFromEvent,
+	findHotkeyConflicts,
 	formatBinding,
 	isBindingRisky,
 	isBindingSafeFor,
 	matchesBinding,
+	readObsidianHotkeys,
+	type RegisteredHotkey,
 } from '../src/core/HotkeyManager';
 import type { HotkeyBinding } from '../src/types';
 
@@ -149,5 +153,161 @@ describe('formatBinding', () => {
 
 	it('uses the caller-supplied label when nothing is bound', () => {
 		expect(formatBinding(null, 'Not set')).toBe('Not set');
+	});
+});
+
+describe('findHotkeyConflicts', () => {
+	const hotkeys: RegisteredHotkey[] = [
+		{
+			commandId: 'editor:toggle-bold',
+			commandName: 'Toggle bold',
+			modifiers: ['Mod'],
+			key: 'B',
+		},
+		{
+			commandId: 'workspace:split-vertical',
+			commandName: 'Split right',
+			modifiers: ['Mod', 'Shift'],
+			key: 'ArrowRight',
+		},
+		{
+			commandId: 'some-plugin:do-thing',
+			commandName: 'Some plugin: Do thing',
+			modifiers: ['Alt'],
+			key: 'T',
+		},
+	];
+
+	it('names the command a binding collides with', () => {
+		expect(findHotkeyConflicts({ modifiers: ['Alt'], key: 'T' }, hotkeys)).toEqual([
+			'Some plugin: Do thing',
+		]);
+	});
+
+	it('resolves Mod the way Obsidian does, so Ctrl+B collides on Windows', () => {
+		expect(findHotkeyConflicts({ modifiers: ['Ctrl'], key: 'B' }, hotkeys)).toEqual([
+			'Toggle bold',
+		]);
+	});
+
+	it('ignores the order modifiers were recorded in', () => {
+		const binding: HotkeyBinding = { modifiers: ['Shift', 'Mod'], key: 'ArrowRight' };
+		expect(findHotkeyConflicts(binding, hotkeys)).toEqual(['Split right']);
+	});
+
+	it('does not report a partial modifier match', () => {
+		expect(findHotkeyConflicts({ modifiers: ['Alt', 'Shift'], key: 'T' }, hotkeys)).toEqual([]);
+		expect(findHotkeyConflicts({ modifiers: [], key: 'T' }, hotkeys)).toEqual([]);
+	});
+
+	it('matches keys regardless of case', () => {
+		expect(findHotkeyConflicts({ modifiers: ['Alt'], key: 't' }, hotkeys)).toEqual([
+			'Some plugin: Do thing',
+		]);
+	});
+
+	it('names each command once even when it holds the binding twice', () => {
+		const twice: RegisteredHotkey[] = [
+			{ commandId: 'a', commandName: 'Command A', modifiers: ['Alt'], key: 'T' },
+			{ commandId: 'a', commandName: 'Command A', modifiers: ['Alt'], key: 'T' },
+		];
+		expect(findHotkeyConflicts({ modifiers: ['Alt'], key: 'T' }, twice)).toEqual(['Command A']);
+	});
+
+	it('reports nothing for an unset binding', () => {
+		expect(findHotkeyConflicts(null, hotkeys)).toEqual([]);
+	});
+});
+
+describe('readObsidianHotkeys', () => {
+	/** Builds something app-shaped without pulling in the real App type. */
+	function fakeApp(shape: unknown): App {
+		return shape as App;
+	}
+
+	it('reads the user overrides and the defaults together', () => {
+		const app = fakeApp({
+			hotkeyManager: {
+				customKeys: { 'plugin:one': [{ modifiers: ['Alt'], key: 'T' }] },
+				defaultKeys: { 'editor:toggle-bold': [{ modifiers: ['Mod'], key: 'B' }] },
+			},
+			commands: {
+				commands: {
+					'plugin:one': { name: 'Plugin: One' },
+					'editor:toggle-bold': { name: 'Toggle bold' },
+				},
+			},
+		});
+
+		expect(readObsidianHotkeys(app)).toEqual([
+			{ commandId: 'plugin:one', commandName: 'Plugin: One', modifiers: ['Alt'], key: 'T' },
+			{
+				commandId: 'editor:toggle-bold',
+				commandName: 'Toggle bold',
+				modifiers: ['Mod'],
+				key: 'B',
+			},
+		]);
+	});
+
+	it('lets an override replace the default entirely', () => {
+		const app = fakeApp({
+			hotkeyManager: {
+				customKeys: { 'editor:toggle-bold': [{ modifiers: ['Alt'], key: 'B' }] },
+				defaultKeys: { 'editor:toggle-bold': [{ modifiers: ['Mod'], key: 'B' }] },
+			},
+			commands: { commands: {} },
+		});
+
+		const found = readObsidianHotkeys(app);
+		expect(found).toHaveLength(1);
+		expect(found[0]?.modifiers).toEqual(['Alt']);
+	});
+
+	it('clearing a hotkey removes it, because an empty override still overrides', () => {
+		const app = fakeApp({
+			hotkeyManager: {
+				customKeys: { 'editor:toggle-bold': [] },
+				defaultKeys: { 'editor:toggle-bold': [{ modifiers: ['Mod'], key: 'B' }] },
+			},
+		});
+
+		expect(readObsidianHotkeys(app)).toEqual([]);
+	});
+
+	it('falls back to the command id when the name is not available', () => {
+		const app = fakeApp({
+			hotkeyManager: { customKeys: { 'plugin:one': [{ modifiers: [], key: 'F6' }] } },
+		});
+
+		expect(readObsidianHotkeys(app)[0]?.commandName).toBe('plugin:one');
+	});
+
+	it('skips entries with no usable key', () => {
+		const app = fakeApp({
+			hotkeyManager: { customKeys: { 'plugin:one': [{ modifiers: ['Alt'] }, null, { key: '' }] } },
+		});
+
+		expect(readObsidianHotkeys(app)).toEqual([]);
+	});
+
+	/*
+	 * The reason every read above is wrapped: `app.hotkeyManager` is not part of
+	 * the plugin API and may be gone or reshaped in any Obsidian release. Losing
+	 * it must cost the conflict warning and nothing else.
+	 */
+	it('returns nothing when app.hotkeyManager does not exist', () => {
+		expect(readObsidianHotkeys(fakeApp({}))).toEqual([]);
+		expect(readObsidianHotkeys(fakeApp({ hotkeyManager: undefined }))).toEqual([]);
+	});
+
+	it('returns nothing when reading the tables throws', () => {
+		const app = fakeApp({
+			get hotkeyManager(): never {
+				throw new Error('shape changed');
+			},
+		});
+
+		expect(readObsidianHotkeys(app)).toEqual([]);
 	});
 });

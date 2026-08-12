@@ -85,6 +85,9 @@ export const vi = {
 	'settings.noHotkey': 'Chưa đặt',
 	'settings.hotkeyUnsafe':
 		'Phím không kèm phím bổ trợ sẽ gõ chữ vào note khi đang soạn thảo. Thêm Ctrl, Alt hoặc Shift.',
+	'settings.hotkeyConflict':
+		'Obsidian đã dùng tổ hợp này cho {commands}. Cả hai vẫn chạy: phím này chỉ có tác dụng khi nút đang hiện.',
+	'settings.openHotkeys': 'Mở phím tắt của Obsidian',
 	'settings.minLength': 'Vùng chọn ngắn nhất',
 	'settings.minLengthDesc': 'Vùng chọn ngắn hơn mức này sẽ bị bỏ qua.',
 	'settings.maxLength': 'Vùng chọn dài nhất',

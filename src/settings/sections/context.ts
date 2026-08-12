@@ -1,3 +1,4 @@
+import type { App } from 'obsidian';
 import type { ProviderId } from '../../types';
 import type { ValidationResult } from '../../providers/TranslationProvider';
 import type { SelectionTranslateSettings } from '../settings';
@@ -10,6 +11,13 @@ import type { SelectionTranslateSettings } from '../settings';
  * the reset button, and both go through the tab's own persistence path.
  */
 export interface SectionContext {
+	/**
+	 * The app, for the two things a control legitimately needs from it: reading
+	 * what Obsidian has already bound, and opening one of Obsidian's own panes.
+	 * Not a way around `save` — settings still only change through it.
+	 */
+	readonly app: App;
+
 	/** Live settings. Read at draw time, so a redraw sees the latest values. */
 	readonly settings: SelectionTranslateSettings;
 
