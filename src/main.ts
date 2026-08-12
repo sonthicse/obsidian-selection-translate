@@ -151,11 +151,17 @@ export default class SelectionTranslatePlugin extends Plugin {
 	 * knowing what a given user has already bound, and quietly claiming a
 	 * combination is how plugins break each other. The command ids carry no
 	 * plugin prefix either, since Obsidian adds one.
+	 *
+	 * The names are English literals rather than translated strings. A name is
+	 * read once, when the command is registered, so a translated one froze at
+	 * whatever the interface language was at load time and only caught up after
+	 * a reload — a bug that would have grown a locale at a time. Obsidian groups
+	 * commands by plugin name in its hotkeys pane, so they stay easy to find.
 	 */
 	private addCommands(): void {
 		this.addCommand({
 			id: 'translate-selection',
-			name: t('command.translateSelection'),
+			name: 'Translate selection',
 			checkCallback: (checking) => {
 				const snapshot = this.selectionManager.getCurrentSnapshot();
 				if (snapshot == null) return false;
@@ -167,7 +173,7 @@ export default class SelectionTranslatePlugin extends Plugin {
 
 		this.addCommand({
 			id: 'toggle-auto-popup',
-			name: t('command.toggleAutoPopup'),
+			name: 'Toggle translate on selection',
 			callback: async () => {
 				this.settings.autoPopupOnSelection = !this.settings.autoPopupOnSelection;
 				await this.saveSettings();

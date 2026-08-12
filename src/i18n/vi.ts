@@ -162,8 +162,6 @@ export const vi = {
 	'tts.webspeech': 'Giọng hệ thống',
 	'tts.google': 'Google',
 
-	'command.translateSelection': 'Dịch vùng chọn',
-	'command.toggleAutoPopup': 'Bật tắt dịch ngay khi bôi đen',
 	'notice.autoPopupOn': 'Sẽ dịch ngay khi bôi đen',
 	'notice.autoPopupOff': 'Sẽ hiện nút thay vì dịch ngay',
 	'tts.noVoice': 'Hệ thống chưa cài giọng đọc cho ngôn ngữ này.',

@@ -177,9 +177,9 @@ export const en = {
 	'tts.webspeech': 'System voice',
 	'tts.google': 'Google',
 
-	/* Commands and notices */
-	'command.translateSelection': 'Translate selection',
-	'command.toggleAutoPopup': 'Toggle translate on selection',
+	/* Notices. Command names are not here: they are English literals in main.ts,
+	   because a name is read once at registration and a translated one would
+	   stay stale until the next reload. */
 	'notice.autoPopupOn': 'Translating as soon as text is selected',
 	'notice.autoPopupOff': 'Showing the button instead of translating immediately',
 	'tts.noVoice': 'No system voice is installed for this language.',
