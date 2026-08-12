@@ -2,6 +2,10 @@
 
 Trạng thái repo tại thời điểm phân tích: `main` @ `97ea9f3`, version `0.2.2`, 24 commit, tag `0.1.1 → 0.2.2`, 41 file TS trong `src/` (~7.3k LOC), 18 file test (vitest), có sẵn `scripts/check-guidelines.mjs` và workflow release.
 
+> **Cập nhật sau E0 (2026-08-12, version `0.2.3`).** Con số ở trên là ảnh chụp lúc lập kế hoạch và được giữ nguyên làm mốc lịch sử. Trạng thái hiện tại: **53 file TS** (7 609 LOC), **17 file test**, **314 test**, 132 chuỗi UI. Mọi trích dẫn `file:dòng` trong tài liệu này đã được rà lại sau tái cấu trúc — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) ở cuối mục E0.
+>
+> Hai con số trong bản gốc cũng sai ngay từ đầu, sửa luôn ở đây: repo có **16** file test chứ không phải 18, và **42** file TS chứ không phải 41.
+
 Tài liệu này **chỉ đặc tả** — không thực hiện.
 
 ---
@@ -39,7 +43,9 @@ Tài liệu này **chỉ đặc tả** — không thực hiện.
 
 Tổng: **10 ngôn ngữ nguồn** (+ `auto`), **10 ngôn ngữ đích**, **8 locale giao diện**.
 
-**Tổng khối lượng giao diện:** 8 locale × 134 key = **1.072 chuỗi**.
+**Tổng khối lượng giao diện:** 8 locale × 132 key = **1.056 chuỗi**.
+
+> Số key giảm từ 134 xuống 132 ở E0: `popup.otherMeanings` và `settings.recordHotkey` là key mồ côi, không code nào tra tới, nên đã xoá trước khi E4 nhân chúng lên 8 locale.
 
 > **Lưu ý về `zh-Hans` (quan trọng, dễ làm sai):** bản giản thể **không phải** là bản phồn thể đổi bộ chữ. Từ vựng tin học khác nhau thật sự — 軟體/软件, 網路/网络, 螢幕/屏幕, 設定/设置, 檔案/文件. Chuyển đổi tự động kiểu OpenCC rồi dùng luôn sẽ cho ra thứ tiếng Trung mà người đại lục đọc là "bản Đài Loan chuyển máy". Quy trình đúng: dịch `zh-Hant` trước như bản chuẩn, chuyển bộ chữ, rồi **rà lại toàn bộ thuật ngữ** theo bản địa hoá chính thức của Obsidian tiếng Trung giản thể.
 
@@ -87,7 +93,7 @@ Xếp theo xác suất, dựa trên đọc code:
 | # | Giả thuyết | Bằng chứng trong repo | Cách kiểm chứng |
 |---|---|---|---|
 | H1 | `eslint-plugin-obsidianmd` pin `^0.4.1`, bot chạy ruleset mới hơn | `package.json` | Nâng bản mới nhất, chạy `npm run lint`, so số finding |
-| H2 | **Gán style trực tiếp trong JS** — 17 vị trí `.style.*` | `TriggerIcon.ts:64-65,77-78`, `TranslatePopup.ts:127-128,377-378`, `InputSelectionSource.ts:116-125` | Phần positioning là động và hợp lệ → chuyển sang CSS custom property (mẫu `--st-clip-top` đã làm đúng), rồi lint lại |
+| H2 | **Gán style trực tiếp trong JS** — 17 vị trí `.style.*` | `TriggerIcon.ts:64-65,77-78`, `TranslatePopup.ts:127-128,377-378`, `InputSelectionSource.ts:116-125` (số dòng của bản `0.2.2`) | Phần positioning là động và hợp lệ → chuyển sang CSS custom property (mẫu `--st-clip-top` đã làm đúng), rồi lint lại → **đã loại trừ, xem `docs/REVIEW-FINDINGS.md` §3** |
 | H3 | Release thiếu asset / tag lệch manifest | `release.yml` tự ghi nhận bản `0.1.1` từng release rỗng | `gh release view <tag> --json assets`; kiểm `main.js`, `manifest.json`, `styles.css` là file rời, không phải zip |
 | H4 | Endpoint Google không chính thức | `GoogleFreeProvider.ts`, `constants.ts:ENDPOINTS.googleFree` | Đây là rủi ro **review thủ công**, không phải automated. Xử lý ở E0-T5 |
 | H5 | Checklist `docs/SUBMISSION.md` còn nhiều mục chưa tick | chính file đó | Rà từng dòng, đặc biệt: README *Network use* đủ host, ảnh demo thật, test đa nền tảng |
@@ -103,15 +109,19 @@ Chạy `/code-review` trên toàn bộ `src/`, sau đó phân loại kết quả
 2. **Ranh giới tầng:** `types.ts` tuyên bố "UI không biết provider nào trả lời, provider không thấy DOM". Kiểm chứng bằng grep import chéo. Đề xuất thêm ESLint `no-restricted-imports` để CI giữ ranh giới, thay vì dựa vào kỷ luật.
 3. **File quá lớn / trách nhiệm chồng:**
 
-| File | LOC | Vấn đề | Đề xuất |
-|---|---|---|---|
-| `ui/UiController.ts` | 707 | Ôm cả: glue state machine, placement, clip, occlusion, anchored-scroll, dismiss | Tách `FloatingLayer` (show/hide/clip/geometry) khỏi `PlacementCoordinator` — **bắt buộc trước E1** |
-| `ui/TranslatePopup.ts` | 569 | Dựng DOM + đo kích thước + render nội dung | Tách phần render kết quả ra `PopupContent` — **bắt buộc trước E6** |
-| `core/SelectionManager.ts` | 504 | Lắng nghe sự kiện + chụp snapshot + lọc surface | Cân nhắc, không bắt buộc |
-| `settings/SettingTab.ts` | 460 | Sẽ phình mạnh ở E5 (3 provider × ~3 field) và E4 (8 locale) | Tách thành `sections/provider.ts`, `sections/language.ts`, `sections/appearance.ts`… — **bắt buộc trước E5** |
+| File | LOC trước | LOC sau | Vấn đề | Đã làm |
+|---|---|---|---|---|
+| `ui/UiController.ts` | 707 | **687** | Ôm cả: glue state machine, placement, clip, occlusion, anchored-scroll, dismiss | ✅ Tách `ui/FloatingLayer.ts` (70) |
+| `ui/TranslatePopup.ts` | 569 | **367** | Dựng DOM + đo kích thước + render nội dung | ✅ Tách `ui/PopupContent.ts` (239) |
+| `core/SelectionManager.ts` | 504 | **479** | Lắng nghe sự kiện + chụp snapshot + lọc surface | ✅ Tách `core/SelectionRules.ts` (117) + 17 test |
+| `settings/SettingTab.ts` | 460 | **95** | Sẽ phình mạnh ở E5 (3 provider × ~3 field) và E4 (8 locale) | ✅ Tách `settings/sections/` (7 file, 464 dòng) |
+
+> `UiController` chỉ giảm 20 dòng vì phần tách ra là logic, không phải khối lượng — 3 cặp lệnh `setAnchorHidden`/`setClip` lặp lại trở thành 1 lời gọi `applyVisibility`. Giá trị nằm ở chỗ **chỉ còn một cổng** để E1-T2 gộp `moveTo` vào, không nằm ở số dòng.
 
 4. **Tính năng cũ / dead code:** commit `9a17017` đã gỡ "Show original". Rà tiếp: setting nào không còn UI đọc tới, key i18n mồ côi, hằng số không tham chiếu. Kiểm cụ thể `stripMarkdown`, `pdfSelectionFallback`, `popupTheme`, `dictionarySource: 'gtx' | 'dictionaryapi'` — mỗi cái có đường dẫn UI và có test không.
 5. **Khả năng sửa lỗi:** hiện **không có test** cho `UiController`, `SelectionManager`, `TranslatePopup`, `SettingTab` — tức 2.240 dòng nặng nhất không được cover. Sau khi tách (mục 3), phần logic thuần phải có test; phần chạm DOM thì không ép.
+
+   > **Sau E0:** `core/SelectionRules.ts` đã có `tests/SelectionRules.test.ts` (17 test). Ba file còn lại vẫn không có test trực tiếp — phần tách ra khỏi chúng (`FloatingLayer`, `PopupContent`, `sections/`) vẫn chạm DOM, nên đúng theo quy tắc "không ép" ở trên. Tổng test: 297 → **314**.
 
 **Quyết định phải ra được — trả lời rõ 3 câu:**
 - Có cần tái cấu trúc không? → Có/Không kèm phạm vi tối thiểu.
@@ -132,6 +142,77 @@ Giữ endpoint không chính thức là lựa chọn có ý thức, nên phải 
 - **Giữ vai trò mặc định** nhưng thêm một dòng ghi chú ngay trong settings tab cạnh lựa chọn provider (không phải Notice, không làm phiền).
 - **Có đường lùi:** khi có đủ 6 provider sau E5, việc đổi mặc định sang một provider chính thức chỉ là đổi một hằng số trong `DEFAULT_SETTINGS`. Ghi sẵn phương án này vào `docs/REVIEW-FINDINGS.md` để nếu reviewer phản đối thì xử lý trong vài giờ thay vì vài ngày.
 - **Không quảng bá nó ở tiêu đề README.** Mô tả plugin nên nhấn vào "nhiều nhà cung cấp" chứ không phải "dịch miễn phí không cần key".
+
+---
+
+### Kết quả thực hiện (E0)
+
+Thực hiện ngày **2026-08-12**, phát hành thành version **`0.2.3`**.
+
+#### Trạng thái từng task
+
+| Task | Trạng thái | Ghi chú |
+|---|---|---|
+| **E0-T1** — bằng chứng automated check | **Xong một phần** | Chủ dự án xác nhận **không còn** nguyên văn output của bot/portal. `docs/REVIEW-FINDINGS.md` ghi thẳng điều đó thay vì dựng bảng finding từ suy đoán, rồi chuyển toàn bộ trọng lượng kết luận sang E0-T2 và sang bằng chứng thứ cấp trong git. |
+| **E0-T2** — kiểm chứng H1–H6 | **Xong** | Cả 6 giả thuyết đều có kết luận dứt khoát kèm bằng chứng. Không mục nào ở trạng thái "có thể". |
+| **E0-T3** — `/code-review` + phân loại | **Xong** | `docs/CODE-REVIEW.md`, 11 issue. Xem lưu ý về hạn chế của lệnh ở dưới. |
+| **E0-T4** — cổng CI | **Xong** | 4 cổng mới, mỗi cổng đã được kiểm bằng cách cố tình vi phạm. |
+| **E0-T5** — chiến lược `google-free` | **Xong** | 4/4 gạch đầu dòng; 2 gạch vốn đã có sẵn từ trước. |
+
+#### Kết luận cuối cùng của E0-T2
+
+**Giả thuyết được xác nhận: H3 — release thiếu asset.**
+
+Release `0.1.1` có **0 asset** (xác nhận qua GitHub REST API), trong khi cổng submit bắt buộc `main.js` + `manifest.json` dưới dạng asset rời. Một submit lúc đó trượt ngay tại bước này, trước mọi câu hỏi về lint. Song song, `npm run lint` khi ấy **không** chạy `eslint-plugin-obsidianmd` (chưa cài) và dùng preset không type-aware, nên một batch finding lọt qua CI của repo — nguyên văn lý do nằm trong thân commit `13047cc`.
+
+Hai vấn đề độc lập, và **cả hai đã được sửa xong trước khi E0 bắt đầu** (`4477168` sửa workflow, `13047cc` + `5d82b3c` sửa CI và finding).
+
+**H1, H2, H4, H5, H6 đều bị loại trừ.** Đáng chú ý:
+
+- **H1** loại trừ vì `eslint-plugin-obsidianmd@0.4.1` **đã là bản mới nhất** trên npm (publish 2026-07-02). Không có bản nào để nâng, nên bước "nâng trong một commit riêng" là **rỗng chứ không bị bỏ qua**. Số finding trước = sau = **8 warning / 0 error**.
+- **H2** loại trừ vì rule `no-static-styles-assignment` chỉ bắt giá trị **literal**; cả 17 vị trí `.style.*` đều là giá trị động. Việc kế hoạch đề xuất — chuyển positioning sang custom property — **không cần làm**.
+
+#### Phạm vi tái cấu trúc: dự kiến vs thực tế
+
+Audit ở E0-T3 đề nghị **3 file** (bỏ `SelectionManager.ts`, vì nó không chặn epic nào). **Chủ dự án duyệt đủ 4 file như kế hoạch gốc**, và duyệt thêm việc sửa issue #1 ngay trong E0. Kết quả: **thực tế = dự kiến**, cộng một sửa lỗi nhỏ ngoài dự kiến.
+
+#### Danh sách commit
+
+Từ `97ea9f3` (mốc `0.2.2`) đến `e0c0d2a` (tag `0.2.3`):
+
+| Commit | Nội dung |
+|---|---|
+| `777e281` | `docs:` kế hoạch phát triển + `REVIEW-FINDINGS.md` (E0-T1, E0-T2) |
+| `d357f6a` | `docs:` `CODE-REVIEW.md` (E0-T3) |
+| `25c24f7` | `refactor:` xoá 4 phương thức không ai gọi + 2 key i18n mồ côi |
+| `ca024b6` | `fix(ui):` wheel ngang ở chế độ page đo theo chiều rộng cửa sổ |
+| `bf53788` | `refactor(ui):` tách `FloatingLayer` khỏi `UiController` |
+| `af38d3f` | `refactor(ui):` tách `PopupContent` khỏi `TranslatePopup` |
+| `2bca155` | `refactor(settings):` tách `SettingTab` thành `sections/` |
+| `4891977` | `refactor(core):` tách `SelectionRules` khỏi `SelectionManager` (+17 test) |
+| `fb0830e` | `build(ci):` 4 cổng CI mới (E0-T4) |
+| `53f7b57` | `docs:` minh bạch endpoint `google-free` (E0-T5) |
+| `ff50ba7` | `docs(changelog):` entry `0.2.3` |
+| `e0c0d2a` | `chore(release):` bump `0.2.3` |
+
+`npm run verify` xanh sau **mỗi** commit.
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| Sửa `t()` trả về key thay vì fallback về `en` (`i18n/index.ts:63-66`) | Là **E4-T1**, đã có yêu cầu và AC riêng ở đó. Làm sớm là lấn epic. |
+| Sửa `normalizeDetectedLang()` cắt script subtag (`providers/langMap.ts:78`) | Là **E3-T3**, điều kiện chặn của tính năng tiếng Trung. Ở E0 chưa có ngôn ngữ nào để kiểm chứng. |
+| Tách `SelectionManager.capture()` sâu hơn (phần đọc DOM) | Phần còn lại thực sự cần DOM; tách thêm chỉ tạo lớp trung gian không test được. |
+| Test đa nền tảng (Windows/macOS/Linux/Mobile) | Không phải thay đổi code. Vẫn là mục còn hở trước khi submit lại. |
+| Thêm 4 topic GitHub còn thiếu; sửa description repo trên GitHub (`Vide coding with Claude 😊`) | Nằm ở cài đặt repo trên GitHub, không phải file trong repo. **Cần chủ dự án tự làm.** |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` (file rác WSL, chưa track) | Ngoài phạm vi được duyệt. Nên thêm `*:Zone.Identifier` vào `.gitignore` ở một task khác. |
+
+#### Một lưu ý về `/code-review`
+
+Lệnh này review **diff**, không review toàn bộ cây thư mục. Vì `main` sạch, nó đã chọn commit `97ea9f3` làm phạm vi và phủ đúng một commit chứ không phải 42 file. Nó tìm được **1 issue thật** (bug đơn vị wheel, đã sửa ở `ca024b6`). Toàn bộ 5 trục phân loại được làm bằng audit thủ công trên tay — đúng như kế hoạch đã lường trước: *"Lệnh này sinh ra danh sách thô; việc phân loại và quyết định phạm vi là phần người làm."*
+
+**Với các epic sau: đừng trông đợi `/code-review` phủ hết một thư mục.** Nếu cần review rộng, phải chỉ định phạm vi rõ hoặc tự đọc.
 
 ---
 
@@ -184,7 +265,7 @@ const CONTAINER_SELECTORS = '.workspace-leaf-content, .workspace-leaf, .markdown
 
 Chuỗi hệ quả:
 
-1. `UiController.visibleBounds()` = giao của viewport và `containerEl.getBoundingClientRect()` → biên trên nằm ở **đỉnh `.workspace-leaf-content`**, tức phía trên view-header.
+1. `FloatingLayer.visibleBounds()` (`src/ui/FloatingLayer.ts:42`) = giao của viewport và `containerEl.getBoundingClientRect()` → biên trên nằm ở **đỉnh `.workspace-leaf-content`**, tức phía trên view-header.
 2. `Positioner.clipInsets()` tính phần thừa so với biên đó → popup nằm trong vùng view-header **không bị coi là thừa**, `--st-clip-top` = 0 ở vùng đó.
 3. `styles.css:107,192` `clip-path: inset(...)` không cắt gì → popup hiển thị đè lên header. Đúng như ảnh.
 4. Thêm một tầng nữa: `OCCLUSION_SELECTORS` **có** chứa `.view-header` và `.workspace-tab-header-container`, nhưng phép thử occlusion chỉ chạy ở lần đặt vị trí đầu tiên trong `place()`. Đường cập nhật khi cuộn dùng `computeCandidate()`, vốn **cố ý bỏ qua occlusion** vì lý do hiệu năng (`elementsFromPoint` 60 lần/giây). Nên khi cuộn, không có gì chặn cả.
@@ -200,13 +281,17 @@ Nói cách khác: cơ chế clip đã đúng, **biên được đo sai**.
 | `leafEl` | Nhận diện leaf, gắn sự kiện, thu thập scroll anchor | `.workspace-leaf-content` (giữ nguyên) |
 | `contentEl` | **Biên đặt vị trí và biên cắt** | `.view-content` — và với PDF là `.view-content` trừ chiều cao `.pdf-toolbar` |
 
-Bổ sung `contentEl` vào `ContextInfo` và `SelectionSnapshot`. `visibleBounds()` và `computeBoundary()` chuyển sang dùng `contentEl`.
+Bổ sung `contentEl` vào `ContextInfo` và `SelectionSnapshot`. `FloatingLayer.visibleBounds()` (`src/ui/FloatingLayer.ts:42`) và `UiController.computeBoundary()` (`src/ui/UiController.ts:583`) chuyển sang dùng `contentEl`.
 
 Với `.markdown-embed` và `.popover` (hover preview) thì phần tử nội dung tương ứng là `.markdown-embed-content` / `.hover-popover` — cần bảng map riêng, không dùng chung một selector.
 
-**E1-T2. Một cổng duy nhất cho hình học.** Hiện `setClip` được gọi ở 3 chỗ (`UiController.ts:197, 439, 592`). Nếu có nhánh nào set vị trí mà không đi qua đó thì lỗi tái xuất hiện. Gộp thành `applyGeometry(rect)` làm cả ba việc: set vị trí, set clip, set visibility. Không nơi nào được set vị trí trực tiếp nữa.
+**E1-T2. Một cổng duy nhất cho hình học.**
 
-Đặc biệt chú ý nhánh popup đổi kích thước theo nội dung (`TranslatePopup.ts:377-378` set width/height) — rect đổi thì clip cũ lập tức sai.
+> **E0 đã làm trước một nửa việc này.** Ba lời gọi `setClip` rải rác (`UiController.ts:197, 439, 592` trong bản `0.2.2`) nay đã gộp thành **`FloatingLayer.applyVisibility(target, rect, snapshot)`** (`src/ui/FloatingLayer.ts:60`), được gọi từ đúng 4 chỗ trong `UiController.ts` — dòng **196** (`placePopup`), **428** và **433** (`reanchor`, nhánh icon và nhánh popup), **572** (`showIcon`). Một chỗ nhiều hơn bản cũ vì nhánh icon và nhánh popup của `reanchor` giờ tách biệt.
+
+Việc còn lại của E1-T2: đổi `applyVisibility` thành **`applyGeometry(rect)`** làm cả **ba** việc — set vị trí, set clip, set visibility — bằng cách kéo nốt `moveTo()` vào trong nó. Hiện `moveTo` vẫn được gọi riêng ngay sau `applyVisibility` ở `UiController.ts:429` và `:434`. Sau khi gộp, không nơi nào được set vị trí trực tiếp nữa.
+
+Đặc biệt chú ý nhánh popup đổi kích thước theo nội dung (`TranslatePopup.applySize`, `src/ui/TranslatePopup.ts:350-351` set width/height) — rect đổi thì clip cũ lập tức sai.
 
 **E1-T3. Xử lý `visibleBounds == null`.** Khi leaf cuộn hết khỏi màn hình, `intersectRects` trả `null`, `clipInsets` trả `{0,0}` → **không cắt gì cả**. Phải ẩn hẳn thay vì rơi về 0.
 
@@ -228,7 +313,7 @@ Với `.markdown-embed` và `.popover` (hover preview) thì phần tử nội du
 
 | | Trigger key của plugin | Command của Obsidian |
 |---|---|---|
-| Nơi cấu hình | Settings của plugin (`HotkeyRecorder.ts`, `SettingTab.ts:246`) | Settings → Hotkeys của Obsidian |
+| Nơi cấu hình | Settings của plugin (`HotkeyRecorder.ts`, gọi từ `settings/sections/activation.ts:29`) | Settings → Hotkeys của Obsidian |
 | Lưu ở | `data.json`, trường `triggerHotkey` | `.obsidian/hotkeys.json` |
 | Phạm vi | Chỉ vài giây khi icon đang hiện | Toàn cục |
 | Xử lý | `HotkeyManager.matchesBinding()`, tự bắt `keydown` | `addCommand` trong `main.ts:158` |
@@ -464,7 +549,7 @@ Thêm: `--st-font-family` cần fallback cho chữ Ả Rập, CJK và Kana, nế
 ## E6 — Phiên âm hiển thị có điều kiện
 
 ### Hiện trạng
-`TranslatePopup.ts:399-400` render bất cứ khi nào `result.phonetic != null`, và **luôn** bọc trong dấu gạch chéo `/…/`. Điều đó sai với romanization: pinyin và romaji không phải IPA, bọc trong `/…/` là sai quy ước ngôn ngữ học.
+`src/ui/PopupContent.ts:68-70` (tách khỏi `TranslatePopup` ở E0) render bất cứ khi nào `result.phonetic != null`, và **luôn** bọc trong dấu gạch chéo `/…/`. Điều đó sai với romanization: pinyin và romaji không phải IPA, bọc trong `/…/` là sai quy ước ngôn ngữ học.
 
 ### Yêu cầu cụ thể
 - Thêm `phoneticKind: 'ipa' | 'romanization' | 'none'` vào `ProviderResponse` và `TranslationResult`.
@@ -613,14 +698,30 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 
 ## Trạng thái kế hoạch
 
-**Kế hoạch đã chốt.** Toàn bộ 10 câu hỏi mở đã có quyết định (bảng đầu tài liệu). Không còn hạng mục nào chờ xác nhận trước khi bắt đầu E0.
+**Kế hoạch đã chốt.** Toàn bộ 10 câu hỏi mở đã có quyết định (bảng đầu tài liệu).
+
+### Tiến độ
+
+| Epic | Milestone | Trạng thái |
+|---|---|---|
+| **E0** — Audit, review, tái cấu trúc | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) |
+| **E8** — `CLAUDE.md` | `0.2.3` | ⏭️ **Tiếp theo** |
+| E1 — Popup lòi ra mép trên | `0.3.0` | Chưa bắt đầu |
+| E2 — Đồng bộ trigger key | `0.3.0` | Chưa bắt đầu |
+| E3 — Registry ngôn ngữ | `0.4.0` | Chưa bắt đầu |
+| E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
+| E5 — 3 provider mới | `0.5.0` | Chưa bắt đầu |
+| E6 — Phiên âm có điều kiện | `0.5.0` | Chưa bắt đầu |
+| E7 — Tài liệu | `0.6.0` | Chưa bắt đầu |
 
 Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi tự quyết** (quy tắc R3):
 
-1. **Kết quả `/code-review` ở E0** có thể cho thấy phạm vi tái cấu trúc lớn hơn 4 file đã liệt kê. Nếu vậy, trình bày phạm vi mới và chờ đồng ý — không tự mở rộng.
+1. ~~**Kết quả `/code-review` ở E0** có thể cho thấy phạm vi tái cấu trúc lớn hơn 4 file đã liệt kê.~~ **Đã giải quyết ở E0:** phạm vi thực tế hoá ra *nhỏ hơn* dự kiến chứ không lớn hơn — audit đề nghị 3 file, chủ dự án duyệt giữ đủ 4.
 2. **Bảng mã ngôn ngữ ở E3-T2** là điểm khởi đầu dựng từ tài liệu API. Nếu thực tế khác (đặc biệt phần `zh` của DeepL và Youdao), báo lại trước khi sửa bảng.
 3. **`app.hotkeyManager` ở E2-T2** là API không công khai. Nếu hình dạng của nó khác dự kiến hoặc không truy cập được, báo lại thay vì tự tìm đường vòng.
 
 ### Việc tiếp theo
 
-Bắt đầu **E0-T1** (thu thập nguyên văn kết quả automated check) song song với **E0-T3** (`/code-review`). Hai việc này độc lập nhau và cùng là đầu vào cho quyết định phạm vi tái cấu trúc.
+**E8 — viết `CLAUDE.md`.** Prompt chi tiết đã soạn sẵn tại [`docs/prompts/PROMPT-E8.md`](prompts/PROMPT-E8.md), mang theo ngữ cảnh vừa học được từ E0.
+
+Sau E8 là **E1** (`0.3.0`).

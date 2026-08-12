@@ -67,6 +67,8 @@ Phải nói rõ để không đọc quá lên: các commit trên cho biết **nh
 
 Mỗi giả thuyết có kết luận dứt khoát. Không mục nào để ở trạng thái "có thể".
 
+> **Về số dòng trong mục này.** Việc kiểm chứng chạy trên bản **`0.2.2`**, trước khi E0 tái cấu trúc bốn file lớn, nên mọi `file:dòng` dưới đây là số dòng của `0.2.2` và **cố ý giữ nguyên** — chúng là bằng chứng cho một cuộc điều tra tại một thời điểm, không phải chỉ dẫn để đi tới code hôm nay. Cần số dòng hiện hành thì xem `docs/CODE-REVIEW.md` và `docs/DEV-PLAN.md`, cả hai đã được cập nhật sau tái cấu trúc.
+
 ### Bảng tổng hợp
 
 | # | Giả thuyết | Kết luận | Bằng chứng cốt lõi |
@@ -274,7 +276,7 @@ main.ts:85  this.register(() => this.selectionManager.destroy());
 
 `this.register()` là cơ chế chính thức của Obsidian: mọi callback đã đăng ký được chạy khi plugin unload. Không listener nào sống sót qua `onunload`.
 
-**Việc không dùng `registerDomEvent` là quyết định có chủ ý, có lý do kỹ thuật đúng**, ghi tại `src/core/SelectionManager.ts:159-165`:
+**Việc không dùng `registerDomEvent` là quyết định có chủ ý, có lý do kỹ thuật đúng**, ghi tại `src/core/SelectionManager.ts:154-159` (số dòng của bản `0.2.3`; ở bản `0.2.2` là `:159-165`):
 
 > Listeners are added directly and their removers tracked, rather than going through `registerDomEvent`. The reason is `detach`: Obsidian only releases `registerDomEvent` handlers when the whole plugin unloads, so a session that opens and closes popouts repeatedly would accumulate registrations against dead documents.
 

@@ -2,6 +2,10 @@
 
 Ngày: **2026-08-12**. Trạng thái: `main` @ `777e281`, version `0.2.2`, 42 file TS trong `src/` (7 331 LOC), 16 file test, 296 test xanh, `npm run lint` **0 error / 8 warning**.
 
+> **Đây là ảnh chụp tại thời điểm review**, trước khi tái cấu trúc. Mọi `file:dòng` trong tài liệu này là số dòng của **`0.2.2`** và cố ý giữ nguyên — chúng là căn cứ cho các quyết định bên dưới. Trạng thái sau khi thực hiện nằm ở [mục cuối](#trạng-thái-sau-khi-thực-hiện); số dòng hiện hành nằm trong `docs/DEV-PLAN.md`.
+>
+> Hai ngoại lệ đã kiểm lại và **vẫn đúng ở `0.2.3`**, vì E0 không chạm tới chúng: `i18n/index.ts:63-66` (issue #10, dành cho E4-T1) và `providers/langMap.ts:78` (issue #11, dành cho E3-T3).
+
 ---
 
 ## Cách review này được thực hiện
@@ -158,3 +162,27 @@ Audit này đề nghị 3 file. **Chủ dự án duyệt đủ 4 file như kế 
 | `build(ci): thêm cổng ranh giới import, link docs, host README` | E0-T4 | #7, #8 |
 
 Sau mỗi commit: `npm run verify` xanh. Ngoài issue #1 đã được duyệt riêng, hành vi người dùng không đổi ở bất kỳ commit nào.
+
+---
+
+## Trạng thái sau khi thực hiện
+
+Toàn bộ phạm vi trên đã hoàn thành và phát hành thành **`0.2.3`**.
+
+| # | Issue | Nhãn | Kết quả |
+|---|---|---|---|
+| 1 | Wheel ngang đo theo chiều cao trang | `must-fix-in-E0` | ✅ Sửa ở `ca024b6`, thêm 1 test cho cả hai trục |
+| 2 | 4 phương thức không ai gọi | `must-fix-in-E0` | ✅ Xoá ở `25c24f7` |
+| 3 | 2 key i18n mồ côi | `must-fix-in-E0` | ✅ Xoá ở `25c24f7`; 134 → 132 chuỗi |
+| 4 | `UiController` ôm 6 trách nhiệm | `must-fix-in-E0` | ✅ `bf53788` — `FloatingLayer.applyVisibility()` gom 3 lời gọi `setClip` thành một cổng |
+| 5 | `TranslatePopup` trộn 3 trách nhiệm | `must-fix-in-E0` | ✅ `af38d3f` — `PopupContent`; 569 → 367 dòng |
+| 6 | `SettingTab` sẽ phình ở E4/E5 | `must-fix-in-E0` | ✅ `2bca155` — `sections/`; 460 → 95 dòng |
+| 7 | Ranh giới tầng không có cổng CI | `must-fix-in-E0` | ✅ `fb0830e` — `no-restricted-imports` hai chiều |
+| 8 | Không có cổng link chết / host README | `must-fix-in-E0` | ✅ `fb0830e` — cùng 2 cổng i18n placeholder |
+| 9 | `SelectionManager.capture()` trộn luật với DOM | `must-fix-in-E0` | ✅ `4891977` — `SelectionRules.ts` + 17 test |
+| 10 | `t()` trả về key thay vì fallback `en` | `wontfix` | ⏭️ Để cho **E4-T1** |
+| 11 | `normalizeDetectedLang()` cắt script subtag | `wontfix` | ⏭️ Để cho **E3-T3** |
+
+**Kết quả đo được:** 296 → **314 test**; 42 → **53 file TS**; `npm run lint` 8 → **5 warning, 0 error** (không warning nào bị chặn tiếng — số giảm vì `display` deprecated nay chỉ có một nơi gọi thay vì bốn).
+
+Ba câu quyết định ở trên vẫn đứng vững sau khi làm: phạm vi không nở ra, và danh sách "để nguyên" không phải chạm tới file nào.
