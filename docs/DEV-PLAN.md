@@ -246,6 +246,65 @@ Chạy `/init` để sinh khung, sau đó bổ sung thủ công những phần `
 
 ---
 
+### Kết quả thực hiện (E8)
+
+Thực hiện ngày **2026-08-12**, ngay sau E0, trên version `0.2.3`. Thuần tài liệu — **không chạm `src/`**, nên không bump version.
+
+#### Trạng thái
+
+| Hạng mục | Trạng thái | Ghi chú |
+|---|---|---|
+| 8 mục nội dung | **Xong** | Đủ 8, theo đúng thứ tự kế hoạch liệt kê |
+| 3 quy tắc R1–R3 | **Xong** | Chép nguyên văn từ mục trên, không diễn giải lại |
+| Kiểm chứng trích dẫn | **Xong** | Mọi `file:dòng`, tên hàm, tên lệnh trong `CLAUDE.md` đều được mở ra đối chiếu trước khi viết |
+| `npm run verify` | **Xanh** | 314 test, 0 error / 5 warning, 53 file nguồn, 132 chuỗi UI |
+
+Ngôn ngữ: `CLAUDE.md` viết tiếng Việt cho khớp `DEV-PLAN` / `CONTRIBUTING` / `SUBMISSION`, và ghi rõ ngay đầu file rằng code, comment, chuỗi UI tiếng Anh, CHANGELOG và README vẫn là tiếng Anh.
+
+#### `/init` suy ra được gì, và phải viết lại gì
+
+`/init` **không sinh ra file khung**. Nó nạp một bộ chỉ dẫn phân tích repo rồi để người viết ra `CLAUDE.md`, nên toàn bộ nội dung là viết tay. Đáng ghi lại là **bộ chỉ dẫn mặc định của `/init` mâu thuẫn trực tiếp với ba yêu cầu của E8**:
+
+| Chỉ dẫn mặc định của `/init` | Vì sao E8 phải làm ngược lại |
+|---|---|
+| *"Avoid listing every component or file structure"* | Mục 2 của E8 yêu cầu **bản đồ tầng có tên file**, vì đó chính là thứ E1–E7 tra khi mở phiên mới |
+| *"Do not make up… Common Development Tasks"* | Mục 5 (playbook) là *"phần giá trị nhất"* theo kế hoạch — nhưng nó không phải bịa: mỗi bước được kiểm bằng cách mở đúng file đó |
+| Chỉ nhắm vào "commands + high-level architecture" | Bốn mục 6, 7, 8 và ba quy tắc R1–R3 nằm ngoài phạm vi `/init` hoàn toàn, và cả bốn cạm bẫy mới đều là kết luận của E0 chứ không đọc ra được từ code |
+
+Ba thứ `/init` **không thể** suy ra, dù đọc hết `src/`, và đều là phần đắt nhất của tài liệu: *ý định* đằng sau 5 warning lint còn lại (nhìn từ code chúng chỉ là nợ kỹ thuật), lý do `SelectionManager` cố ý không dùng `registerDomEvent`, và bài học về cổng submit đọc `manifest.json` ở nhánh mặc định nhưng đọc file build ở release.
+
+#### Rà lại trích dẫn `file:dòng` (bước B)
+
+E8 không chạm `src/`, nhưng vẫn mở lại từng chỗ kế hoạch trích dẫn. **Không tìm thấy trích dẫn nào còn sai** — E0 đã cập nhật hết. Đã kiểm:
+
+`ContextDetector.ts:16` · `FloatingLayer.ts:42, :60` · `UiController.ts:196, 428, 429, 433, 434, 572, 583` · `TranslatePopup.ts:350-351` · `PopupContent.ts:68-70` · `styles.css:107, 192` · `langMap.ts:78` · `i18n/index.ts:63-66` · `main.ts:158, 160, 172` · `settings/sections/activation.ts:29` · `SelectionManager.ts:154-159` · `constants.ts:140-147`.
+
+Số dòng trong `docs/CODE-REVIEW.md` và `docs/REVIEW-FINDINGS.md` **cố ý** là số của `0.2.2` và được giữ nguyên — cả hai file đã nói rõ điều đó ở đầu.
+
+#### Commit
+
+| Commit | Nội dung |
+|---|---|
+| `7ee352a` | `docs:` `CLAUDE.md` — 8 mục + 3 quy tắc |
+| *(commit này)* | `docs:` kết quả E8, bảng tiến độ, `docs/prompts/PROMPT-E1.md` |
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| `docs/CONTRIBUTING.md` mục *Lệnh* thiếu 4 cổng CI mới của E0, và câu *"Trong TypeScript chỉ được đặt toạ độ tính lúc chạy"* nay cần kèm cảnh báo rằng rule lint chỉ bắt literal | Tài liệu người dùng/người đóng góp thuộc **E7**; và R2 chỉ yêu cầu rà *host / provider / ngôn ngữ / setting / ảnh*, không mục nào lệch. Ghi lại ở đây để E7 không phải tìm lại. |
+| `docs/ARCHITECTURE.md` sơ đồ khối chưa có `FloatingLayer`, `PopupContent`, `SelectionRules`, `settings/sections/` | Kế hoạch **E7-T1** đã ghi thẳng *"Vẽ lại sau E0 + E3"*. Vẽ bây giờ là vẽ hai lần. |
+| Không mở rộng `tests/i18n.test.ts` hay thêm test nào | E8 thuần tài liệu. |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` (file rác WSL) | Vẫn ngoài phạm vi, như đã ghi ở E0. |
+
+#### Một điều E8 làm lộ ra, đáng biết trước khi vào E1
+
+Playbook 5.4 (*thêm một setting mới*) hoá ra là mục **không có trong đặc tả gốc của E8** nhưng lại cần nhất, vì đường đi đã đổi hẳn ở E0: `settings.ts` → `sections/<đúng section>.ts` → `en.ts` + `vi.ts`, và `SettingTab.ts` **không** phải sửa. Bảng "section nào giữ setting nào" trong `CLAUDE.md` được dựng bằng cách grep `ctx.save(` trong cả 8 file `sections/` — **E5 sẽ cần đúng bảng đó** khi thêm ba cặp credential mới, và giả định trong E5 (*"`SettingTab.ts` phải tách trước khi thêm"*) vẫn đúng, chỉ là việc đó nay đã xong.
+
+Không phát hiện gì buộc một epic sau phải đổi cách làm.
+
+---
+
 ## E1 — Lỗi UI/UX: popup và icon lòi ra ở mép trên
 
 ### Mô tả lỗi (theo ảnh chụp)
@@ -705,8 +764,8 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 | Epic | Milestone | Trạng thái |
 |---|---|---|
 | **E0** — Audit, review, tái cấu trúc | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) |
-| **E8** — `CLAUDE.md` | `0.2.3` | ⏭️ **Tiếp theo** |
-| E1 — Popup lòi ra mép trên | `0.3.0` | Chưa bắt đầu |
+| **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
+| **E1** — Popup lòi ra mép trên | `0.3.0` | ⏭️ **Tiếp theo** |
 | E2 — Đồng bộ trigger key | `0.3.0` | Chưa bắt đầu |
 | E3 — Registry ngôn ngữ | `0.4.0` | Chưa bắt đầu |
 | E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
@@ -722,6 +781,10 @@ Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi t�
 
 ### Việc tiếp theo
 
-**E8 — viết `CLAUDE.md`.** Prompt chi tiết đã soạn sẵn tại [`docs/prompts/PROMPT-E8.md`](prompts/PROMPT-E8.md), mang theo ngữ cảnh vừa học được từ E0.
+**E1 — sửa lỗi popup/icon lòi ra ở mép trên** (`0.3.0`). Prompt chi tiết đã soạn sẵn tại [`docs/prompts/PROMPT-E1.md`](prompts/PROMPT-E1.md), mang theo ngữ cảnh từ E0 và E8 — đáng chú ý nhất là E1-T2 nay **chỉ còn một nửa việc**, vì `FloatingLayer.applyVisibility()` đã là cổng duy nhất cho clip.
 
-Sau E8 là **E1** (`0.3.0`).
+Khác với E0 và E8: E1 **có** đổi hành vi người dùng, nên là **MINOR** (`0.3.0`), không phải PATCH.
+
+Sau E1 là **E2** (cùng milestone `0.3.0`).
+
+> `CLAUDE.md` ở root là tài liệu bắt buộc đọc khi mở phiên mới, và cập nhật nó là một phần Definition of Done của mọi epic từ đây trở đi (quy tắc R1).
