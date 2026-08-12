@@ -7,8 +7,12 @@ import { clipInsets, intersectRects, isRectVisible, trimTop, type ClipInsets } f
 /**
  * What the layer needs of a floating element. Both the icon and the popup
  * supply it, which is what lets one method serve either.
+ *
+ * All three are here because all three are one answer: where the element is,
+ * how much of it may be painted, and whether it may be seen at all.
  */
-export interface Clippable {
+export interface FloatingElement {
+	moveTo(rect: Rect): void;
 	setAnchorHidden(hidden: boolean): void;
 	setClip(insets: ClipInsets): void;
 }
@@ -22,11 +26,12 @@ export interface Clippable {
  * much of an element hangs out of it. What should be on screen — the state
  * machine, the placement search, the dismiss rules — stays with the controller.
  *
- * The important consequence is {@link applyVisibility}. Deciding whether to
- * draw and deciding how much to clip are two halves of one answer, and they
- * used to be spelled out at three separate call sites; a fourth branch that
- * set a position without repeating both is exactly how the overhang bug comes
- * back. Here there is one place to add to.
+ * The important consequence is {@link applyGeometry}. Where an element goes,
+ * whether it may be drawn and how much of it may be painted are three halves of
+ * one answer, and they used to be spelled out at separate call sites; a branch
+ * that set a position without repeating the rest is exactly how the overhang
+ * bug comes back. Here there is one place to add to, and nothing outside this
+ * class writes an element's position, clip or visibility.
  */
 export class FloatingLayer {
 	constructor(
@@ -72,14 +77,24 @@ export class FloatingLayer {
 	}
 
 	/**
-	 * Hides an element that has left its leaf, and clips whatever still hangs out.
+	 * Puts an element at a rect, hides it if that rect has left its leaf, and
+	 * clips whatever still hangs out.
 	 *
-	 * Both halves are applied together, always. Hiding without clipping draws
-	 * over the tab header; clipping without hiding leaves a sliver behind when
-	 * the leaf goes away entirely.
+	 * The three are applied together, always, and in that order. Moving without
+	 * re-clipping paints the old shape at the new place — which is how a popup
+	 * that grew to fit its result ends up over the tab header; hiding without
+	 * clipping draws over the header the moment the element is shown again;
+	 * clipping without hiding leaves a sliver behind when the leaf goes away
+	 * entirely.
+	 *
+	 * A null snapshot means an element with no leaf behind it, which only the
+	 * unanchored fallback placement produces. It is clipped against itself:
+	 * placed, whole, and visible.
 	 */
-	applyVisibility(target: Clippable, rect: Rect, snapshot: SelectionSnapshot): void {
-		const bounds = this.visibleBounds(snapshot);
+	applyGeometry(target: FloatingElement, rect: Rect, snapshot: SelectionSnapshot | null): void {
+		const bounds = snapshot == null ? rect : this.visibleBounds(snapshot);
+
+		target.moveTo(rect);
 		target.setAnchorHidden(!isRectVisible(rect, bounds));
 		target.setClip(clipInsets(rect, bounds));
 	}

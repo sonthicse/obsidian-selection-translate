@@ -7,8 +7,15 @@ import { PopupContent, type PopupContentHandlers } from './PopupContent';
 import type { ClipInsets, Size } from './Positioner';
 
 export interface PopupHandlers extends PopupContentHandlers {
-	/** Asks the controller where a popup of this size should sit. */
-	place(size: Size): Rect;
+	/**
+	 * Asks the controller to put a popup of this size where it belongs.
+	 *
+	 * Returns nothing on purpose. The controller works out the rect and hands
+	 * it to {@link FloatingLayer.applyGeometry}, so the position, the clip and
+	 * the visibility are always written together — this class knows its size
+	 * and never its place.
+	 */
+	place(size: Size): void;
 	/** A wheel gesture landed on the popup and has to reach the note behind it. */
 	onWheel(event: WheelEvent): void;
 }
@@ -79,7 +86,7 @@ export class TranslatePopup {
 		for (let i = 0; i < 3; i++) dots.createSpan({ cls: 'st-dot' });
 
 		this.applySize(el, { width: POPUP_MIN_WIDTH, height: POPUP_LOADING_HEIGHT });
-		this.moveTo(this.handlers.place({ width: POPUP_MIN_WIDTH, height: POPUP_LOADING_HEIGHT }));
+		this.handlers.place({ width: POPUP_MIN_WIDTH, height: POPUP_LOADING_HEIGHT });
 	}
 
 	/** Replaces the loading state with a finished translation. */
@@ -127,7 +134,7 @@ export class TranslatePopup {
 		const size = this.getSize();
 		if (size == null) return;
 
-		this.moveTo(this.handlers.place(size));
+		this.handlers.place(size);
 	}
 
 	/** Closes the popup and hands focus back if it was taken. */
@@ -274,7 +281,7 @@ export class TranslatePopup {
 		this.pendingFrame = win.requestAnimationFrame(() => {
 			this.pendingFrame = null;
 			this.applySize(el, measured.size);
-			this.moveTo(this.handlers.place(measured.size));
+			this.handlers.place(measured.size);
 			this.afterResize(el, win);
 		});
 	}
@@ -334,7 +341,7 @@ export class TranslatePopup {
 			// The content may have reflowed into a different height, so the
 			// placement is worth one more pass.
 			const rect = el.getBoundingClientRect();
-			this.moveTo(this.handlers.place({ width: rect.width, height: rect.height }));
+			this.handlers.place({ width: rect.width, height: rect.height });
 		};
 
 		const onEnd = (event: TransitionEvent): void => {

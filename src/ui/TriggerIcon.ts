@@ -41,12 +41,18 @@ export class TriggerIcon {
 		private readonly onWheel: (event: WheelEvent) => void
 	) {}
 
-	/** Places the icon at a viewport rect inside the given window. */
-	show(win: Window, rect: Rect): void {
+	/**
+	 * Brings the icon into the given window and starts its reveal.
+	 *
+	 * Says nothing about where it goes: position, clip and visibility are one
+	 * answer and belong to {@link FloatingLayer.applyGeometry}, which the
+	 * controller calls straight after this. Nothing is painted in between, so
+	 * the icon never appears at a stale spot.
+	 */
+	show(win: Window): void {
 		this.cancelPendingFrame();
 		const el = this.ensureElement(win);
 
-		this.moveTo(rect);
 		el.removeClass('is-anchor-hidden');
 		el.toggleClass('mod-follow-theme', this.getFollowTheme());
 		this.pendingFrame = win.requestAnimationFrame(() => {

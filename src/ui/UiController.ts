@@ -168,17 +168,24 @@ export class UiController {
 	}
 
 	/**
-	 * Where a popup of a given size should sit.
+	 * Puts a popup of a given size where it belongs.
 	 *
 	 * Uses the same candidate search as the icon, which gives the flip-above
 	 * behaviour for free: a tall result near the bottom of the screen simply
 	 * fails the below-centre fit test and lands above the selection instead.
+	 *
+	 * Called on every size change as well as from the scroll path, so opening a
+	 * popup, growing one and scrolling one all answer the question the same way:
+	 * a popup placed for a selection that has already left the leaf must not
+	 * draw over the tab header just because no scroll has happened yet.
 	 */
-	private placePopup(size: Size): Rect {
+	private placePopup(size: Size): void {
 		const snapshot = this.machine.getSnapshot();
 
 		if (snapshot == null) {
-			return makeRect(VIEWPORT_MARGIN, VIEWPORT_MARGIN, size.width, size.height);
+			const rect = makeRect(VIEWPORT_MARGIN, VIEWPORT_MARGIN, size.width, size.height);
+			this.layer.applyGeometry(this.layer.popup, rect, null);
+			return;
 		}
 
 		// No occlusion test for the popup: it is the thing the user just asked
@@ -189,12 +196,7 @@ export class UiController {
 		// Remembered so the scroll path can reproduce this decision instead of
 		// making a fresh one every frame.
 		this.popupPlacement = result.placement;
-		// Asked here as well as on the scroll path, so opening a popup and
-		// resizing one answer the question the same way: a popup placed for a
-		// selection that has already left the leaf must not draw over the tab
-		// header just because no scroll has happened yet.
-		this.layer.applyVisibility(this.layer.popup, result.rect, snapshot);
-		return result.rect;
+		this.layer.applyGeometry(this.layer.popup, result.rect, snapshot);
 	}
 
 	/** A usable selection appeared. Decides between showing the icon and translating. */
@@ -424,14 +426,7 @@ export class UiController {
 		const rect = this.stickyRect(snapshot, geometry, placement, size);
 		if (rect == null) return;
 
-		if (showingIcon) {
-			this.layer.applyVisibility(this.layer.icon, rect, snapshot);
-			this.layer.icon.moveTo(rect);
-			return;
-		}
-
-		this.layer.applyVisibility(this.layer.popup, rect, snapshot);
-		this.layer.popup.moveTo(rect);
+		this.layer.applyGeometry(showingIcon ? this.layer.icon : this.layer.popup, rect, snapshot);
 	}
 
 	/** The one remembered candidate, recomputed against the current anchor. */
@@ -566,10 +561,11 @@ export class UiController {
 		this.iconPlacement = result.placement;
 		debug('icon placed', { placement: result.placement, clamped: result.clamped });
 
-		this.layer.icon.show(snapshot.win, result.rect);
-		// Matters on the resize path, where the icon may already have been
-		// scrolled out of its leaf before the window changed size.
-		this.layer.applyVisibility(this.layer.icon, result.rect, snapshot);
+		this.layer.icon.show(snapshot.win);
+		// Placed only once the element exists, and in one call — the clip matters
+		// on the resize path too, where the icon may already have been scrolled
+		// out of its leaf before the window changed size.
+		this.layer.applyGeometry(this.layer.icon, result.rect, snapshot);
 	}
 
 	/**
