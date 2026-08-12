@@ -15,6 +15,7 @@ function context(overrides: Partial<ContextInfo> = {}): ContextInfo {
 		inProperties: false,
 		// The rules never touch it; only `isContextEnabled` sees this object.
 		containerEl: null as unknown as HTMLElement,
+		contentEl: null as unknown as HTMLElement,
 		...overrides,
 	};
 }

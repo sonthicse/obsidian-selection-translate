@@ -1,7 +1,8 @@
+import { SURFACE_SELECTORS } from '../constants';
 import { makeRect, type Rect, type SelectionSnapshot } from '../types';
 import type { TriggerIcon } from './TriggerIcon';
 import type { TranslatePopup } from './TranslatePopup';
-import { clipInsets, intersectRects, isRectVisible, type ClipInsets } from './Positioner';
+import { clipInsets, intersectRects, isRectVisible, trimTop, type ClipInsets } from './Positioner';
 
 /**
  * What the layer needs of a floating element. Both the icon and the popup
@@ -34,7 +35,31 @@ export class FloatingLayer {
 	) {}
 
 	/**
-	 * The visible part of the leaf: the region an anchor has to reach into.
+	 * The content region of the leaf, in viewport coordinates.
+	 *
+	 * Measured from `contentEl` and not from the leaf: the leaf includes its
+	 * view header, so its top edge sits above the row with the back button and
+	 * the tab title — and a boundary that reaches up there declares a popup
+	 * drawn over that row to be perfectly inside its leaf. Which is exactly the
+	 * bug: nothing looked like overhang, so nothing was clipped.
+	 *
+	 * The PDF toolbar is subtracted for the same reason one level down. It is a
+	 * child of `.view-content` rather than a sibling, so the content box alone
+	 * still reaches under it.
+	 */
+	contentRect(snapshot: SelectionSnapshot): Rect {
+		const box = snapshot.contentEl.getBoundingClientRect();
+		const rect = makeRect(box.left, box.top, box.width, box.height);
+		if (snapshot.context !== 'pdf') return rect;
+
+		const toolbar = snapshot.contentEl.querySelector(SURFACE_SELECTORS.pdfToolbar);
+		if (toolbar == null) return rect;
+
+		return trimTop(rect, toolbar.getBoundingClientRect().bottom);
+	}
+
+	/**
+	 * The visible part of that content region: what an anchor has to reach into.
 	 *
 	 * Null when the leaf has scrolled entirely off screen, which callers must
 	 * handle rather than treat as "no clipping needed".
@@ -42,12 +67,8 @@ export class FloatingLayer {
 	visibleBounds(snapshot: SelectionSnapshot): Rect | null {
 		const win = snapshot.win;
 		const viewport = makeRect(0, 0, win.innerWidth, win.innerHeight);
-		const container = snapshot.containerEl.getBoundingClientRect();
 
-		return intersectRects(
-			viewport,
-			makeRect(container.left, container.top, container.width, container.height)
-		);
+		return intersectRects(viewport, this.contentRect(snapshot));
 	}
 
 	/**

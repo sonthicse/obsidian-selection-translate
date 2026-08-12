@@ -14,6 +14,7 @@ function snapshot(id = 1): SelectionSnapshot {
 		inProperties: false,
 		win: {} as Window,
 		containerEl: {} as HTMLElement,
+		contentEl: {} as HTMLElement,
 		activeElement: null,
 		cursor: null,
 		// Anchor tracking is a UiController concern; the machine only carries it.

@@ -29,6 +29,9 @@ export const SURFACE_SELECTORS = {
 	reading: '.markdown-reading-view, .markdown-preview-view',
 	pdf: '.pdf-viewer, .pdf-container, .pdf-toolbar',
 	pdfTextLayer: '.textLayer',
+	/** The toolbar alone: it sits *inside* the content box, so the positioning
+	 *  boundary has to be trimmed past it rather than simply measured. */
+	pdfToolbar: '.pdf-toolbar',
 	propertyValue: '.metadata-property-value',
 	propertyKey: '.metadata-property-key-input',
 } as const;

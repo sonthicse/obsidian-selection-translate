@@ -573,12 +573,15 @@ export class UiController {
 	}
 
 	/**
-	 * The region the icon must stay inside: the leaf, clipped to the viewport.
+	 * The region the icon must stay inside: the leaf's content, clipped to the
+	 * viewport.
 	 *
-	 * Using the leaf rather than the whole window is what keeps the icon off the
-	 * PDF toolbar and the tab header — a selection on the first line of a
-	 * document has no room below inside its own leaf, so the placement search
-	 * moves on to a candidate above it.
+	 * Using the content box rather than the whole window is what keeps the icon
+	 * off the PDF toolbar and the tab header — a selection on the first line of a
+	 * document has no room below inside its own content box, so the placement
+	 * search moves on to a candidate above it. The measurement itself belongs to
+	 * {@link FloatingLayer}, which is the one place that knows what a leaf's
+	 * content region is.
 	 */
 	private computeBoundary(snapshot: SelectionSnapshot): Rect {
 		const win = snapshot.win;
@@ -587,12 +590,9 @@ export class UiController {
 			VIEWPORT_MARGIN
 		);
 
-		const container = snapshot.containerEl.getBoundingClientRect();
-		const containerRect = makeRect(container.left, container.top, container.width, container.height);
-
 		// A leaf scrolled entirely out of view yields no overlap; the viewport is
 		// then the only sensible boundary left.
-		return intersectRects(viewport, containerRect) ?? viewport;
+		return intersectRects(viewport, this.layer.contentRect(snapshot)) ?? viewport;
 	}
 
 	/**

@@ -445,6 +445,7 @@ export class SelectionManager {
 			inProperties: info.inProperties,
 			win,
 			containerEl: info.containerEl,
+			contentEl: info.contentEl,
 			// Remembered so focus can be handed back when the popup closes.
 			activeElement: win.document.activeElement,
 			cursor: this.lastCursor,

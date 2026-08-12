@@ -85,8 +85,17 @@ export interface SelectionSnapshot {
 	inProperties: boolean;
 	/** Owning window. Differs from the main one inside popout windows. */
 	win: Window;
-	/** Leaf content element, used as the positioning boundary. */
+	/** Leaf element: identifies the surface, and holds the scrollers to follow. */
 	containerEl: HTMLElement;
+	/**
+	 * The content box of that leaf — the positioning and clipping boundary.
+	 *
+	 * Deliberately not the leaf itself: a leaf includes its view header, and
+	 * measuring the boundary from there let the popup paint over Obsidian's own
+	 * chrome. The full reasoning is on `ContextInfo.contentEl`, where the
+	 * element is resolved.
+	 */
+	contentEl: HTMLElement;
 	/** Element focused when the selection was taken, so focus can be restored. */
 	activeElement: Element | null;
 	/** Last known pointer position, for the cursor-following icon placement.

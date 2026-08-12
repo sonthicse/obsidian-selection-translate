@@ -8,12 +8,35 @@ export interface ContextInfo {
 	context: SelectionContext;
 	/** Selection is in the properties / frontmatter editor. */
 	inProperties: boolean;
-	/** Leaf content element, used as the positioning boundary. */
+	/** Leaf element: what identifies the surface and carries its scrollers. */
 	containerEl: HTMLElement;
+	/**
+	 * The part of the leaf that holds content, and the only boundary the
+	 * floating UI may be placed or clipped against.
+	 *
+	 * Split from {@link containerEl} because `.workspace-leaf-content` includes
+	 * `.view-header` — the row with the back button and the tab title. Measuring
+	 * the boundary from there put its top edge *above* the header, so a popup
+	 * drifting up with its text was never seen to overhang anything and kept
+	 * painting over Obsidian's own chrome. The content element is where the
+	 * user's text actually lives, which is what the boundary was always meant to
+	 * describe.
+	 */
+	contentEl: HTMLElement;
 }
 
 /** Selectors that identify the leaf a surface belongs to, most specific first. */
 const CONTAINER_SELECTORS = '.workspace-leaf-content, .workspace-leaf, .markdown-embed, .popover';
+
+/**
+ * The content element of each kind of container, innermost surface first.
+ *
+ * A separate table rather than one selector list, because the answer is not the
+ * same shape everywhere: a leaf keeps its content in `.view-content`, an
+ * embedded note in `.markdown-embed-content`, and a hover preview is its own
+ * content — it has no header to stay clear of.
+ */
+const CONTENT_SELECTORS = '.markdown-embed-content, .hover-popover, .view-content';
 
 /** Everything that makes up the properties editor, key inputs included. */
 const PROPERTIES_SELECTOR = '.metadata-container, .metadata-property, .metadata-properties';
@@ -55,7 +78,24 @@ export function detectContext(node: Node | null, fallbackContainer: HTMLElement)
 	const inProperties = el.closest(PROPERTIES_SELECTOR) != null;
 
 	const context = detectSurface(el);
-	return { context, inProperties, containerEl };
+	return { context, inProperties, containerEl, contentEl: findContentEl(el, containerEl) };
+}
+
+/**
+ * The content element the selection sits in, or the leaf when there is none.
+ *
+ * Searched upwards from the selection so the innermost surface wins: a note
+ * embedded in another note has its own content box, and that is the one its
+ * text has to be clipped to. The containment test rejects a match found by
+ * climbing *past* the leaf — a container with no content element of its own
+ * would otherwise borrow the one belonging to whatever encloses it, which is a
+ * boundary far too large.
+ */
+function findContentEl(el: Element, containerEl: HTMLElement): HTMLElement {
+	const contentEl = el.closest<HTMLElement>(CONTENT_SELECTORS);
+	if (contentEl == null || !containerEl.contains(contentEl)) return containerEl;
+
+	return contentEl;
 }
 
 function detectSurface(el: Element): SelectionContext {

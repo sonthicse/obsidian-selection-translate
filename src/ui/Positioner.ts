@@ -168,6 +168,20 @@ export function intersectRects(a: Rect, b: Rect): Rect | null {
 	return makeRect(left, top, right - left, bottom - top);
 }
 
+/**
+ * Pushes a rect's top edge down to `top`, never past its own bottom.
+ *
+ * For chrome that lives inside the content box instead of beside it — the PDF
+ * toolbar being the one case. Shrinking rather than translating is the point:
+ * the region loses the strip the toolbar covers and keeps the rest.
+ */
+export function trimTop(rect: Rect, top: number): Rect {
+	if (top <= rect.top) return rect;
+
+	const height = Math.max(0, rect.bottom - top);
+	return makeRect(rect.left, Math.min(top, rect.bottom), rect.width, height);
+}
+
 /** Translates a rect, preserving its size. */
 export function offsetRect(rect: Rect, dx: number, dy: number): Rect {
 	return makeRect(rect.left + dx, rect.top + dy, rect.width, rect.height);

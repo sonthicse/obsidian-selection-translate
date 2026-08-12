@@ -12,6 +12,7 @@ import {
 	offsetRect,
 	overlaps,
 	place,
+	trimTop,
 	type PlacementRequest,
 } from '../src/ui/Positioner';
 
@@ -285,6 +286,25 @@ describe('clipInsets', () => {
 
 	it('clips nothing when the leaf is off screen entirely', () => {
 		expect(clipInsets(makeRect(400, 200, 200, 140), null)).toEqual({ top: 0, bottom: 0 });
+	});
+});
+
+describe('trimTop', () => {
+	const rect = makeRect(0, 100, 800, 500);
+
+	it('cuts the strip a toolbar covers off the top of the region', () => {
+		// The PDF toolbar is a child of the content box, so the region reaches
+		// under it; 40px of toolbar means the content starts 40px lower.
+		expect(trimTop(rect, 140)).toEqual(makeRect(0, 140, 800, 460));
+	});
+
+	it('leaves a region alone when nothing covers it', () => {
+		expect(trimTop(rect, 100)).toBe(rect);
+		expect(trimTop(rect, 20)).toBe(rect);
+	});
+
+	it('collapses to zero height rather than inverting', () => {
+		expect(trimTop(rect, 900)).toEqual(makeRect(0, 600, 800, 0));
 	});
 });
 
