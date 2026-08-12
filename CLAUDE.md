@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Tài liệu này viết bằng tiếng Việt vì bộ tài liệu phát triển của dự án (`docs/DEV-PLAN.md`, `docs/CONTRIBUTING.md`, `docs/SUBMISSION.md`) dùng tiếng Việt. **Mã nguồn, comment trong code, chuỗi UI tiếng Anh, CHANGELOG và README vẫn viết bằng tiếng Anh** — đừng dịch chúng.
 >
-> Trạng thái khi viết: version `0.2.3`, sau E0. **53 file TS** trong `src/` (7 609 LOC), **17 file test**, **314 test**, **132 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
+> Trạng thái khi viết: version `0.2.3`, sau **E1** (chưa phát hành; E1 + E2 cùng đi trong `0.3.0`). **53 file TS** trong `src/` (7 740 LOC), **17 file test**, **327 test**, **132 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
 
 ---
 
@@ -34,9 +34,9 @@ src/selection/             đọc vùng chọn từ từng bề mặt
   DomSelectionSource.ts · InputSelectionSource.ts · PdfSelectionSource.ts
 
 src/core/                  logic không biết gì về hình dạng màn hình
-  SelectionManager.ts (479)  sự kiện DOM, snapshot, chọn nguồn selection
+  SelectionManager.ts (480)  sự kiện DOM, snapshot, chọn nguồn selection
   SelectionRules.ts   (117)  ⟵ tách ở E0. Bộ luật thuần, 17 test
-  ContextDetector.ts         nhận diện bề mặt + containerEl
+  ContextDetector.ts         nhận diện bề mặt + containerEl (leaf) + contentEl (biên)
   StateMachine.ts            idle → icon → loading → result | error
   TranslationOrchestrator.ts token, cache, normalize
   LruCache.ts · TextNormalizer.ts · HotkeyManager.ts
@@ -48,9 +48,10 @@ src/providers/             chỉ nhận/trả dữ liệu thuần, test được
   ProviderRegistry.ts · langMap.ts · http.ts
 
 src/ui/                    tầng duy nhất được chạm DOM của popup/icon
-  UiController.ts     (687)  điều phối: state machine, placement search, dismiss
-  FloatingLayer.ts    (70)   ⟵ tách ở E0. Sở hữu icon + popup; mọi câu hỏi hình học
-  TranslatePopup.ts   (367)  vòng đời element, đo kích thước, animation grow
+  UiController.ts     (683)  điều phối: state machine, placement search, dismiss
+  FloatingLayer.ts    (106)  ⟵ tách ở E0. Sở hữu icon + popup; mọi câu hỏi hình học.
+                             applyGeometry() là cổng DUY NHẤT set vị trí/clip/visibility
+  TranslatePopup.ts   (376)  vòng đời element, đo kích thước, animation grow
   PopupContent.ts     (239)  ⟵ tách ở E0. Dựng nội dung kết quả/lỗi
   TriggerIcon.ts · Positioner.ts (hình học thuần, có test) · icons.ts
 
@@ -105,7 +106,7 @@ Chạy một file test: `npx vitest run tests/Positioner.test.ts` · một test:
 - **Chuỗi UI sentence case**, theo style guide của Obsidian. Heading trong settings không lặp tên plugin, không chứa từ "settings". Câu lỗi phải nói người dùng làm gì tiếp theo.
 - **Không dựng DOM từ chuỗi markup.** `innerHTML` / `outerHTML` / `insertAdjacentHTML` bị cấm ở cả ESLint lẫn `npm run check`. Dùng `createDiv` / `createEl` / `setText`.
 - **Mạng đi qua `requestWithRetry` ở [`src/providers/http.ts:20`](src/providers/http.ts#L20)** (dùng `requestUrl` của Obsidian). **Không bao giờ `fetch`** — CORS chặn DeepL, và mobile cần `requestUrl`.
-- **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
+- **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. Bốn custom property hình học — `--st-clip-top` / `--st-clip-right` / `--st-clip-bottom` / `--st-clip-left` — được ghi từ `setClip()` của icon và popup, và chỉ hai dòng `clip-path` trong `styles.css` đọc chúng ([`:107`](styles.css#L107), [`:196`](styles.css#L196)). Thêm cạnh thì phải sửa **cả hai** dòng. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
 - **Log qua `src/utils/log.ts`** — cổng duy nhất, mặc định tắt, không bao giờ log nội dung note hay API key.
 - `type` import tường minh (`consistent-type-imports`), `no-explicit-any` ở mức error.
 - Commit theo Conventional Commits, scope theo epic: `fix(ui):`, `feat(hotkey):`, `refactor(lang):`, `feat(provider):`, `feat(i18n):`, `docs(i18n):`.
@@ -129,8 +130,8 @@ Mỗi playbook là danh sách file **theo đúng thứ tự phải sửa**.
 
 ### 5.2. Thêm một provider mới
 
-1. [`src/types.ts:149`](src/types.ts#L149) — thêm id vào `ProviderId`.
-2. [`src/constants.ts:140-147`](src/constants.ts#L140-L147) — endpoint vào `ENDPOINTS`.
+1. [`src/types.ts:158`](src/types.ts#L158) — thêm id vào `ProviderId`.
+2. [`src/constants.ts:143-150`](src/constants.ts#L143-L150) — endpoint vào `ENDPOINTS`.
 3. `src/providers/<Tên>Provider.ts` — implement `TranslationProvider` ([`src/providers/TranslationProvider.ts:111-120`](src/providers/TranslationProvider.ts#L111-L120)): `id`, `supportsDictionary`, `requiresApiKey`, `supports()`, `translate()`, `validate()`. Lỗi ném `ProviderError` với `ProviderErrorCode` — **map theo việc người dùng làm được gì, không theo HTTP status**. Mọi request qua `requestWithRetry`.
 4. `src/providers/langMap.ts` — cột mã ngôn ngữ của provider mới.
 5. [`src/providers/ProviderRegistry.ts:26-30`](src/providers/ProviderRegistry.ts#L26-L30) — thêm vào `this.translators`. Khoá API đọc qua **getter**, không truyền giá trị vào constructor, để đổi khoá có hiệu lực ngay.
@@ -187,19 +188,28 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 
 **6.2. DeepL: `EN` là source, `EN-US` là target.** Biến thể theo vùng được chấp nhận làm *target* nhưng bị từ chối làm *source*, nên `langMap.ts` có hai cột riêng ([`src/providers/langMap.ts:6-9,20`](src/providers/langMap.ts#L6-L9)). Gộp một cột là hỏng.
 
-**6.3. Clip insets phải đi kèm *mọi* lần set vị trí.** Đặt vị trí mà không đặt clip thì popup vẽ đè lên tab header. E0 đã gom lại thành **một cổng** — [`FloatingLayer.applyVisibility()`](src/ui/FloatingLayer.ts#L60) — nhưng `moveTo()` hiện **vẫn còn gọi riêng** ở [`UiController.ts:429`](src/ui/UiController.ts#L429) và [`:434`](src/ui/UiController.ts#L434). Gộp nốt là việc của **E1-T2**; tới lúc đó, thêm một nhánh đặt vị trí mới thì phải nhớ cả hai nửa.
+**6.3. Vị trí, clip và visibility là **một** câu trả lời, và đã gộp xong ở E1-T2.** Cổng duy nhất là [`FloatingLayer.applyGeometry(target, rect, snapshot)`](src/ui/FloatingLayer.ts#L94) — nó làm cả ba việc, theo đúng thứ tự đó. **Không nơi nào ngoài `FloatingLayer` được set vị trí, clip hay visibility của icon/popup.** Hai hệ quả cho người viết code sau:
+
+- `TriggerIcon.show(win)` **không nhận rect** — nó chỉ dựng element và bắt đầu animation; controller gọi `applyGeometry` ngay sau đó.
+- `PopupHandlers.place(size)` trả về **`void`**, không trả rect. Popup biết kích thước của nó, không bao giờ biết vị trí. Nhánh popup phình theo nội dung là nhánh dễ quên nhất: rect đổi thì clip cũ lập tức sai, nên mọi `applySize` phải kèm một lời gọi `place`.
 
 **6.4. `normalizeDetectedLang` không được cắt script subtag của `zh`.** Hiện [`src/providers/langMap.ts:78`](src/providers/langMap.ts#L78) cắt tại `-`/`_`, nên `zh-TW` và `zh-CN` cùng ra `zh` — giản thể và phồn thể không phân biệt được. Đây là **điều kiện chặn của tính năng tiếng Trung**, và là việc của **E3-T3**. Đừng sửa sớm (lấn epic), đừng quên khi tới E3.
 
 ### Bốn cái mới — **phát hiện từ E0, không có trong kế hoạch gốc**
 
-**6.5. `obsidianmd/no-static-styles-assignment` chỉ bắt giá trị *literal*.** `el.style.left = \`${x}px\`` (template literal có expression) **không** bị bắt; `el.style.height = 'auto'` thì bị. Hai hệ quả: (a) lint xanh **không** nghĩa là không có chỗ nào gán style; (b) **đừng** đi chuyển toạ độ runtime sang CSS custom property vì tưởng nó vi phạm — 17 vị trí `.style.*` hiện tại đều hợp lệ. Bằng chứng đầy đủ ở [`docs/REVIEW-FINDINGS.md` §H2](docs/REVIEW-FINDINGS.md).
+**6.5. `obsidianmd/no-static-styles-assignment` chỉ bắt giá trị *literal*.** `el.style.left = \`${x}px\`` (template literal có expression) **không** bị bắt; `el.style.height = 'auto'` thì bị. Hai hệ quả: (a) lint xanh **không** nghĩa là không có chỗ nào gán style; (b) **đừng** đi chuyển toạ độ runtime sang CSS custom property vì tưởng nó vi phạm — 21 vị trí `.style.*` hiện tại đều hợp lệ. Bằng chứng đầy đủ ở [`docs/REVIEW-FINDINGS.md` §H2](docs/REVIEW-FINDINGS.md).
 
 **6.6. `registerDomEvent` không dùng được cho listener theo phiên.** Obsidian chỉ giải phóng chúng khi **toàn bộ plugin** unload, nên một phiên mở/đóng popout nhiều lần sẽ tích luỹ đăng ký trên document đã chết. `SelectionManager` **cố ý** tự `addEventListener`, tự track teardown, và gắn vào `this.register()` trong [`main.ts:85`](src/main.ts#L85) — lý do ghi tại [`src/core/SelectionManager.ts:154-159`](src/core/SelectionManager.ts#L154-L159). **Đừng "sửa" chỗ này.**
 
 **6.7. `/code-review` review *diff*, không review thư mục.** Nhánh sạch thì nó lấy commit cuối làm phạm vi — ở E0 nó phủ đúng một commit thay vì 42 file. Muốn phủ rộng phải chỉ định phạm vi rõ ràng hoặc tự đọc code.
 
 **6.8. 5 warning lint còn lại là cố ý.** Bốn nhóm, ghi ở [`docs/SUBMISSION.md`](docs/SUBMISSION.md) mục *TODO: những cảnh báo còn treo*. Ba nhóm là API mới hơn `minAppVersion: 1.5.0` (`prefer-setting-definitions` + `display` deprecated, `setWarning` deprecated, `prefer-get-language`); nhóm thứ tư là `no-global-this` trong `src/utils/debounce.ts:22`, có lý do kỹ thuật riêng (`globalThis` là mặc định của `TimerHost`, unit test chạy dưới `environment: 'node'`). **Đừng "dọn" chúng** — gọi `setDestructive()` ở 1.5.0 sẽ ném lỗi ngay lúc dựng pane tuỳ chọn. Ngưỡng đúng: `npm run lint` = **0 error**; số warning là **5**.
+
+### Hai cái mới — **phát hiện từ E1, không có trong kế hoạch gốc**
+
+**6.9. `containerEl` và `contentEl` là hai thứ khác nhau, đừng dùng lẫn.** `containerEl` = `.workspace-leaf-content`, dùng để **nhận diện leaf và tìm scroller**. `contentEl` = phần chứa nội dung, và là thứ **duy nhất** được dùng làm biên đặt vị trí + biên cắt. Bảng map ở [`src/core/ContextDetector.ts`](src/core/ContextDetector.ts) (`CONTENT_SELECTORS`): leaf → `.view-content`, note nhúng → `.markdown-embed-content`, hover preview → `.hover-popover`. Lý do tồn tại: `.workspace-leaf-content` **bao gồm cả `.view-header`**, nên đo biên từ nó thì popup vẽ đè lên hàng nút back/tiêu đề mà không bị coi là thừa — chính là lỗi E1 sửa. PDF là ca duy nhất phải trừ thêm: `.pdf-toolbar` nằm **bên trong** `.view-content`, nên [`FloatingLayer.contentRect()`](src/ui/FloatingLayer.ts#L55) cắt phần trên bằng `trimTop()`.
+
+**6.10. `clipInsets(rect, null)` cắt sạch, không trả `{0,0}`.** Trước E1 nó trả 0 và chỉ an toàn nhờ `isRectVisible(rect, null)` luôn ẩn element trong cùng ca đó — hai nửa che cho nhau. Nay mỗi nửa tự đúng. Lưu ý kỹ thuật: nó trả `top = rect.height` và để `bottom = 0`, **cố ý không** cho hai inset chồng nhau, vì `inset()` với các cạnh chồng nhau không phải hình dạng mà mọi trình duyệt bắt buộc phải đồng ý với nhau.
 
 ---
 

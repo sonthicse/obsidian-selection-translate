@@ -7,6 +7,19 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **The popup and the trigger icon no longer paint over the row of tabs.**
+  Scroll far enough and the selection leaves the note, and what floats beside
+  it used to keep going — sliding up over the header with the back button and
+  the note title, still fully drawn, still on top of Obsidian's own controls.
+  It now slides *under* that row and disappears the moment the last of it
+  leaves the text area, then comes back whole, with the same translation, when
+  you scroll back. In a PDF it stops at the toolbar rather than under it.
+- **Nothing spills into the note beside it in a split.** With two notes side by
+  side, a popup wider than the half it belongs to used to be drawn over its
+  neighbour. It is now cut off at the edge of its own note, on both sides.
+
 ## [0.2.3] — 2026-08-12
 
 Housekeeping. Nothing here changes what the plugin does, with one small

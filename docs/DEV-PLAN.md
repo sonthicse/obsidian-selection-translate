@@ -316,7 +316,7 @@ Khi người dùng cuộn xuống, selection đi lên khỏi vùng nội dung. P
 ### Nguyên nhân gốc (đã xác định trong code)
 
 ```ts
-// src/core/ContextDetector.ts:16
+// src/core/ContextDetector.ts:29 (sau E1; là :16 ở 0.2.3)
 const CONTAINER_SELECTORS = '.workspace-leaf-content, .workspace-leaf, .markdown-embed, .popover';
 ```
 
@@ -324,9 +324,9 @@ const CONTAINER_SELECTORS = '.workspace-leaf-content, .workspace-leaf, .markdown
 
 Chuỗi hệ quả:
 
-1. `FloatingLayer.visibleBounds()` (`src/ui/FloatingLayer.ts:42`) = giao của viewport và `containerEl.getBoundingClientRect()` → biên trên nằm ở **đỉnh `.workspace-leaf-content`**, tức phía trên view-header.
+1. `FloatingLayer.visibleBounds()` (`src/ui/FloatingLayer.ts:42` ở `0.2.3`; nay `:74`) = giao của viewport và `containerEl.getBoundingClientRect()` → biên trên nằm ở **đỉnh `.workspace-leaf-content`**, tức phía trên view-header.
 2. `Positioner.clipInsets()` tính phần thừa so với biên đó → popup nằm trong vùng view-header **không bị coi là thừa**, `--st-clip-top` = 0 ở vùng đó.
-3. `styles.css:107,192` `clip-path: inset(...)` không cắt gì → popup hiển thị đè lên header. Đúng như ảnh.
+3. `styles.css:107,192` (nay `:107,196`) `clip-path: inset(...)` không cắt gì → popup hiển thị đè lên header. Đúng như ảnh.
 4. Thêm một tầng nữa: `OCCLUSION_SELECTORS` **có** chứa `.view-header` và `.workspace-tab-header-container`, nhưng phép thử occlusion chỉ chạy ở lần đặt vị trí đầu tiên trong `place()`. Đường cập nhật khi cuộn dùng `computeCandidate()`, vốn **cố ý bỏ qua occlusion** vì lý do hiệu năng (`elementsFromPoint` 60 lần/giây). Nên khi cuộn, không có gì chặn cả.
 
 Nói cách khác: cơ chế clip đã đúng, **biên được đo sai**.
@@ -340,7 +340,7 @@ Nói cách khác: cơ chế clip đã đúng, **biên được đo sai**.
 | `leafEl` | Nhận diện leaf, gắn sự kiện, thu thập scroll anchor | `.workspace-leaf-content` (giữ nguyên) |
 | `contentEl` | **Biên đặt vị trí và biên cắt** | `.view-content` — và với PDF là `.view-content` trừ chiều cao `.pdf-toolbar` |
 
-Bổ sung `contentEl` vào `ContextInfo` và `SelectionSnapshot`. `FloatingLayer.visibleBounds()` (`src/ui/FloatingLayer.ts:42`) và `UiController.computeBoundary()` (`src/ui/UiController.ts:583`) chuyển sang dùng `contentEl`.
+Bổ sung `contentEl` vào `ContextInfo` và `SelectionSnapshot`. `FloatingLayer.visibleBounds()` và `UiController.computeBoundary()` (`src/ui/UiController.ts:583` ở `0.2.3`; nay `:578`) chuyển sang dùng `contentEl`.
 
 Với `.markdown-embed` và `.popover` (hover preview) thì phần tử nội dung tương ứng là `.markdown-embed-content` / `.hover-popover` — cần bảng map riêng, không dùng chung một selector.
 
@@ -350,7 +350,7 @@ Với `.markdown-embed` và `.popover` (hover preview) thì phần tử nội du
 
 Việc còn lại của E1-T2: đổi `applyVisibility` thành **`applyGeometry(rect)`** làm cả **ba** việc — set vị trí, set clip, set visibility — bằng cách kéo nốt `moveTo()` vào trong nó. Hiện `moveTo` vẫn được gọi riêng ngay sau `applyVisibility` ở `UiController.ts:429` và `:434`. Sau khi gộp, không nơi nào được set vị trí trực tiếp nữa.
 
-Đặc biệt chú ý nhánh popup đổi kích thước theo nội dung (`TranslatePopup.applySize`, `src/ui/TranslatePopup.ts:350-351` set width/height) — rect đổi thì clip cũ lập tức sai.
+Đặc biệt chú ý nhánh popup đổi kích thước theo nội dung (`TranslatePopup.applySize`, `src/ui/TranslatePopup.ts:350-351` ở `0.2.3`; nay `:359-360`) — rect đổi thì clip cũ lập tức sai.
 
 **E1-T3. Xử lý `visibleBounds == null`.** Khi leaf cuộn hết khỏi màn hình, `intersectRects` trả `null`, `clipInsets` trả `{0,0}` → **không cắt gì cả**. Phải ẩn hẳn thay vì rơi về 0.
 
@@ -364,6 +364,72 @@ Việc còn lại của E1-T2: đổi `applyVisibility` thành **`applyGeometry(
 - Unit test mới cho `clipInsets` với `visibleBounds.top > 0` và với `visibleBounds = null`.
 - Test hồi quy: cuộn từng pixel qua mép không gây nhấp nháy (vấn đề này đã được xử lý trong `overlaps()`, không được làm hỏng).
 
+### Kết quả thực hiện (E1)
+
+Thực hiện ngày **2026-08-12**, trên nhánh sau `0.2.3`. **Chưa phát hành** — E1 và E2 cùng đi trong `0.3.0`, nên việc bump version làm sau khi E2 xong.
+
+> Mọi số dòng trong phần mô tả E1 ở trên là ảnh chụp `0.2.3` và được giữ nguyên làm căn cứ; chỗ nào đã trôi thì có ghi số hiện hành ngay cạnh.
+
+#### Trạng thái từng task
+
+| Task | Trạng thái | Ghi chú |
+|---|---|---|
+| **E1-T1** — tách `leafEl` / `contentEl` | **Xong** | `ContextInfo` và `SelectionSnapshot` mọc thêm `contentEl`. Bảng map là hằng `CONTENT_SELECTORS` trong `ContextDetector.ts`, giải bằng `el.closest()` từ vùng chọn đi lên nên **bề mặt trong cùng thắng** — note nhúng trong note lấy đúng hộp nội dung của chính nó. 8 test mới. |
+| **E1-T2** — một cổng hình học | **Xong** | `applyVisibility` → `applyGeometry(target, rect, snapshot)`, làm cả ba việc. Hai chỗ nữa phải đổi để lời hứa đó thành thật, và đó là phần kế hoạch chưa lường: `TriggerIcon.show()` **bỏ tham số rect**, `PopupHandlers.place()` **trả `void`** thay vì trả rect. |
+| **E1-T3** — `visibleBounds == null` | **Xong** | Đúng như prompt E1 dự đoán: `isRectVisible` đã ẩn sẵn. Phần thêm là `clipInsets(rect, null)` nay cắt sạch thay vì trả `{0,0}`, để hai nửa không còn che cho nhau. |
+| **E1-T4** — cắt trái/phải | **Xong** | Đủ 5 điểm chạm mà prompt liệt kê. |
+| **Ma trận test thủ công** | **Chưa chạy** | Xem mục riêng bên dưới — đây là mục còn hở duy nhất của E1. |
+
+#### Nguyên nhân gốc: xác nhận đúng như kế hoạch mô tả
+
+Không phát sinh nghi vấn mới. `.workspace-leaf-content` bao cả `.view-header`, nên biên trên nằm phía trên header, nên phần popup vẽ trong vùng header không bị coi là thừa, nên `--st-clip-top` = 0 ở đúng vùng đáng lẽ phải cắt. Cơ chế clip đã đúng; biên được đo sai. Sửa biên là sửa gốc.
+
+Một điều kế hoạch **không** nói và hoá ra quan trọng: `.pdf-toolbar` là **con** của `.view-content`, không phải anh em của nó. Nên với PDF, đo `.view-content` thôi vẫn chưa đủ — vùng nội dung còn thò lên dưới thanh công cụ. `FloatingLayer.contentRect()` cắt phần đó bằng `trimTop()` (hàm thuần, có test), và chỉ chạy khi `snapshot.context === 'pdf'` để không trả giá một `querySelector` mỗi khung hình cuộn ở mọi note.
+
+#### Ma trận test thủ công — **chưa chạy, cần chủ dự án**
+
+Phiên làm việc này chạy trong WSL và không có cách nào thao tác GUI Obsidian (bôi đen, cuộn, đổi zoom, chụp màn hình). Ba mươi sáu ô của ma trận — {Live Preview, Reading, PDF, input/properties, popout, hover preview} × {tab đơn, split ngang, split dọc} × {zoom 100%, 150%} — vì thế **chưa có ô nào được thử**, và không ô nào được tick.
+
+Vault thật nằm ở `C:\Users\SONTHI\OneDrive\Documents\Obsidian`, plugin đã cài sẵn tại `.obsidian/plugins/selection-translate`. Cách chạy: `npm run build`, chép `main.js` + `manifest.json` + `styles.css` vào thư mục đó, rồi tắt/bật plugin trong Obsidian.
+
+Bốn ô đáng ngờ nhất, theo thứ tự nên thử, kèm **điều cụ thể phải nhìn** ở mỗi ô:
+
+| Ô | Phải nhìn cái gì |
+|---|---|
+| **PDF** | Popup trượt xuống **dưới** thanh công cụ PDF, không đè lên nó. Đây là ca duy nhất `contentRect()` phải trừ thêm, và cũng là ca dễ sai nếu bản Obsidian đổi cấu trúc DOM của trình xem PDF. |
+| **Split dọc** | Popup rộng hơn nửa của nó bị **cắt ở mép trong**, không tràn sang note bên cạnh. Đây là ca T4 tồn tại vì nó. |
+| **Popout** | Cửa sổ riêng: `snapshot.win` khác cửa sổ chính. Kiểm cả việc cuộn trong popout vẫn cắt đúng. |
+| **Hover preview** | Đi đường map riêng (`.popover` → `.hover-popover`). Nếu Obsidian không đặt hai class đó trên cùng một phần tử, `findContentEl` sẽ rơi về container — vẫn an toàn, nhưng biên rộng hơn mong muốn. |
+
+Ngoài ra, hai kịch bản của AC phải thử ở **ít nhất** Live Preview và Reading: cuộn cho selection rời vùng nội dung → popup biến mất hoàn toàn; cuộn ngược lại → popup hiện lại **cùng nội dung** (không có request mới — nếu thấy chấm loading thì state machine đã rơi khỏi `result` và đó là hồi quy).
+
+#### Danh sách commit
+
+| Commit | Nội dung |
+|---|---|
+| `fec1928` | `fix(ui):` đo biên từ nội dung của leaf (E1-T1) |
+| `a2d0f03` | `refactor(ui):` một cổng cho vị trí, clip, visibility (E1-T2) |
+| `4765798` | `fix(ui):` cắt sạch khi leaf rời màn hình (E1-T3) |
+| `3354dfc` | `fix(ui):` cắt cả hai cạnh ngang (E1-T4) |
+| *(commit này)* | `docs:` CHANGELOG, kết quả E1, `CLAUDE.md`, `docs/prompts/PROMPT-E2.md` |
+
+`npm run verify` xanh sau **mỗi** commit: 327 test (từ 314), 0 error / 5 warning.
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| Bật phép thử occlusion cho đường cuộn | Prompt E1 cấm thẳng, và lý do vẫn đúng: `elementsFromPoint` 60 lần/giây quá đắt. Sau E1 nó cũng không cần nữa — biên đúng thì không còn gì để tránh. |
+| `DEFAULT_PLACEMENT_ORDER` chưa soi gương cho RTL | Là **E4-T4**, đã có AC riêng. T4 của E1 dọn sẵn nửa đường cho nó: hai inset ngang nay đã tồn tại, E4 chỉ còn phải đảo `anchorRect.right` ↔ `left`. |
+| Comment ở `UiController.computeBoundary()` nói *"selection ở dòng đầu không còn chỗ **bên dưới**"* — nghe ngược | Chỉ là chữ nghĩa, không phải hành vi; sửa nó là chạm vào comment không thuộc phạm vi. Ghi lại để E7 xử lý cùng lượt rà tài liệu. |
+| `docs/ARCHITECTURE.md` vẫn chưa có `FloatingLayer` / `PopupContent` / `SelectionRules` | **E7-T1** đã ghi *"vẽ lại sau E0 + E3"*. Vẫn đúng. |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` | Vẫn ngoài phạm vi, như đã ghi ở E0 và E8. |
+
+#### Có gì buộc một epic sau phải đổi cách làm không?
+
+**Không.** Trái lại, E1 làm E4-T4 rẻ đi: trục ngang đã tồn tại trong cả `ClipInsets`, hai `setClip` và hai dòng `clip-path`, nên phần RTL của E4 chỉ còn là chuyện chọn **cạnh nào** chứ không phải dựng thêm cạnh. Giả định của E4 về `dir` không va vào `contentEl`: `contentEl` chỉ trả lời *vùng nào*, không trả lời *bên nào*.
+
+
 ---
 
 ## E2 — Đồng bộ trigger key với Hotkeys của Obsidian
@@ -372,7 +438,7 @@ Việc còn lại của E1-T2: đổi `applyVisibility` thành **`applyGeometry(
 
 | | Trigger key của plugin | Command của Obsidian |
 |---|---|---|
-| Nơi cấu hình | Settings của plugin (`HotkeyRecorder.ts`, gọi từ `settings/sections/activation.ts:29`) | Settings → Hotkeys của Obsidian |
+| Nơi cấu hình | Settings của plugin (`HotkeyRecorder.ts`, gọi từ `settings/sections/activation.ts:29` — E1 không chạm file này) | Settings → Hotkeys của Obsidian |
 | Lưu ở | `data.json`, trường `triggerHotkey` | `.obsidian/hotkeys.json` |
 | Phạm vi | Chỉ vài giây khi icon đang hiện | Toàn cục |
 | Xử lý | `HotkeyManager.matchesBinding()`, tự bắt `keydown` | `addCommand` trong `main.ts:158` |
@@ -608,7 +674,7 @@ Thêm: `--st-font-family` cần fallback cho chữ Ả Rập, CJK và Kana, nế
 ## E6 — Phiên âm hiển thị có điều kiện
 
 ### Hiện trạng
-`src/ui/PopupContent.ts:68-70` (tách khỏi `TranslatePopup` ở E0) render bất cứ khi nào `result.phonetic != null`, và **luôn** bọc trong dấu gạch chéo `/…/`. Điều đó sai với romanization: pinyin và romaji không phải IPA, bọc trong `/…/` là sai quy ước ngôn ngữ học.
+`src/ui/PopupContent.ts:68-70` (tách khỏi `TranslatePopup` ở E0; E1 không chạm file này) render bất cứ khi nào `result.phonetic != null`, và **luôn** bọc trong dấu gạch chéo `/…/`. Điều đó sai với romanization: pinyin và romaji không phải IPA, bọc trong `/…/` là sai quy ước ngôn ngữ học.
 
 ### Yêu cầu cụ thể
 - Thêm `phoneticKind: 'ipa' | 'romanization' | 'none'` vào `ProviderResponse` và `TranslationResult`.
@@ -765,8 +831,8 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 |---|---|---|
 | **E0** — Audit, review, tái cấu trúc | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) |
 | **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
-| **E1** — Popup lòi ra mép trên | `0.3.0` | ⏭️ **Tiếp theo** |
-| E2 — Đồng bộ trigger key | `0.3.0` | Chưa bắt đầu |
+| **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), trừ ma trận test thủ công — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
+| **E2** — Đồng bộ trigger key | `0.3.0` | ⏭️ **Tiếp theo** |
 | E3 — Registry ngôn ngữ | `0.4.0` | Chưa bắt đầu |
 | E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
 | E5 — 3 provider mới | `0.5.0` | Chưa bắt đầu |
@@ -781,9 +847,12 @@ Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi t�
 
 ### Việc tiếp theo
 
-**E1 — sửa lỗi popup/icon lòi ra ở mép trên** (`0.3.0`). Prompt chi tiết đã soạn sẵn tại [`docs/prompts/PROMPT-E1.md`](prompts/PROMPT-E1.md), mang theo ngữ cảnh từ E0 và E8 — đáng chú ý nhất là E1-T2 nay **chỉ còn một nửa việc**, vì `FloatingLayer.applyVisibility()` đã là cổng duy nhất cho clip.
+**Hai việc, theo thứ tự này.**
 
-Khác với E0 và E8: E1 **có** đổi hành vi người dùng, nên là **MINOR** (`0.3.0`), không phải PATCH.
+1. **Chạy ma trận test thủ công của E1** — mục còn hở duy nhất của epic vừa xong, và là cổng ra của `0.3.0`. Danh sách ô, cách dựng bản build vào vault, và *điều cụ thể phải nhìn* ở bốn ô đáng ngờ nhất nằm ở [Kết quả thực hiện (E1)](#kết-quả-thực-hiện-e1). Việc này cần người ngồi trước Obsidian; không phiên nào tự làm thay được.
+2. **E2 — đồng bộ trigger key với Hotkeys của Obsidian** (`0.3.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E2.md`](prompts/PROMPT-E2.md), mang theo ngữ cảnh vừa học ở E1.
+
+Khác với E0 và E8: E1 và E2 **đều** đổi hành vi người dùng, nên là **MINOR** (`0.3.0`), không phải PATCH. Cả hai đi chung một lần phát hành, nên **bump version là việc làm sau khi E2 xong**, không phải bây giờ.
 
 Sau E1 là **E2** (cùng milestone `0.3.0`).
 
