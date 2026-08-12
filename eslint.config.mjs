@@ -70,6 +70,55 @@ export default tseslint.config(
   },
   {
     /*
+     * The layer boundary, enforced rather than trusted.
+     *
+     * src/types.ts states it as a rule the code is meant to keep: the UI never
+     * learns which provider answered, and no provider ever sees a DOM node. It
+     * was true when checked by hand, but nothing stopped the next import from
+     * quietly making it false — and once one crosses, the rest follow, because
+     * the rule stops looking real.
+     *
+     * Two directions, for two different reasons. Providers must not reach into
+     * the DOM layers or they can no longer be tested with a fixture and a fake
+     * response. The UI must not reach into providers or it starts rendering
+     * one engine's shape, which is exactly what E5's three new engines would
+     * then have to imitate.
+     */
+    files: ['src/providers/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/ui/**', '**/selection/**', '**/core/**'],
+              message:
+                'Providers must not see the DOM. Return plain data from src/types.ts and let core decide what to do with it.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/ui/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/providers/**'],
+              message:
+                'The UI must not know which engine answered. Everything it renders arrives as TranslationResult or UiErrorInfo.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    /*
      * The single sanctioned console.log site.
      *
      * Both spellings of the rule are switched off here — the core one and

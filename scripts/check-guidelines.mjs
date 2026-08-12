@@ -12,7 +12,7 @@
  * this sees the whole repository, including manifest.json and styles.css.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { join, extname, dirname } from 'node:path';
 import process from 'node:process';
 
 const failures = [];
@@ -163,6 +163,90 @@ for (const key of enKeys) {
 }
 for (const key of viKeys) {
 	if (!enKeys.includes(key)) fail('Extra translation', `vi.ts has "${key}", which en.ts does not`);
+}
+
+/*
+ * Placeholders too, not just key names.
+ *
+ * A catalogue can have every key and still be broken: `{ms}` misspelled in one
+ * language renders the braces to the user. English is the source of truth, so
+ * every other catalogue has to substitute exactly the same names.
+ */
+const enPlaceholders = placeholdersOf('src/i18n/en.ts');
+const viPlaceholders = placeholdersOf('src/i18n/vi.ts');
+
+for (const [key, names] of enPlaceholders) {
+	const theirs = viPlaceholders.get(key);
+	if (theirs == null) continue;
+	if (names.join(',') !== theirs.join(',')) {
+		fail(
+			'Placeholder mismatch',
+			`"${key}" substitutes {${names.join('}, {')}} in en.ts but {${theirs.join('}, {')}} in vi.ts`
+		);
+	}
+}
+
+/* ── The README's host list matches the hosts the code actually calls ─────── */
+
+/*
+ * The one reviewers catch most often, and the one that goes stale most easily:
+ * a new provider adds a host in constants.ts and README keeps yesterday's
+ * table. Both directions are checked — an undeclared host is a disclosure
+ * failure, and a declared host that nothing calls is a claim about the plugin
+ * that is not true.
+ */
+const readme = readFileSync('README.md', 'utf8');
+const declaredHosts = new Set(
+	[...readme.matchAll(/^\| `([a-z0-9.-]+\.[a-z]{2,})`/gm)].map((match) => match[1])
+);
+
+const calledHosts = new Set();
+for (const file of sourceFiles) {
+	for (const [, host] of readFileSync(file, 'utf8').matchAll(/https:\/\/([a-z0-9.-]+\.[a-z]{2,})/g)) {
+		// example.com lives in a comment showing what a markdown link looks like.
+		if (host === 'example.com') continue;
+		calledHosts.add(host);
+	}
+}
+
+for (const host of calledHosts) {
+	if (!declaredHosts.has(host)) {
+		fail('Undeclared network host', `src/ contacts ${host}, which README's Network use table omits`);
+	}
+}
+for (const host of declaredHosts) {
+	if (!calledHosts.has(host)) {
+		fail('Stale network host', `README declares ${host}, which nothing in src/ contacts`);
+	}
+}
+
+/* ── Documentation links point at files that exist ────────────────────────── */
+
+const markdownFiles = ['README.md', 'README.vi.md', ...walk('docs', ['.md'])];
+
+for (const file of markdownFiles) {
+	const text = readFileSync(file, 'utf8');
+	const from = dirname(file);
+
+	for (const [, target] of text.matchAll(/\]\(([^)\s]+)\)/g)) {
+		if (/^(https?:|mailto:|#)/.test(target)) continue;
+
+		// Strip any anchor: the file has to exist, the heading is not checked.
+		const path = join(from, target.split('#')[0]);
+		if (path.length === 0 || exists(path)) continue;
+
+		fail('Dead documentation link', `${file} links to ${target}, which does not exist`);
+	}
+}
+
+function placeholdersOf(file) {
+	const text = readFileSync(file, 'utf8');
+	const out = new Map();
+
+	for (const [, key, value] of text.matchAll(/^\t'([^']+)':\s*\n?\s*'((?:[^'\\]|\\.)*)'/gm)) {
+		out.set(key, [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort());
+	}
+	return out;
 }
 
 function keysOf(file) {
