@@ -7,15 +7,15 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-### Added
+### Removed
 
-- **Setting a trigger key now tells you if Obsidian already uses it.** A line
-  under the field names the commands the combination belongs to. It is a
-  warning, not a refusal: the trigger key only exists for the few seconds the
-  button is on screen, so sharing a combination with a command you rarely press
-  is a perfectly reasonable thing to want.
-- **A button beside it opens Obsidian's own hotkeys page**, so checking what is
-  taken does not mean hunting for the right settings pane first.
+- **The plugin's own trigger key is gone.** It was a key you set in these
+  options and that worked for the few seconds the button was on screen. Keyboard
+  shortcuts belong in one place, and that place is Settings → Hotkeys, where
+  *Selection Translate: Translate selection* has been available all along — bind
+  whatever you like to it and it works everywhere, not only while the button is
+  up. The options page now has a button that takes you straight there. If you
+  had a trigger key set, it is dropped when the plugin loads.
 
 ### Changed
 
@@ -25,14 +25,13 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   but only from the next restart, so the names on that page were regularly not
   the language you had chosen. Vietnamese users will notice the change; nothing
   about the commands themselves, their hotkeys or their behaviour is affected.
-- **The trigger key is now handled through Obsidian's own keyboard system.**
-  Nothing to do differently — but it now behaves like every other shortcut in
-  the app, and the key is genuinely Obsidian's again the moment the button goes
-  away. A key with no modifier is still refused while editing, and still types
-  its character into the note as it always did.
 
 ### Fixed
 
+- **Obsidian's own shortcuts keep working while a translation is on screen.**
+  The command palette, in particular, did nothing at all as long as a popup was
+  open — the plugin was holding the keyboard rather than passing on the keys it
+  had no use for.
 - **The popup and the trigger icon no longer paint over the row of tabs.**
   Scroll far enough and the selection leaves the note, and what floats beside
   it used to keep going — sliding up over the header with the back button and

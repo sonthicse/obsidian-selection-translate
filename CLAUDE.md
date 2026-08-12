@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Tài liệu này viết bằng tiếng Việt vì bộ tài liệu phát triển của dự án (`docs/DEV-PLAN.md`, `docs/CONTRIBUTING.md`, `docs/SUBMISSION.md`) dùng tiếng Việt. **Mã nguồn, comment trong code, chuỗi UI tiếng Anh, CHANGELOG và README vẫn viết bằng tiếng Anh** — đừng dịch chúng.
 >
-> Trạng thái khi viết: version `0.2.3`, sau **E2** (chưa phát hành; E1 + E2 cùng đi trong `0.3.0`). **53 file TS** trong `src/` (8 030 LOC), **17 file test**, **341 test**, **132 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
+> Trạng thái khi viết: version `0.2.3`, sau **E2** (chưa phát hành; E1 + E2 cùng đi trong `0.3.0`). **51 file TS** trong `src/` (7 524 LOC), **16 file test**, **306 test**, **127 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
 >
-> Số chuỗi UI **không đổi** qua E2 dù E2-T5 xoá hai key `command.*`: E2-T2 và E2-T3 thêm lại đúng hai key (`settings.hotkeyConflict`, `settings.openHotkeys`). Con số E4 lập kế hoạch trên (8 × 132) vì thế vẫn đúng.
+> Số chuỗi UI giảm 132 → **127** ở E2: xoá 2 key `command.*` (tên command nay là literal tiếng Anh) và 5 key của trigger key đã gỡ, thêm 2 key trỏ sang trang Hotkeys. **E4 phải lập kế hoạch trên 8 × 127 = 1.016 chuỗi**, không phải con số cũ.
 
 ---
 
@@ -41,10 +41,6 @@ src/core/                  logic không biết gì về hình dạng màn hình
   ContextDetector.ts         nhận diện bề mặt + containerEl (leaf) + contentEl (biên)
   StateMachine.ts            idle → icon → loading → result | error
   TranslationOrchestrator.ts token, cache, normalize
-  HotkeyManager.ts    (350)  TOÀN BỘ chuyện trigger key: luật thuần (matchesBinding,
-                             isBindingSafeFor, isBindingRisky) + TriggerKeyScope
-                             (⟵ E2, vòng đời Scope) + phát hiện trùng phím
-                             (findHotkeyConflicts thuần, readObsidianHotkeys cast hẹp)
   LruCache.ts · TextNormalizer.ts
 
 src/providers/             chỉ nhận/trả dữ liệu thuần, test được dưới Node
@@ -54,8 +50,7 @@ src/providers/             chỉ nhận/trả dữ liệu thuần, test được
   ProviderRegistry.ts · langMap.ts · http.ts
 
 src/ui/                    tầng duy nhất được chạm DOM của popup/icon
-  UiController.ts     (706)  điều phối: state machine, placement search, dismiss,
-                             và vòng đời TriggerKeyScope (claim ở state `icon`)
+  UiController.ts     (671)  điều phối: state machine, placement search, dismiss
   FloatingLayer.ts    (106)  ⟵ tách ở E0. Sở hữu icon + popup; mọi câu hỏi hình học.
                              applyGeometry() là cổng DUY NHẤT set vị trí/clip/visibility
   TranslatePopup.ts   (376)  vòng đời element, đo kích thước, animation grow
@@ -68,8 +63,6 @@ src/settings/
                              language.ts, provider.ts, activation.ts, scope.ts,
                              appearance.ts, speech.ts, advanced.ts
   settings.ts                kiểu + DEFAULT_SETTINGS + SETTING_LIMITS + normalizeSettings
-  HotkeyRecorder.ts   (130)  ô ghi phím + 2 cảnh báo (phím trơn, trùng phím) +
-                             nút mở trang Hotkeys của Obsidian
 
 src/i18n/                  en.ts (nguồn chân lý) · vi.ts · index.ts (t, resolveLocale)
 src/tts/                   TtsService · WebSpeechEngine · GoogleTtsEngine
@@ -173,7 +166,7 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
    |---|---|
    | `language.ts` | `sourceLang`, `targetLang`, `uiLanguage` |
    | `provider.ts` | `provider`, `deeplApiKey`, `googleCloudApiKey`, `dictionaryEnrichment`, `dictionarySource` |
-   | `activation.ts` | `autoPopupOnSelection`, `translateOnDoubleClick`, `triggerHotkey`, `min/maxSelectionLength`, `iconPlacement`, `iconOffset` |
+   | `activation.ts` | `autoPopupOnSelection`, `translateOnDoubleClick`, `min/maxSelectionLength`, `iconPlacement`, `iconOffset` (cộng một dòng trỏ sang trang Hotkeys, không phải setting) |
    | `scope.ts` | `enableInReading/Editing/Properties/Pdf`, `pdfSelectionFallback` |
    | `appearance.ts` | `fontSize`, `fontFamily`, `popupTheme` |
    | `speech.ts` | `ttsEngine`, `ttsRate` |
@@ -219,27 +212,18 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 
 **6.10. `clipInsets(rect, null)` cắt sạch, không trả `{0,0}`.** Trước E1 nó trả 0 và chỉ an toàn nhờ `isRectVisible(rect, null)` luôn ẩn element trong cùng ca đó — hai nửa che cho nhau. Nay mỗi nửa tự đúng. Lưu ý kỹ thuật: nó trả `top = rect.height` và để `bottom = 0`, **cố ý không** cho hai inset chồng nhau, vì `inset()` với các cạnh chồng nhau không phải hình dạng mà mọi trình duyệt bắt buộc phải đồng ý với nhau.
 
-### Ba cái mới — **phát hiện từ E2, không có trong kế hoạch gốc**
+### Hai cái mới — **phát hiện từ E2, không có trong kế hoạch gốc**
 
-**6.11. `app.hotkeyManager` là API không công khai — hỏng thì chỉ được mất cảnh báo.** Nó không có trong `obsidian.d.ts` và có thể đổi hình dạng ở bất kỳ bản Obsidian nào. Nơi duy nhất được biết hình dạng của nó là [`readObsidianHotkeys()`](src/core/HotkeyManager.ts) — **bọc toàn bộ trong `try/catch`, đọc qua cast cấu trúc hẹp (không `any`), hỏng thì trả mảng rỗng**. Trigger key **không bao giờ** hỏi câu hỏi này, nên mất nó chỉ mất cảnh báo trùng phím, không ảnh hưởng việc bấm phím lẫn việc dựng pane tuỳ chọn. Có test cho ca "không tồn tại" và ca "đọc thì ném" trong `tests/HotkeyManager.test.ts`.
+**6.11. Plugin KHÔNG có phím tắt của riêng nó nữa — và đừng thêm lại.** E2 thử phương án B của kế hoạch (giữ trigger key, chuyển sang `Scope`), chạy thử trên vault thật rồi **chủ dự án bác bỏ**: một phím chỉ sống vài giây vẫn là một phím giữ trên bàn phím của người đang soạn thảo, và phím trơn thì gõ chữ vào note. Kết luận cuối là **phương án A**: xoá hẳn. Đường duy nhất từ bàn phím là command `translate-selection` + trang Hotkeys của Obsidian. `core/HotkeyManager.ts`, `settings/HotkeyRecorder.ts` và trường `triggerHotkey` **đã bị xoá**; `normalizeSettings()` gỡ trường cũ khỏi dữ liệu người dùng. Mục *Cách kích hoạt* trong settings chỉ còn một dòng trỏ sang trang Hotkeys.
 
-Hình dạng thật, xác minh trên **Obsidian 1.13.6** (giải nén `obsidian-1.13.6.asar`, đọc `app.js`) — chép lại vì không tra được ở đâu khác:
+**6.12. `Scope` phải có cha, và callback phải trả `undefined` để nhả phím.** Hai luật này của Obsidian không có trong tài liệu, đọc ra từ `app.js` trong `obsidian-1.13.6.asar`, và **cả hai đã gây một bug thật**:
 
-| Thứ | Hình dạng |
-|---|---|
-| `hotkeyManager.defaultKeys` | `Record<commandId, Hotkey[]>` — mặc định do command khai |
-| `hotkeyManager.customKeys` | **getter** trả bản sao nông của một store khoá bằng `Symbol('customKeys')`; cùng kiểu |
-| Luật hợp nhất | override thay thế **hoàn toàn** default; `customKeys[id] = []` nghĩa là người dùng đã **xoá** phím đó. Đây đúng là luật `bake()` của Obsidian dùng |
-| Tên command | `app.commands.commands[id].name`, **đã kèm tiền tố tên plugin** (`Plugin.addCommand` tự ghép `manifest.name + ": "`) |
-| `Hotkey.modifiers` | so sánh sau khi "compile": `Mod` → `Meta` (macOS) / `Ctrl`, rồi **sort rồi join `,`** |
+- `Scope.handleKey` dừng ngay khi handler khớp trả về **bất kỳ giá trị nào khác `undefined`**. Trả `true` để "cho phím đi tiếp" là nuốt phím y như `false`, chỉ khác là không `preventDefault`.
+- `handleKey` chỉ lên **scope cha** khi không handler nào trả lời, và Obsidian đăng ký chính bộ hotkey của nó bằng `app.scope.register(null, null, …)`. Nên `new Scope()` **không cha** sẽ chặn mọi phím tắt của Obsidian trong lúc nó active.
 
-**6.12. `Scope` callback trả `undefined` mới là "để phím đi tiếp" — trả `true` là nuốt phím.** `Scope.handleKey` của Obsidian: nếu handler khớp và trả về **bất kỳ giá trị nào khác `undefined`** thì đó là câu trả lời cuối cùng và vòng lặp dừng ngay — không xét handler sau, không lên scope cha. Chỉ `undefined` mới đi tiếp. Vậy nên ca **"phím trơn trong Live Preview"** — phải để người dùng gõ được chữ — là `return undefined`, không phải `return true`. Trả `false` nghĩa là "đã xử lý", và Obsidian **tự gọi** `preventDefault()` + `stopPropagation()`.
+Đó đúng là lý do command palette chết trong lúc popup mở. [`TranslatePopup.claimScope()`](src/ui/TranslatePopup.ts) nay dựng `new Scope(this.app.scope)` và trả `undefined` thay vì `true`. **Bất kỳ `Scope` nào thêm sau này phải làm y hệt.**
 
-⚠️ [`TranslatePopup.claimScope()`](src/ui/TranslatePopup.ts) có hai handler trả `true`; ở đó vô hại (scope không có cha, handler đăng ký cho phím cụ thể) nhưng **đừng chép mẫu đó cho một handler bắt-tất-cả**.
-
-**6.13. `new Scope()` không cha sẽ chặn mọi phím tắt của Obsidian trong lúc nó active.** Obsidian đăng ký chính bộ hotkey của nó bằng `app.scope.register(null, null, …)`, và `handleKey` chỉ lên cha khi không handler nào trả lời. Vì vậy [`TriggerKeyScope.claim()`](src/core/HotkeyManager.ts) dựng `new Scope(app.scope)`. Thêm nữa: `pushScope` đẩy vào **stack riêng của `activeWindow`** (Obsidian giữ `WeakMap<Window, …>`), nên popout có stack riêng — đẩy đúng lúc cửa sổ đó đang active là đủ, không cần làm gì thêm cho popout.
-
-Hệ quả vận hành: **rò một scope là hỏng bàn phím của người dùng ở mọi chỗ khác.** `TriggerKeyScope` chỉ được claim/release từ một chỗ duy nhất — nhánh `state === 'icon'` trong `UiController.render()` — cộng một `release()` vô điều kiện trong `UiController.destroy()`, vốn được nối vào `this.register()` ở `main.ts`.
+Ghi thêm, vì có ngày sẽ cần: `pushScope` đẩy vào stack riêng của `activeWindow` (`WeakMap<Window, …>`), nên popout có stack riêng và không cần xử lý đặc biệt. Và cách lấy dữ kiện: `AppData/Roaming/obsidian/obsidian-<version>.asar` là asar chuẩn — 4 byte ở offset 12 cho kích thước header JSON, header từ byte 16, dữ liệu ngay sau. Giải nén `app.js` rồi grep.
 
 ---
 

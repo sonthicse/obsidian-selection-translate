@@ -2,8 +2,8 @@
 
 Đọc thêm, theo thứ tự:
 
-- `CLAUDE.md` ở root — bản đồ tầng, lệnh, quy ước, **mười ba** cạm bẫy. Viết ở E8, cập nhật ở E1 và E2.
-- Mục **Kết quả thực hiện (E2)** trong `docs/DEV-PLAN.md` — E2 vừa đổi gì, hình dạng thật của `app.hotkeyManager`, và những gì nó cố ý không làm.
+- `CLAUDE.md` ở root — bản đồ tầng, lệnh, quy ước, **mười hai** cạm bẫy. Viết ở E8, cập nhật ở E1 và E2.
+- Mục **Kết quả thực hiện (E2)** trong `docs/DEV-PLAN.md` — E2 vừa đổi gì, vì sao trigger key riêng của plugin bị gỡ hẳn, hai luật về `Scope` của Obsidian, và những gì nó cố ý không làm.
 - Mục **E3** trong `docs/DEV-PLAN.md` — vấn đề hiện tại, E3-T1 → E3-T5, AC.
 - Mục **E4**, **E5**, **E6** trong `docs/DEV-PLAN.md` — không phải để làm, mà để biết registry phải trả lời được những câu hỏi gì. `LanguageDescriptor` có trường `phonetic` là vì E6; có trường `ui` là vì E4; `dir` là vì RTL của E4-T4.
 
@@ -32,7 +32,7 @@ Nếu thực tế khác bảng: **báo lại trước khi sửa bảng**, đừn
 
 **Kiểm trước: `0.3.0` đã phát hành chưa?** E1 + E2 đi chung `0.3.0` và cổng ra là ma trận test thủ công của E2. Nếu `git tag` chưa có `0.3.0`, **hỏi tôi trước khi bắt đầu E3** — làm E3 chồng lên một bản chưa phát hành sẽ trộn hai milestone vào một lần release.
 
-**Trước mỗi commit:** `npm run verify` phải xanh — hiện là **341 test, 0 error / 5 warning** (số warning là 5, xem `CLAUDE.md` §6.8, **đừng dọn chúng**). Chia nhỏ thành nhiều commit theo task (`refactor(lang):` / `feat(lang):` / `fix(lang):`), mỗi commit tự đứng được.
+**Trước mỗi commit:** `npm run verify` phải xanh — hiện là **306 test, 0 error / 5 warning** (số warning là 5, xem `CLAUDE.md` §6.8, **đừng dọn chúng**). Chia nhỏ thành nhiều commit theo task (`refactor(lang):` / `feat(lang):` / `fix(lang):`), mỗi commit tự đứng được.
 
 **Không bịa.** Mọi số dòng trong prompt này đúng ở HEAD sau E2, nhưng **code sẽ dịch chuyển ngay sau commit đầu tiên của chính bạn** — mở file ra đọc, đừng tin số dòng một cách mù quáng.
 
@@ -48,13 +48,13 @@ E0, E8, E1, E2 đã xong. Không thừa hưởng việc nợ nào về code. B�
 
 ### 1. Có thể đọc thẳng mã nguồn Obsidian, và điều đó đã trả công ở E2
 
-`AppData/Roaming/obsidian/obsidian-<version>.asar` là file asar chuẩn: 4 byte offset ở vị trí 12 cho kích thước header JSON, header bắt đầu ở byte 16, dữ liệu ngay sau đó. Giải nén `app.js` rồi grep là cách E2 xác minh hình dạng `app.hotkeyManager` thay vì đoán, và nó **lật ngược ba giả định** về `Scope` mà không tài liệu nào nói (`CLAUDE.md` §6.11–6.13).
+`AppData/Roaming/obsidian/obsidian-<version>.asar` là file asar chuẩn: 4 byte offset ở vị trí 12 cho kích thước header JSON, header bắt đầu ở byte 16, dữ liệu ngay sau đó. Giải nén `app.js` rồi grep là cách E2 tra ra hai luật về `Scope` mà không tài liệu nào nói (`CLAUDE.md` §6.12) — và một trong hai chính là nguyên nhân command palette chết trong lúc popup mở.
 
 E3 gần như không chạm API nội bộ, nên có lẽ không cần tới. Nhưng nếu gặp câu hỏi kiểu *"Obsidian lưu `localStorage.language` những giá trị nào"* — đó là **E4-T3**, không phải E3 — thì đây là cách trả lời bằng dữ kiện. Ghi lại vì nó không có trong kế hoạch gốc.
 
 ### 2. "Một cổng duy nhất" là chuẩn mà E0, E1, E2 đều kết thúc bằng
 
-E0 gom clip; E1 gom vị trí + clip + visibility vào `FloatingLayer.applyGeometry()`; E2 gom toàn bộ chuyện trigger key vào `core/HotkeyManager.ts` — sau E2 câu hỏi *"chỗ nào quyết định trigger key có bắn hay không?"* có **một** câu trả lời.
+E0 gom clip; E1 gom vị trí + clip + visibility vào `FloatingLayer.applyGeometry()`; E2 thì đi xa hơn một bước — nó **xoá hẳn** hệ thống phím thứ hai thay vì tổ chức lại nó, nên câu hỏi *"phím tắt của plugin ở đâu?"* nay có một câu trả lời duy nhất và nằm ngoài repo: trang Hotkeys của Obsidian. Bài học đáng mang sang E3: **cách rẻ nhất để một hệ thống hết phức tạp là bỏ nó đi**, không phải bọc nó lại.
 
 E3 phải kết thúc bằng câu trả lời tương tự cho ngôn ngữ: *"thêm một ngôn ngữ mới thì sửa ở đâu?"* → **một file** (`languages.ts`) cộng một dòng mỗi provider map. Đó chính là mục AC đầu tiên của E3. Nếu cuối E3 câu trả lời vẫn là "bốn chỗ", thì E3 chưa xong dù test có xanh.
 
