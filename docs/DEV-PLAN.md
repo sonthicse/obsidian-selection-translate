@@ -512,7 +512,7 @@ Thực hiện ngày **2026-08-12**, ngay sau E1, trên nhánh sau `0.2.3`. **Ch�
 | **E2-T3** — nút deep-link | **Xong, và là thứ còn lại duy nhất của UI** | Mục *Cách kích hoạt* nay có một dòng "Phím tắt" + nút mở trang Hotkeys. Không phải setting, là biển chỉ đường. |
 | **E2-T4** — giữ luật phím trơn | **Không còn đối tượng áp dụng** | Luật tồn tại để làm cho phím-của-plugin an toàn. Không còn phím đó thì luật, `isBindingSafeFor()` và `isEditableContext()` đều là code chết — xoá cả. |
 | **E2-T5** — tên command tiếng Anh | **Xong** | Hai chuỗi literal trong `main.ts`, hai key xoá khỏi cả hai catalogue, `README.vi.md` sửa theo. Phần này **không** bị ảnh hưởng bởi việc đảo quyết định. |
-| **Ma trận test thủ công** | **Đã chạy phần quyết định** | Chủ dự án chạy trên vault thật với bản B; kết quả là **bác bỏ chính thiết kế**. Ma trận đầy đủ không còn nghĩa lý với A — xem mục dưới. |
+| **Kiểm tay** | **Xong** | Hai vòng trên vault thật. Vòng một, với bản B, kết thúc bằng việc **bác bỏ chính thiết kế**. Vòng hai, sau khi gỡ, chạy đủ 5 ô — không ô nào hỏng. |
 
 #### Vì sao B thất bại trên máy thật
 
@@ -540,9 +540,11 @@ Kế hoạch dự trù phải "báo lại nếu hình dạng khác dự kiến".
 
 Ba dòng cuối là phần đắt nhất và đã chép vào `CLAUDE.md` §6.12: **`Scope` phải có cha, và callback phải trả `undefined` để nhả phím.** Bất kỳ `Scope` nào thêm sau này phải làm y hệt.
 
-#### Cần kiểm lại bằng tay sau khi gỡ
+#### Kiểm tay sau khi gỡ — **đã chạy, không ô nào hỏng**
 
-Nhẹ hơn hẳn ma trận ban đầu, vì bề mặt tính năng đã nhỏ đi:
+Chủ dự án chạy trên vault thật (`C:\Users\SONTHI\OneDrive\Documents\Obsidian`) với bản build chép thẳng vào `.obsidian/plugins/selection-translate`. Phiên làm việc chạy trong WSL nên không thao tác được GUI Obsidian; năm ô dưới đây do người ngồi trước máy thử. Ghi nhận ở đúng mức được báo lại — không có ghi chép riêng cho từng ô, nên đừng suy ra điều gì mịn hơn từ dòng này.
+
+Nhẹ hơn hẳn ma trận ban đầu, vì bề mặt tính năng đã nhỏ đi. Đây cũng là **checklist cho lần sau**, chẳng hạn khi Obsidian đổi cách xử lý keymap:
 
 | Ô | Phải nhìn cái gì |
 |---|---|
@@ -551,6 +553,8 @@ Nhẹ hơn hẳn ma trận ban đầu, vì bề mặt tính năng đã nhỏ đi
 | **Tab trong lúc popup mở** | Lần bấm đầu đưa focus vào nút trong popup. |
 | **Mục *Cách kích hoạt* trong settings** | Không còn ô ghi phím; có dòng "Phím tắt" + nút mở trang Hotkeys, bấm vào mở đúng trang. |
 | **Command `Translate selection`** | Gán một phím trong trang Hotkeys → bôi đen → bấm → dịch. Đây là đường thay thế cho trigger key, phải chắc chắn nó chạy. |
+
+Ô đầu tiên là ô đáng giá nhất: nó xác nhận rằng bug Ctrl+P đã hết, và cùng với nó là cả lớp bug "plugin giữ bàn phím" mà `CLAUDE.md` §6.12 mô tả.
 
 #### Danh sách commit
 
@@ -924,7 +928,7 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 | **E0** — Audit, review, tái cấu trúc | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) |
 | **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
 | **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), ma trận test thủ công đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
-| **E2** — Đồng bộ trigger key | `0.3.0` | ✅ **Xong** (2026-08-12) bằng **phương án A** thay vì B — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e2) |
+| **E2** — Đồng bộ trigger key | `0.3.0` | ✅ **Xong** (2026-08-12) bằng **phương án A** thay vì B, kiểm tay đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e2) |
 | E3 — Registry ngôn ngữ | `0.4.0` | ⏭️ **Tiếp theo** |
 | E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
 | E5 — 3 provider mới | `0.5.0` | Chưa bắt đầu |
@@ -941,6 +945,6 @@ Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi t�
 
 **E3 — refactor mô hình ngôn ngữ (language registry)** (`0.4.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E3.md`](prompts/PROMPT-E3.md), mang theo ngữ cảnh vừa học ở E2.
 
-Trước đó, **`0.3.0` cần được phát hành**: E1 và E2 đều đã xong phần code, cổng ra còn lại là **5 ô kiểm tay của E2** (mục *Cần kiểm lại bằng tay sau khi gỡ*) — của E1 đã chạy xong. Trình tự phát hành ở `CLAUDE.md` §8; nhớ kiểm asset của release sau khi workflow chạy, vì thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó.
+Trước đó, **`0.3.0` sẵn sàng phát hành**: E1 và E2 đều xong trọn vẹn, kiểm tay của cả hai đã chạy. Không còn cổng ra nào treo. Trình tự phát hành ở `CLAUDE.md` §8; nhớ kiểm asset của release sau khi workflow chạy, vì thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó.
 
 E3 là **nút thắt** của cả nửa sau kế hoạch (E4, E5, E6 đều đứng trên nó) và là **thay đổi phá vỡ tương thích** — gỡ tiếng Nga, đổi schema settings — nhưng ở giai đoạn `0.x` thì dồn vào MINOR: `0.4.0`, không phải `1.0.0`. `0.4.0` **bắt buộc có ít nhất một vòng beta qua BRAT**, vì lỗi migration làm mất setting là không hồi phục được.

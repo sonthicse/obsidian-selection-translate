@@ -30,7 +30,7 @@ Nếu thực tế khác bảng: **báo lại trước khi sửa bảng**, đừn
 
 **Đừng tự bump version, đừng tự phát hành.** `0.4.0` gồm cả E3 lẫn E4, và **bắt buộc có ít nhất một vòng beta qua BRAT** trước khi phát hành chính thức — kế hoạch nói thẳng lý do: *"lỗi migration làm mất setting là không hồi phục được"*. Cách làm beta ghi ở mục **Beta** cuối `docs/DEV-PLAN.md` (`manifest.version` dạng `0.4.0-beta.1`, tag tương ứng). Việc bump/tag/release là việc của tôi, không phải của bạn.
 
-**Kiểm trước: `0.3.0` đã phát hành chưa?** E1 + E2 đi chung `0.3.0` và cổng ra là ma trận test thủ công của E2. Nếu `git tag` chưa có `0.3.0`, **hỏi tôi trước khi bắt đầu E3** — làm E3 chồng lên một bản chưa phát hành sẽ trộn hai milestone vào một lần release.
+**Kiểm trước: `0.3.0` đã phát hành chưa?** E1 + E2 đi chung `0.3.0`, cả hai đã xong trọn vẹn kể cả kiểm tay, nên không còn cổng ra nào treo. Nhưng nếu `git tag` vẫn chưa có `0.3.0`, **hỏi tôi trước khi bắt đầu E3** — làm E3 chồng lên một bản chưa phát hành sẽ trộn hai milestone vào một lần release.
 
 **Trước mỗi commit:** `npm run verify` phải xanh — hiện là **306 test, 0 error / 5 warning** (số warning là 5, xem `CLAUDE.md` §6.8, **đừng dọn chúng**). Chia nhỏ thành nhiều commit theo task (`refactor(lang):` / `feat(lang):` / `fix(lang):`), mỗi commit tự đứng được.
 
