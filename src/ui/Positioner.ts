@@ -240,7 +240,13 @@ export interface ClipInsets {
  * much to hide is geometry, and drawing is the stylesheet's business.
  */
 export function clipInsets(rect: Rect, visibleBounds: Rect | null): ClipInsets {
-	if (visibleBounds == null) return { top: 0, bottom: 0 };
+	// A leaf that has left the screen entirely leaves nothing of the element
+	// visible. Returning zero insets here — "clip nothing" — was safe only
+	// because {@link isRectVisible} happens to hide the element in the same
+	// case, which is precisely the pairing a future caller would separate.
+	// One full-height inset empties the box on its own; insets that overlap each
+	// other are a shape browsers are not required to agree about.
+	if (visibleBounds == null) return { top: rect.height, bottom: 0 };
 
 	return {
 		top: clampInset(visibleBounds.top - rect.top, rect.height),

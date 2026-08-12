@@ -284,8 +284,14 @@ describe('clipInsets', () => {
 		expect(insets.top).toBe(140);
 	});
 
-	it('clips nothing when the leaf is off screen entirely', () => {
-		expect(clipInsets(makeRect(400, 200, 200, 140), null)).toEqual({ top: 0, bottom: 0 });
+	it('clips everything when the leaf is off screen entirely', () => {
+		// Not "clip nothing": the element has no visible region to sit in, and
+		// the two halves of the answer have to agree even if a caller ever asks
+		// for one without the other.
+		const rect = makeRect(400, 200, 200, 140);
+
+		expect(clipInsets(rect, null)).toEqual({ top: 140, bottom: 0 });
+		expect(isRectVisible(rect, null)).toBe(false);
 	});
 });
 
