@@ -63,7 +63,7 @@ src/ui/                    tầng duy nhất được chạm DOM của popup/ico
   TriggerIcon.ts · Positioner.ts (hình học thuần, có test) · icons.ts
 
 src/settings/
-  SettingTab.ts       (95)   chỉ còn: thứ tự section + điểm ghi settings duy nhất
+  SettingTab.ts       (96)   chỉ còn: thứ tự section + điểm ghi settings duy nhất
   sections/                  ⟵ tách ở E0. context.ts (kiểu SectionContext),
                              language.ts, provider.ts, activation.ts, scope.ts,
                              appearance.ts, speech.ts, advanced.ts
@@ -114,7 +114,7 @@ Chạy một file test: `npx vitest run tests/Positioner.test.ts` · một test:
 - **Chuỗi UI sentence case**, theo style guide của Obsidian. Heading trong settings không lặp tên plugin, không chứa từ "settings". Câu lỗi phải nói người dùng làm gì tiếp theo.
 - **Không dựng DOM từ chuỗi markup.** `innerHTML` / `outerHTML` / `insertAdjacentHTML` bị cấm ở cả ESLint lẫn `npm run check`. Dùng `createDiv` / `createEl` / `setText`.
 - **Mạng đi qua `requestWithRetry` ở [`src/providers/http.ts:20`](src/providers/http.ts#L20)** (dùng `requestUrl` của Obsidian). **Không bao giờ `fetch`** — CORS chặn DeepL, và mobile cần `requestUrl`.
-- **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. Bốn custom property hình học — `--st-clip-top` / `--st-clip-right` / `--st-clip-bottom` / `--st-clip-left` — được ghi từ `setClip()` của icon và popup, và chỉ hai dòng `clip-path` trong `styles.css` đọc chúng ([`:107`](styles.css#L107), [`:196`](styles.css#L196)). Thêm cạnh thì phải sửa **cả hai** dòng. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
+- **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. Bốn custom property hình học — `--st-clip-top` / `--st-clip-right` / `--st-clip-bottom` / `--st-clip-left` — được ghi từ `setClip()` của icon và popup, và chỉ hai dòng `clip-path` trong `styles.css` đọc chúng ([`:109`](styles.css#L109), [`:198`](styles.css#L198)). Thêm cạnh thì phải sửa **cả hai** dòng. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
 - **Log qua `src/utils/log.ts`** — cổng duy nhất, mặc định tắt, không bao giờ log nội dung note hay API key.
 - `type` import tường minh (`consistent-type-imports`), `no-explicit-any` ở mức error.
 - Commit theo Conventional Commits, scope theo epic: `fix(ui):`, `feat(hotkey):`, `refactor(lang):`, `feat(provider):`, `feat(i18n):`, `docs(i18n):`.
@@ -207,7 +207,7 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 
 **6.5. `obsidianmd/no-static-styles-assignment` chỉ bắt giá trị *literal*.** `el.style.left = \`${x}px\`` (template literal có expression) **không** bị bắt; `el.style.height = 'auto'` thì bị. Hai hệ quả: (a) lint xanh **không** nghĩa là không có chỗ nào gán style; (b) **đừng** đi chuyển toạ độ runtime sang CSS custom property vì tưởng nó vi phạm — 21 vị trí `.style.*` hiện tại đều hợp lệ. Bằng chứng đầy đủ ở [`docs/REVIEW-FINDINGS.md` §H2](docs/REVIEW-FINDINGS.md).
 
-**6.6. `registerDomEvent` không dùng được cho listener theo phiên.** Obsidian chỉ giải phóng chúng khi **toàn bộ plugin** unload, nên một phiên mở/đóng popout nhiều lần sẽ tích luỹ đăng ký trên document đã chết. `SelectionManager` **cố ý** tự `addEventListener`, tự track teardown, và gắn vào `this.register()` trong [`main.ts:85`](src/main.ts#L85) — lý do ghi tại [`src/core/SelectionManager.ts:154-159`](src/core/SelectionManager.ts#L154-L159). **Đừng "sửa" chỗ này.**
+**6.6. `registerDomEvent` không dùng được cho listener theo phiên.** Obsidian chỉ giải phóng chúng khi **toàn bộ plugin** unload, nên một phiên mở/đóng popout nhiều lần sẽ tích luỹ đăng ký trên document đã chết. `SelectionManager` **cố ý** tự `addEventListener`, tự track teardown, và gắn vào `this.register()` trong [`main.ts:83`](src/main.ts#L83) — lý do ghi tại [`src/core/SelectionManager.ts:152-157`](src/core/SelectionManager.ts#L152-L157). **Đừng "sửa" chỗ này.**
 
 **6.7. `/code-review` review *diff*, không review thư mục.** Nhánh sạch thì nó lấy commit cuối làm phạm vi — ở E0 nó phủ đúng một commit thay vì 42 file. Muốn phủ rộng phải chỉ định phạm vi rõ ràng hoặc tự đọc code.
 

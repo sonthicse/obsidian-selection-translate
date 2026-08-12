@@ -495,6 +495,97 @@ Lý do chọn cách này thay vì hai cách còn lại:
 - Toàn bộ test hiện có của `HotkeyManager` vẫn xanh.
 - Gỡ plugin → không còn scope nào bị đẩy vào stack của Obsidian (kiểm tra trong `onunload`).
 
+### Kết quả thực hiện (E2)
+
+Thực hiện ngày **2026-08-12**, ngay sau E1, trên nhánh sau `0.2.3`. **Chưa phát hành** — E1 + E2 cùng đi trong `0.3.0`.
+
+> Mọi số dòng trong phần mô tả E2 ở trên (`main.ts:158`, `:160`, `:172`) là ảnh chụp trước E2 và được giữ nguyên làm căn cứ. Sau E2: `addCommands()` ở `main.ts:161`, hai lời gọi `addCommand` ở `:162` và `:174`, và không còn lời gọi `t()` nào trong đó. `settings/sections/activation.ts:29` vẫn đúng.
+
+#### Trạng thái từng task
+
+| Task | Trạng thái | Ghi chú |
+|---|---|---|
+| **E2-T1** — `HotkeyManager` sang `Scope` | **Xong** | `TriggerKeyScope` trong `core/HotkeyManager.ts`. Claim/release từ **một** chỗ: nhánh `state === 'icon'` trong `UiController.render()`, cộng `release()` vô điều kiện trong `destroy()`. Ba đường cũ bị gỡ: `main.handleTriggerKey`, `onKeyDown` trong `SelectionManagerHandlers`, `UiController.triggerFromHotkey`. Bốn hàm thuần và 21 test của chúng **không đụng tới**. |
+| **E2-T2** — phát hiện xung đột | **Xong** | `findHotkeyConflicts()` thuần + `readObsidianHotkeys()` bọc `try/catch`, cast cấu trúc hẹp. 14 test mới, gồm hai ca hỏng API. |
+| **E2-T3** — nút deep-link | **Xong** | `addExtraButton` icon `keyboard` cạnh nút ghi và nút xoá, mở `openTabById('hotkeys')` qua cùng kiểu cast hẹp `App.setting` mà `main.ts` đang dùng. |
+| **E2-T4** — giữ luật phím trơn | **Xong** | `isBindingSafeFor()` không đổi một ký tự. Điểm phải cẩn thận hoá ra không phải luật mà là **giá trị trả về** của callback — xem cạm bẫy 6.12 dưới đây. |
+| **E2-T5** — tên command tiếng Anh | **Xong** | Hai chuỗi literal trong `main.ts`, hai key xoá khỏi cả `en.ts` lẫn `vi.ts`. `README.vi.md` sửa theo. |
+| **Ma trận test thủ công** | **Chờ chủ dự án** | Xem mục riêng bên dưới. |
+
+#### Hình dạng thật của `app.hotkeyManager` — dữ kiện, không phải suy đoán
+
+Kế hoạch dự trù phải "báo lại nếu hình dạng khác dự kiến". Không phải đoán: bản Obsidian đang cài (`obsidian-1.13.6.asar` trong `AppData/Roaming/obsidian`) được giải nén và đọc thẳng `app.js`. Kết quả:
+
+| Thứ | Hình dạng thật |
+|---|---|
+| `hotkeyManager.defaultKeys` | `Record<commandId, Hotkey[]>`, thuộc tính thường |
+| `hotkeyManager.customKeys` | **getter** trả `Object.assign({}, store)` với `store` khoá bằng `Symbol('customKeys')`; cùng kiểu |
+| `getHotkeys(id)` / `getDefaultHotkeys(id)` | tra một command, trả `Hotkey[] \| undefined` |
+| Luật hợp nhất (`bake()`) | duyệt hết `customKeys`, rồi duyệt `defaultKeys` **chỉ với id không có trong `customKeys`**. Nên `customKeys[id] = []` = người dùng đã xoá phím đó, và default **không** sống lại |
+| Tên command | `app.commands.commands[id].name`, **đã kèm tiền tố tên plugin** (`Plugin.addCommand` ghép `manifest.name + ": "` ngay lúc đăng ký) |
+| So sánh modifier | "compile" trước: `Mod` → `Meta` (macOS) / `Ctrl`, rồi **sort rồi `join(',')`** |
+
+`readObsidianHotkeys()` sao chép đúng luật hợp nhất đó, nên cảnh báo khớp với thứ người dùng thực sự thấy trong trang Hotkeys.
+
+Ba thứ nữa đọc được từ cùng nguồn, và cả ba đều đổi cách hiện thực chứ không chỉ là chuyện bên lề — chép vào `CLAUDE.md` §6.11–6.13:
+
+1. **`Scope.handleKey` dừng ngay khi handler trả về bất kỳ giá trị nào khác `undefined`.** Trả `true` để "cho phím đi tiếp" là sai: nó nuốt phím y như `false`, chỉ khác là không `preventDefault`. Ca *phím trơn trong Live Preview* vì thế phải `return undefined`.
+2. **Obsidian đăng ký chính bộ hotkey của nó bằng `app.scope.register(null, null, …)`**, và `handleKey` chỉ lên scope cha khi không handler nào trả lời. Một `new Scope()` không cha sẽ **chặn mọi phím tắt của Obsidian** trong lúc icon hiện. `TriggerKeyScope` vì thế dựng `new Scope(app.scope)`.
+3. **`pushScope` đẩy vào stack riêng của `activeWindow`** (`WeakMap<Window, {scope, prevScopes}>`), và mỗi popout được `registerWindow` gắn listener riêng. Nghĩa là popout **không cần xử lý riêng** — đẩy đúng lúc cửa sổ đó đang active là đủ. Vẫn phải kiểm bằng tay, vì đây là suy luận từ code đã minify chứ không phải quan sát.
+
+Đăng ký bằng `register(null, null, …)` cũng là lựa chọn có ý thức: bắt tất, rồi để `matchesBinding()` trả lời. Giữ được **một** nơi so khớp — gồm cả nửa phủ định (`Ctrl+Alt+T` không được kích hoạt binding `Alt+T`) mà bộ so khớp của Obsidian không chạy cho handler đăng ký với `null` modifiers.
+
+#### Ma trận test thủ công — **chưa chạy, cần chủ dự án**
+
+Phiên làm việc chạy trong WSL, không thao tác được GUI Obsidian. Bản build đã chép sẵn vào `.obsidian/plugins/selection-translate` của vault thật; tắt/bật plugin là chạy được.
+
+**{Live Preview, Reading, PDF, popout} × {phím có modifier, phím trơn}** — 8 ô.
+
+Bốn điều dễ lộ lỗi nhất, kèm **điều phải nhìn**:
+
+| Ô | Phải nhìn cái gì |
+|---|---|
+| **Popout** | Bôi đen trong cửa sổ popout → bấm trigger key → phải dịch. Đây là ô rủi ro nhất: `app.keymap` là của app, listener cũ là của từng document. |
+| **Phím trơn trong Live Preview** | Đặt trigger key là `T` (không modifier), bôi đen, bấm `T` → **không** dịch, **và chữ "t" phải được gõ vào note**. Nuốt phím ở đây tệ hơn không có tính năng. |
+| **Phím trơn trong Reading view** | Cùng phím đó, ở chế độ đọc → **phải** dịch. Ở đó không gõ được vào đâu nên luật an toàn không áp dụng. |
+| **Bấm trigger key khi không có icon** | Đặt trigger key trùng một command của Obsidian (ví dụ `Ctrl+P`), bấm khi không có vùng chọn → **command của Obsidian phải chạy**. Đồng thời kiểm ngược lại: trong lúc icon **đang** hiện, một phím tắt Obsidian khác (`Ctrl+P`) vẫn phải chạy — đó là thứ mà scope có cha bảo vệ. |
+
+Hai mục AC còn lại cũng phải thử tay: cảnh báo trùng phím có nêu **đúng tên command**; và gỡ plugin xong thì bàn phím trở lại bình thường.
+
+#### Danh sách commit
+
+| Commit | Nội dung |
+|---|---|
+| `f187bc0` | `refactor(hotkey):` trigger key chạy bằng `Scope` của Obsidian (E2-T1, E2-T4) |
+| `d560615` | `feat(hotkey):` cảnh báo trùng phím + nút mở trang Hotkeys (E2-T2, E2-T3) |
+| `ef1e6c1` | `refactor(hotkey):` tên command đăng ký một lần bằng tiếng Anh (E2-T5) |
+| `59cdae0` | `docs:` gỡ khối E8 + E1 bị nhân đôi trong `DEV-PLAN.md` |
+| `6cae0eb` | `docs:` CHANGELOG, `CLAUDE.md`, `README.vi.md` |
+| *(commit này)* | `docs:` kết quả E2, bảng tiến độ, `docs/prompts/PROMPT-E3.md` |
+
+`npm run verify` xanh sau **mỗi** commit: **341 test** (từ 327), 0 error / 5 warning.
+
+#### Số chuỗi UI: 132 → **132**, không phải 130
+
+Prompt E2 dự đoán 132 → 130 vì E2-T5 xoá hai key. Đúng một nửa: E2-T2 và E2-T3 **thêm** đúng hai key (`settings.hotkeyConflict`, `settings.openHotkeys`), nên tổng không đổi. Hệ quả: con số *Tổng khối lượng giao diện* ở đầu tài liệu (8 × 132 = 1.056) và con số E4-T1 đang lập kế hoạch trên **không cần sửa**.
+
+> E4-T1 vẫn ghi "134 key × 8 = 1.072" — con số của trước E0, đã sai từ E0 chứ không phải do E2. Để nguyên: sửa nội dung một epic chưa làm là việc của chủ dự án.
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| `TranslatePopup.claimScope()` dựng `new Scope()` **không cha**, nên trong lúc popup mở, mọi phím tắt của Obsidian đều không chạy | Là lỗi có thật, nhưng thuộc popup chứ không thuộc trigger key, và sửa nó là đổi hành vi bàn phím ở một bề mặt E2 không được giao. Hai handler trả `true` trong đó cũng nên là `undefined`. **Đáng làm ở một task riêng** — đã ghi cảnh báo vào `CLAUDE.md` §6.12 để không ai chép nhầm mẫu đó. |
+| Điền sẵn ô tìm kiếm trong trang Hotkeys bằng tên plugin | Phải với tới `app.setting.openTabById(...).searchInputEl` — sâu hơn hẳn `App.setting`, và kế hoạch chỉ yêu cầu deep-link. |
+| Sửa `t()` trả về key thay vì fallback về `en` (`i18n/index.ts:63-66`) | Vẫn là **E4-T1**. |
+| Sửa `normalizeDetectedLang()` cắt script subtag (`providers/langMap.ts:78`) | Vẫn là **E3-T3**. |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` | Vẫn ngoài phạm vi, như đã ghi ở E0, E8 và E1. |
+
+#### Có gì buộc một epic sau phải đổi cách làm không?
+
+**Không.** E2 làm E4 dễ hơn một chút: tên command không còn nằm trong catalogue, nên 8 locale của E4 không phải dịch hai chuỗi mà việc dịch chúng vốn sẽ hỏng. Còn `SectionContext` mọc thêm `app` — E5 khi thêm ba khối credential không cần biết tới nó, nhưng nay có sẵn nếu cần.
+
+
 ---
 
 ## E3 — Refactor mô hình ngôn ngữ (nền tảng cho E4–E6)
@@ -832,8 +923,8 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 | **E0** — Audit, review, tái cấu trúc | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) |
 | **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
 | **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), ma trận test thủ công đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
-| **E2** — Đồng bộ trigger key | `0.3.0` | ⏭️ **Tiếp theo** |
-| E3 — Registry ngôn ngữ | `0.4.0` | Chưa bắt đầu |
+| **E2** — Đồng bộ trigger key | `0.3.0` | ✅ **Xong** (2026-08-12), chờ ma trận test thủ công — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e2) |
+| E3 — Registry ngôn ngữ | `0.4.0` | ⏭️ **Tiếp theo** |
 | E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
 | E5 — 3 provider mới | `0.5.0` | Chưa bắt đầu |
 | E6 — Phiên âm có điều kiện | `0.5.0` | Chưa bắt đầu |
@@ -843,16 +934,12 @@ Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi t�
 
 1. ~~**Kết quả `/code-review` ở E0** có thể cho thấy phạm vi tái cấu trúc lớn hơn 4 file đã liệt kê.~~ **Đã giải quyết ở E0:** phạm vi thực tế hoá ra *nhỏ hơn* dự kiến chứ không lớn hơn — audit đề nghị 3 file, chủ dự án duyệt giữ đủ 4.
 2. **Bảng mã ngôn ngữ ở E3-T2** là điểm khởi đầu dựng từ tài liệu API. Nếu thực tế khác (đặc biệt phần `zh` của DeepL và Youdao), báo lại trước khi sửa bảng.
-3. **`app.hotkeyManager` ở E2-T2** là API không công khai. Nếu hình dạng của nó khác dự kiến hoặc không truy cập được, báo lại thay vì tự tìm đường vòng.
+3. ~~**`app.hotkeyManager` ở E2-T2** là API không công khai.~~ **Đã giải quyết ở E2:** hình dạng thật được xác minh bằng cách giải nén `obsidian-1.13.6.asar` chứ không suy đoán, và nó *khớp* dự kiến. Bảng chi tiết ở [Kết quả thực hiện (E2)](#kết-quả-thực-hiện-e2). Ba phát hiện kèm theo về `Scope` thì **không** có trong dự kiến và đã ghi vào `CLAUDE.md` §6.11–6.13.
 
 ### Việc tiếp theo
 
-**E2 — đồng bộ trigger key với Hotkeys của Obsidian** (`0.3.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E2.md`](prompts/PROMPT-E2.md), mang theo ngữ cảnh vừa học ở E1.
+**E3 — refactor mô hình ngôn ngữ (language registry)** (`0.4.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E3.md`](prompts/PROMPT-E3.md), mang theo ngữ cảnh vừa học ở E2.
 
-E1 nay **xong trọn vẹn**, ma trận test thủ công gồm cả trong đó. Cổng ra còn lại của `0.3.0` là ma trận của chính E2.
+Trước đó, **`0.3.0` cần được phát hành**: E1 và E2 đều đã xong phần code, cổng ra còn lại là **ma trận test thủ công của E2** (8 ô, mục ở trên) — của E1 đã chạy xong. Trình tự phát hành ở `CLAUDE.md` §8; nhớ kiểm asset của release sau khi workflow chạy, vì thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó.
 
-Khác với E0 và E8: E1 và E2 **đều** đổi hành vi người dùng, nên là **MINOR** (`0.3.0`), không phải PATCH. Cả hai đi chung một lần phát hành, nên **bump version là việc làm sau khi E2 xong**, không phải bây giờ.
-
-Sau E1 là **E2** (cùng milestone `0.3.0`).
-
-> `CLAUDE.md` ở root là tài liệu bắt buộc đọc khi mở phiên mới, và cập nhật nó là một phần Definition of Done của mọi epic từ đây trở đi (quy tắc R1).
+E3 là **nút thắt** của cả nửa sau kế hoạch (E4, E5, E6 đều đứng trên nó) và là **thay đổi phá vỡ tương thích** — gỡ tiếng Nga, đổi schema settings — nhưng ở giai đoạn `0.x` thì dồn vào MINOR: `0.4.0`, không phải `1.0.0`. `0.4.0` **bắt buộc có ít nhất một vòng beta qua BRAT**, vì lỗi migration làm mất setting là không hồi phục được.
