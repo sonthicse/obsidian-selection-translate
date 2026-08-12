@@ -21,7 +21,6 @@ export const en = {
 	'popup.copyFailed': 'Could not copy to the clipboard.',
 	'popup.settings': 'Open plugin options',
 	'popup.close': 'Close',
-	'popup.otherMeanings': 'Other meanings',
 	'popup.fromCache': 'cached',
 	'popup.elapsed': '{ms} ms',
 
@@ -91,7 +90,6 @@ export const en = {
 	'settings.triggerHotkey': 'Trigger key',
 	'settings.triggerHotkeyDesc':
 		'Pressed while the button is showing, instead of clicking it. Alt+T is a good choice.',
-	'settings.recordHotkey': 'Record',
 	'settings.recordingHotkey': 'Press a key combination…',
 	'settings.clearHotkey': 'Clear',
 	'settings.noHotkey': 'Not set',

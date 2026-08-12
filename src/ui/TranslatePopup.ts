@@ -75,15 +75,6 @@ export class TranslatePopup {
 		private readonly handlers: PopupHandlers
 	) {}
 
-	isOpen(): boolean {
-		return this.el != null;
-	}
-
-	/** Contains a node, used to tell clicks inside the popup from clicks outside. */
-	contains(node: Node | null): boolean {
-		return node != null && this.el != null && this.el.contains(node);
-	}
-
 	/**
 	 * Opens the small loading popup.
 	 *

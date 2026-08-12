@@ -111,10 +111,6 @@ export class TranslationOrchestrator {
 		this.cache.setMaxSize(this.getSettings().cacheSize);
 	}
 
-	clearCache(): void {
-		this.cache.clear();
-	}
-
 	destroy(): void {
 		this.reset();
 		this.cache.clear();

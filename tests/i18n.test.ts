@@ -117,7 +117,6 @@ describe('message catalogue coverage', () => {
 			'popup.copy',
 			'popup.settings',
 			'popup.close',
-			'popup.otherMeanings',
 		];
 
 		for (const key of labels) {

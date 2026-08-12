@@ -111,10 +111,6 @@ export class TriggerIcon {
 		return this.el.hasClass('is-visible') && !this.el.hasClass('is-anchor-hidden');
 	}
 
-	getElement(): HTMLElement | null {
-		return this.el;
-	}
-
 	destroy(): void {
 		this.el?.remove();
 		this.el = null;

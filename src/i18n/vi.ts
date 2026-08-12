@@ -18,7 +18,6 @@ export const vi = {
 	'popup.copyFailed': 'Không sao chép được vào bộ nhớ tạm.',
 	'popup.settings': 'Mở tuỳ chọn plugin',
 	'popup.close': 'Đóng',
-	'popup.otherMeanings': 'Các nghĩa khác',
 	'popup.fromCache': 'đã lưu',
 	'popup.elapsed': '{ms} ms',
 
@@ -81,7 +80,6 @@ export const vi = {
 	'settings.triggerHotkey': 'Phím kích hoạt',
 	'settings.triggerHotkeyDesc':
 		'Bấm khi nút đang hiện, thay cho việc click. Alt+T là lựa chọn hợp lý.',
-	'settings.recordHotkey': 'Ghi phím',
 	'settings.recordingHotkey': 'Bấm tổ hợp phím…',
 	'settings.clearHotkey': 'Xoá',
 	'settings.noHotkey': 'Chưa đặt',

@@ -125,7 +125,7 @@ Ghi rõ để tránh refactor tràn lan — **không động vào**:
 
 | # | Issue | Vị trí | Nhãn | Lý do (một câu) |
 |---|---|---|---|---|
-| 1 | `normalizeWheelDelta` nhân `deltaX` với **chiều cao** trang thay vì chiều rộng ở chế độ `DOM_DELTA_PAGE` | `utils/scroll.ts:60-69` | `nice-to-have` | Lỗi đơn vị thật nhưng chỉ chạm tới ở ca cực hiếm (wheel ngang, chế độ page), và sửa nó là **đổi hành vi** — thứ bản PATCH này không được làm mà không hỏi. |
+| 1 | `normalizeWheelDelta` nhân `deltaX` với **chiều cao** trang thay vì chiều rộng ở chế độ `DOM_DELTA_PAGE` | `utils/scroll.ts:60-69` | `must-fix-in-E0` | Lỗi đơn vị thật; chủ dự án đã duyệt sửa trong E0 dù nó về kỹ thuật là đổi hành vi ở ca `DOM_DELTA_PAGE`. |
 | 2 | 4 phương thức public không nơi nào gọi: `TriggerIcon.getElement()`, `TranslatePopup.isOpen()`, `TranslatePopup.contains()`, `TranslationOrchestrator.clearCache()` | `TriggerIcon.ts:114`, `TranslatePopup.ts:78,83`, `TranslationOrchestrator.ts:114` | `must-fix-in-E0` | Dead code không đổi hành vi khi xoá, và mỗi cái là một API giả mà epic sau có thể tưởng là đường đi có sẵn. |
 | 3 | 2 key i18n mồ côi: `popup.otherMeanings`, `settings.recordHotkey` | `i18n/en.ts:24,94` · `i18n/vi.ts:21,84` | `must-fix-in-E0` | E4 nhân mỗi key lên 8 locale, nên 2 key chết bây giờ là 16 chuỗi dịch vô ích sau này. |
 | 4 | `UiController` ôm 6 trách nhiệm; `setClip` gọi ở 3 nhánh độc lập | `UiController.ts:197,439,592` | `must-fix-in-E0` | E1 phải gộp ba nhánh này thành một cổng hình học, và làm việc đó trong một file 707 dòng là cách chắc chắn để bỏ sót nhánh thứ tư. |
@@ -133,7 +133,7 @@ Ghi rõ để tránh refactor tràn lan — **không động vào**:
 | 6 | `SettingTab` sẽ phình mạnh ở E5 (3 provider) và E4 (8 locale) | `SettingTab.ts` toàn file | `must-fix-in-E0` | Kế hoạch E5 ghi thẳng *"`SettingTab.ts` phải tách **trước** khi thêm"*. |
 | 7 | Ranh giới tầng chỉ được giữ bằng kỷ luật, không có cổng CI | `eslint.config.mjs` | `must-fix-in-E0` | Chính là E0-T4; một import sai từ `ui/` sang `providers/` hiện đi qua CI không ai biết. |
 | 8 | Không có cổng CI cho link chết trong `docs/` và cho danh sách host README vs `src/` | `scripts/check-guidelines.mjs` | `must-fix-in-E0` | Cũng là E0-T4, và AC của E7 gọi mục host là *"mục reviewer hay bắt nhất"*. |
-| 9 | `SelectionManager.capture()` trộn bộ luật lọc với việc đọc DOM | `SelectionManager.ts:393-457` | `nice-to-have` | Bộ luật đáng được test riêng, nhưng không epic nào sắp tới chặn ở đây và kế hoạch xếp nó là "không bắt buộc". |
+| 9 | `SelectionManager.capture()` trộn bộ luật lọc với việc đọc DOM | `SelectionManager.ts:393-457` | `must-fix-in-E0` | Kế hoạch xếp "không bắt buộc" và audit này đề nghị bỏ qua, nhưng chủ dự án đã duyệt làm đủ 4 file — bộ luật tách ra thì test được mà không cần DOM. |
 | 10 | `t()` trả về chính key khi thiếu chuỗi, thay vì fallback về `en` | `i18n/index.ts:63-66` | `wontfix` | Đây là **E4-T1**, đã có yêu cầu và AC riêng ở đó; sửa sớm là lấn epic. |
 | 11 | `normalizeDetectedLang()` cắt script subtag, làm `zh-Hans`/`zh-Hant` không phân biệt được | `providers/langMap.ts:78` | `wontfix` | Đây là **E3-T3**, được ghi là điều kiện chặn của tính năng tiếng Trung; sửa ở E0 là lấn epic và không có ngôn ngữ nào để kiểm chứng. |
 
@@ -143,16 +143,18 @@ Ghi lại để lần sau không phải nghi lại: unconditional `preventDefaul
 
 ---
 
-## Phạm vi đề nghị cho bước tái cấu trúc
+## Phạm vi đã được duyệt cho bước tái cấu trúc
 
-**Đúng 3 file kế hoạch đã liệt kê, không mở rộng.** Kế hoạch liệt 4 file; `SelectionManager.ts` được **bỏ ra**, vì nó nằm trong nhóm "cân nhắc, không bắt buộc" và không chặn epic nào.
+Audit này đề nghị 3 file. **Chủ dự án duyệt đủ 4 file như kế hoạch gốc** (2026-08-12), tức giữ cả `SelectionManager.ts`, và duyệt **sửa issue #1 ngay trong E0** thay vì hoãn. Cả hai quyết định đều được ghi lại ở đây thay vì sửa lặng lẽ.
 
-| Commit dự kiến | Nội dung | Issue |
+| Commit | Nội dung | Issue |
 |---|---|---|
+| `refactor: xoá dead code` | 4 phương thức + 2 key i18n | #2, #3 |
+| `fix(ui): scale wheel ngang theo chiều rộng trang` | Thêm `pageWidth`, test cả hai trục | #1 |
 | `refactor(ui): tách FloatingLayer khỏi UiController` | Gom show/hide/clip/moveTo/visibility của icon và popup sau một lớp | #4 |
 | `refactor(ui): tách PopupContent khỏi TranslatePopup` | Đưa `buildResult`/`buildHeader`/`buildFooter`/`buildError` ra file riêng | #5 |
 | `refactor(settings): tách SettingTab thành sections` | 7 method sẵn có → `settings/sections/*.ts` | #6 |
-| `refactor: xoá dead code` | 4 phương thức + 2 key i18n | #2, #3 |
+| `refactor(core): tách bộ luật lọc khỏi SelectionManager` | `capture()` → hàm thuần có test | #9 |
 | `build(ci): thêm cổng ranh giới import, link docs, host README` | E0-T4 | #7, #8 |
 
-Sau mỗi commit: `npm run verify` xanh. Hành vi người dùng không đổi ở bất kỳ commit nào.
+Sau mỗi commit: `npm run verify` xanh. Ngoài issue #1 đã được duyệt riêng, hành vi người dùng không đổi ở bất kỳ commit nào.
