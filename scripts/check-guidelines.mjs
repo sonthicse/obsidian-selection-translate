@@ -103,6 +103,18 @@ if (!manifest.description.endsWith('.')) {
 if (/\p{Extended_Pictographic}/u.test(manifest.description)) {
 	fail('Description content', 'manifest description must not contain emoji');
 }
+// The directory rejects this outright: everything listed there is an Obsidian
+// plugin, so saying so in the description is noise. Missing from this file
+// until 0.3.0 was submitted and turned down for exactly it — the name and id
+// were checked, the description was not.
+if (/obsidian/i.test(manifest.description)) {
+	fail('Description content', 'manifest description must not contain "Obsidian"');
+}
+// Reviewed as a warning rather than an error, but it is the same class of
+// mistake: the description has one job, which is to say what the thing does.
+if (/\b(this|a|the)\s+plugin\b/i.test(manifest.description)) {
+	fail('Description content', 'manifest description must not refer to itself as a plugin');
+}
 if (/obsidian/i.test(manifest.name)) {
 	fail('Plugin name', 'the plugin name must not contain "Obsidian"');
 }
