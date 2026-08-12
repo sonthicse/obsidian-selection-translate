@@ -1,12 +1,12 @@
 import {
 	DOUBLE_CLICK_GUARD_MS,
-	HARD_SELECTION_CAP,
 	IGNORED_SELECTORS,
 	RESIZE_DEBOUNCE_MS,
 	SELECTION_CHANGE_DEBOUNCE_MS,
 	SIDEBAR_SELECTORS,
 } from '../constants';
-import { detectContext, isContextEnabled, type ContextInfo } from './ContextDetector';
+import { detectContext, type ContextInfo } from './ContextDetector';
+import { isDeliberateRequest, isSamePosition, judge, type RejectionReason } from './SelectionRules';
 import { DomSelectionSource } from '../selection/DomSelectionSource';
 import { InputSelectionSource } from '../selection/InputSelectionSource';
 import { PdfSelectionSource } from '../selection/PdfSelectionSource';
@@ -21,13 +21,7 @@ import { debug } from '../utils/log';
 export type SelectionCause = 'mouse' | 'keyboard' | 'selectionchange' | 'double-click' | 'command';
 
 /** Why a previously reported selection is no longer valid. */
-export type ClearReason =
-	| 'empty'
-	| 'ignored-surface'
-	| 'disabled-context'
-	| 'too-short'
-	| 'too-long'
-	| 'undetectable';
+export type ClearReason = RejectionReason;
 
 export interface SelectionManagerHandlers {
 	/** A usable selection exists. The snapshot is already detached from the DOM. */
@@ -369,8 +363,7 @@ export class SelectionManager {
 		 * observations of a selection but instructions to act on one, and the
 		 * user may well repeat the same instruction on the same word.
 		 */
-		const isDeliberateRequest = cause === 'double-click' || cause === 'command';
-		if (!isDeliberateRequest && this.isSameAsCurrent(snapshot)) return;
+		if (!isDeliberateRequest(cause) && this.isSameAsCurrent(snapshot)) return;
 
 		this.current = snapshot;
 		debug('selection', {
@@ -413,45 +406,28 @@ export class SelectionManager {
 			return { kind: 'none', reason: 'empty', retain: focusMovedToChrome };
 		}
 
-		// Rule 3: never react to text inside our own popup, or translating a
-		// translation would loop indefinitely.
-		if (isInsideOwnUi(raw.referenceNode)) return { kind: 'ignore' };
-
-		// Rule 4: transient chrome — modals, the command palette, suggestion
-		// popups — is UI text, not content the user means to translate.
+		// Every DOM question the rules need, answered here so they need none of
+		// their own. The context is worked out up front rather than after the
+		// cheap tests because `judge` decides the order, not this method.
 		const referenceEl = toElement(raw.referenceNode);
-		if (referenceEl?.closest(IGNORED_SELECTORS) != null) {
-			return { kind: 'none', reason: 'ignored-surface' };
-		}
-
-		// Rule 4b: the same judgement, made structurally. Rule 4 names the classes
-		// Obsidian happens to use today; this one only needs the side panels to
-		// still be side panels, so a rewritten nav tree cannot quietly reopen the
-		// hole it closes.
-		if (referenceEl?.closest(SIDEBAR_SELECTORS) != null) {
-			return { kind: 'none', reason: 'ignored-surface' };
-		}
-
-		/*
-		 * Rules 1 and 2: length bounds, measured on trimmed text so a selection
-		 * of pure whitespace counts as empty.
-		 *
-		 * Only the absolute cap is applied here. The user's own
-		 * `maxSelectionLength` is checked later, by the orchestrator, so that
-		 * exceeding it opens a popup saying by how much — rejecting it at this
-		 * point would produce no icon, no message and no log, which is
-		 * indistinguishable from the plugin being broken.
-		 */
-		const trimmed = raw.text.trim();
-		if (trimmed.length === 0) return { kind: 'none', reason: 'empty' };
-		if (trimmed.length < settings.minSelectionLength) return { kind: 'none', reason: 'too-short' };
-		if (raw.text.length > HARD_SELECTION_CAP) return { kind: 'none', reason: 'too-long' };
-
 		const info = detectContext(raw.referenceNode, win.document.body);
-		if (info == null) return { kind: 'none', reason: 'undetectable' };
 
-		// Rule 5: the surface must be switched on in settings.
-		if (!isContextEnabled(info, settings)) return { kind: 'none', reason: 'disabled-context' };
+		const verdict = judge(
+			{
+				text: raw.text,
+				insideOwnUi: isInsideOwnUi(raw.referenceNode),
+				inIgnoredSurface: referenceEl?.closest(IGNORED_SELECTORS) != null,
+				inSidebar: referenceEl?.closest(SIDEBAR_SELECTORS) != null,
+				context: info,
+			},
+			settings
+		);
+
+		if (verdict.kind === 'ignore') return { kind: 'ignore' };
+		if (verdict.kind === 'reject') return { kind: 'none', reason: verdict.reason };
+
+		// `judge` returning accept is what guarantees this is non-null.
+		if (info == null) return { kind: 'none', reason: 'undetectable' };
 
 		return { kind: 'snapshot', snapshot: this.buildSnapshot(win, raw, info) };
 	}
@@ -487,18 +463,17 @@ export class SelectionManager {
 	/**
 	 * Whether a freshly read selection is the one already on screen.
 	 *
-	 * Compares text and anchor position rather than identity: the same words
-	 * selected in a different place are a different request.
+	 * The window comparison stays here rather than in the rules: a `Window` is
+	 * the one thing in this test that cannot cross into a plain Node process.
 	 */
 	private isSameAsCurrent(snapshot: SelectionSnapshot): boolean {
 		const current = this.current;
 		if (current == null) return false;
+		if (current.win !== snapshot.win) return false;
 
-		return (
-			current.text === snapshot.text &&
-			current.win === snapshot.win &&
-			Math.abs(current.bbox.left - snapshot.bbox.left) < 1 &&
-			Math.abs(current.bbox.top - snapshot.bbox.top) < 1
+		return isSamePosition(
+			{ text: current.text, left: current.bbox.left, top: current.bbox.top },
+			{ text: snapshot.text, left: snapshot.bbox.left, top: snapshot.bbox.top }
 		);
 	}
 }
