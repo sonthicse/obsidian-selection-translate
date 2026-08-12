@@ -1,7 +1,7 @@
 {
   "id": "selection-translate",
   "name": "Selection Translate",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "minAppVersion": "1.5.0",
   "description": "An Obsidian plugin for translating selected text. Vibe coding with Claude.",
   "author": "Thi Duong",
