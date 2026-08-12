@@ -36,17 +36,26 @@ function chain(): Chain {
 
 describe('normalizeWheelDelta', () => {
 	it('passes pixel deltas through untouched', () => {
-		expect(normalizeWheelDelta(0, 120, 0, 16, 800)).toEqual({ dx: 0, dy: 120 });
+		expect(normalizeWheelDelta(0, 120, 0, 16, 800, 1200)).toEqual({ dx: 0, dy: 120 });
 	});
 
 	it('converts line deltas using the line height', () => {
 		// Three lines of a 16px line box, not three pixels.
-		expect(normalizeWheelDelta(0, 3, 1, 16, 800)).toEqual({ dx: 0, dy: 48 });
-		expect(normalizeWheelDelta(-2, 0, 1, 16, 800)).toEqual({ dx: -32, dy: 0 });
+		expect(normalizeWheelDelta(0, 3, 1, 16, 800, 1200)).toEqual({ dx: 0, dy: 48 });
+		expect(normalizeWheelDelta(-2, 0, 1, 16, 800, 1200)).toEqual({ dx: -32, dy: 0 });
 	});
 
 	it('converts page deltas using the page height', () => {
-		expect(normalizeWheelDelta(0, -1, 2, 16, 800)).toEqual({ dx: 0, dy: -800 });
+		expect(normalizeWheelDelta(0, -1, 2, 16, 800, 1200)).toEqual({ dx: 0, dy: -800 });
+	});
+
+	it('measures a horizontal page against the width, not the height', () => {
+		// The regression this guards: both axes used to be scaled by the page
+		// height, so a sideways notch on a 1200x800 window moved 800px instead
+		// of 1200 — wrong by a third, and wrong in the other direction on a
+		// portrait window.
+		expect(normalizeWheelDelta(1, 0, 2, 16, 800, 1200)).toEqual({ dx: 1200, dy: 0 });
+		expect(normalizeWheelDelta(-1, 1, 2, 16, 800, 1200)).toEqual({ dx: -1200, dy: 800 });
 	});
 });
 

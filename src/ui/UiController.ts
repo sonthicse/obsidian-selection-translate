@@ -289,7 +289,8 @@ export class UiController {
 				event.deltaY,
 				event.deltaMode,
 				lineHeightOf(win),
-				win.innerHeight
+				win.innerHeight,
+				win.innerWidth
 			);
 
 			const start = toElement(event.target as Node | null);

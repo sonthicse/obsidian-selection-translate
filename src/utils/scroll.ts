@@ -56,16 +56,28 @@ const EDGE_TOLERANCE = 1;
  * Only Chromium's pixel mode is common, but a mouse driver or a Linux desktop
  * can still emit line or page deltas, and forwarding "3" as three pixels turns
  * a full wheel notch into an imperceptible nudge.
+ *
+ * Page mode is the one place the two axes disagree. "A page" horizontally is
+ * the viewport's width, not its height, so scaling both by the same number
+ * over-scrolls sideways on any window that is not square. Line mode does use
+ * one number for both: a line height is a text metric, and there is no
+ * "line width" a horizontal notch could mean.
  */
 export function normalizeWheelDelta(
 	deltaX: number,
 	deltaY: number,
 	deltaMode: number,
 	lineHeight: number,
-	pageHeight: number
+	pageHeight: number,
+	pageWidth: number
 ): { dx: number; dy: number } {
-	const scale = deltaMode === DELTA_LINE ? lineHeight : deltaMode === DELTA_PAGE ? pageHeight : 1;
-	return { dx: deltaX * scale, dy: deltaY * scale };
+	if (deltaMode === DELTA_LINE) {
+		return { dx: deltaX * lineHeight, dy: deltaY * lineHeight };
+	}
+	if (deltaMode === DELTA_PAGE) {
+		return { dx: deltaX * pageWidth, dy: deltaY * pageHeight };
+	}
+	return { dx: deltaX, dy: deltaY };
 }
 
 /**
