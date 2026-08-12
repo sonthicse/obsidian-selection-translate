@@ -27,13 +27,12 @@ import {
 } from '../utils/scroll';
 import { TriggerIcon } from './TriggerIcon';
 import { TranslatePopup } from './TranslatePopup';
+import { FloatingLayer } from './FloatingLayer';
 import {
 	DEFAULT_PLACEMENT_ORDER,
-	clipInsets,
 	computeCandidate,
 	insetRect,
 	intersectRects,
-	isRectVisible,
 	offsetRect,
 	place,
 	type Placement,
@@ -75,8 +74,8 @@ const OCCLUSION_QUERY = OCCLUSION_SELECTORS.join(', ');
  */
 export class UiController {
 	readonly machine = new StateMachine();
-	private readonly icon: TriggerIcon;
-	private readonly popup: TranslatePopup;
+	/** The two floating elements and every geometric question about them. */
+	private readonly layer: FloatingLayer;
 
 	/**
 	 * The candidate the full placement search settled on, reused while scrolling.
@@ -102,13 +101,13 @@ export class UiController {
 	private pendingFrameWin: Window | null = null;
 
 	constructor(private readonly options: UiControllerOptions) {
-		this.icon = new TriggerIcon(
+		const icon = new TriggerIcon(
 			() => this.handleIconTrigger(),
 			() => this.options.getSettings().popupTheme === 'follow',
 			(event) => this.handleWheel(event)
 		);
 
-		this.popup = new TranslatePopup(options.app, options.getSettings, {
+		const popup = new TranslatePopup(options.app, options.getSettings, {
 			place: (size) => this.placePopup(size),
 			onClose: () => this.dismiss(),
 			onRetry: () => this.retry(),
@@ -126,6 +125,8 @@ export class UiController {
 			subscribeSpeaking: (listener) => this.options.tts.subscribe(listener),
 		});
 
+		this.layer = new FloatingLayer(icon, popup);
+
 		/*
 		 * The popup renders from the machine rather than from its callers. That
 		 * is the whole point of routing every change through one transition:
@@ -139,20 +140,20 @@ export class UiController {
 	private render(context: MachineContext): void {
 		switch (context.state) {
 			case 'idle':
-				this.icon.hide();
-				this.popup.close();
+				this.layer.icon.hide();
+				this.layer.popup.close();
 				return;
 			case 'icon':
-				this.popup.close();
+				this.layer.popup.close();
 				return;
 			case 'loading':
-				if (context.snapshot != null) this.popup.showLoading(context.snapshot);
+				if (context.snapshot != null) this.layer.popup.showLoading(context.snapshot);
 				return;
 			case 'result':
-				if (context.result != null) this.popup.showResult(context.result);
+				if (context.result != null) this.layer.popup.showResult(context.result);
 				return;
 			case 'error':
-				if (context.error != null) this.popup.showError(context.error);
+				if (context.error != null) this.layer.popup.showError(context.error);
 				return;
 		}
 	}
@@ -192,9 +193,7 @@ export class UiController {
 		// resizing one answer the question the same way: a popup placed for a
 		// selection that has already left the leaf must not draw over the tab
 		// header just because no scroll has happened yet.
-		const bounds = this.visibleBounds(snapshot);
-		this.popup.setAnchorHidden(!isRectVisible(result.rect, bounds));
-		this.popup.setClip(clipInsets(result.rect, bounds));
+		this.layer.applyVisibility(this.layer.popup, result.rect, snapshot);
 		return result.rect;
 	}
 
@@ -358,7 +357,7 @@ export class UiController {
 
 	/** True when the icon is showing and the local trigger key should apply. */
 	isIconActive(): boolean {
-		return this.machine.getState() === 'icon' && this.icon.isVisible();
+		return this.machine.getState() === 'icon' && this.layer.icon.isVisible();
 	}
 
 	/** Triggers the icon from the keyboard, as the local hotkey does. */
@@ -370,8 +369,7 @@ export class UiController {
 
 	destroy(): void {
 		this.cancelPendingFrame();
-		this.icon.destroy();
-		this.popup.destroy();
+		this.layer.destroy();
 		this.machine.destroy();
 	}
 
@@ -419,26 +417,21 @@ export class UiController {
 		const geometry = this.anchorGeometry(snapshot);
 		const showingIcon = this.machine.getState() === 'icon';
 
-		const size = showingIcon ? { width: ICON_SIZE, height: ICON_SIZE } : this.popup.getSize();
+		const size = showingIcon ? { width: ICON_SIZE, height: ICON_SIZE } : this.layer.popup.getSize();
 		if (size == null) return;
 
 		const placement = showingIcon ? this.iconPlacement : this.popupPlacement;
 		const rect = this.stickyRect(snapshot, geometry, placement, size);
 		if (rect == null) return;
 
-		const bounds = this.visibleBounds(snapshot);
-		const visible = isRectVisible(rect, bounds);
-
 		if (showingIcon) {
-			this.icon.setAnchorHidden(!visible);
-			this.icon.setClip(clipInsets(rect, bounds));
-			this.icon.moveTo(rect);
+			this.layer.applyVisibility(this.layer.icon, rect, snapshot);
+			this.layer.icon.moveTo(rect);
 			return;
 		}
 
-		this.popup.setAnchorHidden(!visible);
-		this.popup.setClip(clipInsets(rect, bounds));
-		this.popup.moveTo(rect);
+		this.layer.applyVisibility(this.layer.popup, rect, snapshot);
+		this.layer.popup.moveTo(rect);
 	}
 
 	/** The one remembered candidate, recomputed against the current anchor. */
@@ -460,7 +453,7 @@ export class UiController {
 			this.showIcon(snapshot);
 			return;
 		}
-		this.popup.replace();
+		this.layer.popup.replace();
 	}
 
 	/**
@@ -516,18 +509,6 @@ export class UiController {
 		};
 	}
 
-	/** The visible part of the leaf: the region an anchor has to reach into. */
-	private visibleBounds(snapshot: SelectionSnapshot): Rect | null {
-		const win = snapshot.win;
-		const viewport = makeRect(0, 0, win.innerWidth, win.innerHeight);
-		const container = snapshot.containerEl.getBoundingClientRect();
-
-		return intersectRects(
-			viewport,
-			makeRect(container.left, container.top, container.width, container.height)
-		);
-	}
-
 	/* ── Internals ────────────────────────────────────────────────────────── */
 
 	private handleIconTrigger(): void {
@@ -537,7 +518,7 @@ export class UiController {
 			// reachable. Clear it rather than leaving a button that silently
 			// does nothing when pressed.
 			debug('icon triggered with no snapshot; clearing it');
-			this.icon.hide();
+			this.layer.icon.hide();
 			return;
 		}
 		this.requestTranslate(snapshot);
@@ -546,7 +527,7 @@ export class UiController {
 	private requestTranslate(snapshot: SelectionSnapshot): void {
 		if (!this.machine.transition({ to: 'loading', snapshot })) return;
 
-		this.icon.hide();
+		this.layer.icon.hide();
 		this.options.onTranslateRequested(snapshot);
 	}
 
@@ -565,7 +546,7 @@ export class UiController {
 		this.iconPlacement = null;
 		this.popupPlacement = null;
 
-		this.icon.hide();
+		this.layer.icon.hide();
 		if (this.machine.getState() === 'idle') return;
 
 		this.machine.transition({ to: 'idle' });
@@ -585,12 +566,10 @@ export class UiController {
 		this.iconPlacement = result.placement;
 		debug('icon placed', { placement: result.placement, clamped: result.clamped });
 
-		this.icon.show(snapshot.win, result.rect);
+		this.layer.icon.show(snapshot.win, result.rect);
 		// Matters on the resize path, where the icon may already have been
 		// scrolled out of its leaf before the window changed size.
-		const bounds = this.visibleBounds(snapshot);
-		this.icon.setAnchorHidden(!isRectVisible(result.rect, bounds));
-		this.icon.setClip(clipInsets(result.rect, bounds));
+		this.layer.applyVisibility(this.layer.icon, result.rect, snapshot);
 	}
 
 	/**
