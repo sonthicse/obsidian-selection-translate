@@ -378,7 +378,234 @@ Thực hiện ngày **2026-08-12**, trên nhánh sau `0.2.3`. **Chưa phát hàn
 | **E1-T2** — một cổng hình học | **Xong** | `applyVisibility` → `applyGeometry(target, rect, snapshot)`, làm cả ba việc. Hai chỗ nữa phải đổi để lời hứa đó thành thật, và đó là phần kế hoạch chưa lường: `TriggerIcon.show()` **bỏ tham số rect**, `PopupHandlers.place()` **trả `void`** thay vì trả rect. |
 | **E1-T3** — `visibleBounds == null` | **Xong** | Đúng như prompt E1 dự đoán: `isRectVisible` đã ẩn sẵn. Phần thêm là `clipInsets(rect, null)` nay cắt sạch thay vì trả `{0,0}`, để hai nửa không còn che cho nhau. |
 | **E1-T4** — cắt trái/phải | **Xong** | Đủ 5 điểm chạm mà prompt liệt kê. |
-| **Ma trận test thủ công** | **Chưa chạy** | Xem mục riêng bên dưới — đây là mục còn hở duy nhất của E1. |
+| **Ma trận test thủ công** | **Xong** | Chủ dự án chạy trên vault thật, ngay sau bốn commit code. Không ô nào hỏng. |
+
+#### Nguyên nhân gốc: xác nhận đúng như kế hoạch mô tả
+
+Không phát sinh nghi vấn mới. `.workspace-leaf-content` bao cả `.view-header`, nên biên trên nằm phía trên header, nên phần popup vẽ trong vùng header không bị coi là thừa, nên `--st-clip-top` = 0 ở đúng vùng đáng lẽ phải cắt. Cơ chế clip đã đúng; biên được đo sai. Sửa biên là sửa gốc.
+
+Một điều kế hoạch **không** nói và hoá ra quan trọng: `.pdf-toolbar` là **con** của `.view-content`, không phải anh em của nó. Nên với PDF, đo `.view-content` thôi vẫn chưa đủ — vùng nội dung còn thò lên dưới thanh công cụ. `FloatingLayer.contentRect()` cắt phần đó bằng `trimTop()` (hàm thuần, có test), và chỉ chạy khi `snapshot.context === 'pdf'` để không trả giá một `querySelector` mỗi khung hình cuộn ở mọi note.
+
+#### Ma trận test thủ công — **đã chạy, không ô nào hỏng**
+
+Chạy bởi **chủ dự án** trên vault thật (`C:\Users\SONTHI\OneDrive\Documents\Obsidian`), với bản build chép thẳng vào `.obsidian/plugins/selection-translate`. Phiên làm việc chạy trong WSL nên không thao tác được GUI Obsidian; toàn bộ ba mươi sáu ô — {Live Preview, Reading, PDF, input/properties, popout, hover preview} × {tab đơn, split ngang, split dọc} × {zoom 100%, 150%} — do người ngồi trước máy thử.
+
+**Kết quả: ổn hết, không phát hiện hồi quy nào.** Ghi nhận ở mức đó vì đó là mức chi tiết được báo lại; không có ghi chép riêng cho từng ô, nên đừng suy ra điều gì mịn hơn từ dòng này.
+
+Bốn ô rủi ro nhất — và **điều đáng nhìn ở mỗi ô nếu sau này phải thử lại**, chẳng hạn khi Obsidian đổi cấu trúc DOM:
+
+| Ô | Phải nhìn cái gì |
+|---|---|
+| **PDF** | Popup trượt xuống **dưới** thanh công cụ PDF, không đè lên nó. Ca duy nhất `contentRect()` phải trừ thêm, và ca dễ vỡ nhất nếu trình xem PDF đổi cấu trúc. |
+| **Split dọc** | Popup rộng hơn nửa của nó bị **cắt ở mép trong**, không tràn sang note bên cạnh. Ca mà T4 tồn tại vì nó. |
+| **Popout** | Cửa sổ riêng: `snapshot.win` khác cửa sổ chính. Kiểm cả việc cuộn trong popout vẫn cắt đúng. |
+| **Hover preview** | Đi đường map riêng (`.popover` → `.hover-popover`). Nếu Obsidian không đặt hai class đó trên cùng một phần tử, `findContentEl` rơi về container — vẫn an toàn, nhưng biên rộng hơn mong muốn. |
+
+Hai kịch bản của AC cũng đã thử: cuộn cho vùng chọn rời khỏi vùng nội dung → popup biến mất hoàn toàn; cuộn ngược lại → popup hiện lại cùng nội dung, không có request mới (thấy chấm loading ở bước này nghĩa là máy trạng thái đã rơi khỏi `result`, và đó sẽ là hồi quy).
+
+#### Danh sách commit
+
+Từ `97ea9f3` (mốc `0.2.2`) đến `e0c0d2a` (tag `0.2.3`):
+
+| Commit | Nội dung |
+|---|---|
+| `777e281` | `docs:` kế hoạch phát triển + `REVIEW-FINDINGS.md` (E0-T1, E0-T2) |
+| `d357f6a` | `docs:` `CODE-REVIEW.md` (E0-T3) |
+| `25c24f7` | `refactor:` xoá 4 phương thức không ai gọi + 2 key i18n mồ côi |
+| `ca024b6` | `fix(ui):` wheel ngang ở chế độ page đo theo chiều rộng cửa sổ |
+| `bf53788` | `refactor(ui):` tách `FloatingLayer` khỏi `UiController` |
+| `af38d3f` | `refactor(ui):` tách `PopupContent` khỏi `TranslatePopup` |
+| `2bca155` | `refactor(settings):` tách `SettingTab` thành `sections/` |
+| `4891977` | `refactor(core):` tách `SelectionRules` khỏi `SelectionManager` (+17 test) |
+| `fb0830e` | `build(ci):` 4 cổng CI mới (E0-T4) |
+| `53f7b57` | `docs:` minh bạch endpoint `google-free` (E0-T5) |
+| `ff50ba7` | `docs(changelog):` entry `0.2.3` |
+| `e0c0d2a` | `chore(release):` bump `0.2.3` |
+
+`npm run verify` xanh sau **mỗi** commit.
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| Sửa `t()` trả về key thay vì fallback về `en` (`i18n/index.ts:63-66`) | Là **E4-T1**, đã có yêu cầu và AC riêng ở đó. Làm sớm là lấn epic. |
+| Sửa `normalizeDetectedLang()` cắt script subtag (`providers/langMap.ts:78`) | Là **E3-T3**, điều kiện chặn của tính năng tiếng Trung. Ở E0 chưa có ngôn ngữ nào để kiểm chứng. |
+| Tách `SelectionManager.capture()` sâu hơn (phần đọc DOM) | Phần còn lại thực sự cần DOM; tách thêm chỉ tạo lớp trung gian không test được. |
+| Test đa nền tảng (Windows/macOS/Linux/Mobile) | Không phải thay đổi code. Vẫn là mục còn hở trước khi submit lại. |
+| Thêm 4 topic GitHub còn thiếu; sửa description repo trên GitHub (`Vide coding with Claude 😊`) | Nằm ở cài đặt repo trên GitHub, không phải file trong repo. **Cần chủ dự án tự làm.** |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` (file rác WSL, chưa track) | Ngoài phạm vi được duyệt. Nên thêm `*:Zone.Identifier` vào `.gitignore` ở một task khác. |
+
+#### Một lưu ý về `/code-review`
+
+Lệnh này review **diff**, không review toàn bộ cây thư mục. Vì `main` sạch, nó đã chọn commit `97ea9f3` làm phạm vi và phủ đúng một commit chứ không phải 42 file. Nó tìm được **1 issue thật** (bug đơn vị wheel, đã sửa ở `ca024b6`). Toàn bộ 5 trục phân loại được làm bằng audit thủ công trên tay — đúng như kế hoạch đã lường trước: *"Lệnh này sinh ra danh sách thô; việc phân loại và quyết định phạm vi là phần người làm."*
+
+**Với các epic sau: đừng trông đợi `/code-review` phủ hết một thư mục.** Nếu cần review rộng, phải chỉ định phạm vi rõ hoặc tự đọc.
+
+---
+
+## E8 — `CLAUDE.md` (làm ngay sau E0)
+
+### Nội dung bắt buộc
+
+Chạy `/init` để sinh khung, sau đó bổ sung thủ công những phần `/init` không tự suy ra được:
+
+1. **Plugin làm gì, cho ai** — 3 câu.
+2. **Bản đồ tầng:** `selection/` → `core/` → `providers/` → `ui/`, kèm quy tắc bất biến: UI không biết provider nào trả lời, provider không thấy DOM. Ghi rõ file nào thuộc tầng nào.
+3. **Lệnh:** `npm run dev | build | test | lint | check | verify`. Nhấn mạnh `verify` là cổng bắt buộc trước mọi commit.
+4. **Quy ước code:** tab thay space; comment giải thích **tại sao** chứ không phải cái gì (phong cách hiện tại của repo rất nhất quán ở điểm này — phải giữ, đây là tài sản của dự án); sentence case cho chuỗi UI; cấm `innerHTML`/`outerHTML`/`insertAdjacentHTML`; bắt buộc `requestUrl` thay `fetch`; không gán style trong JS, dùng CSS custom property.
+5. **Playbook — phần giá trị nhất:**
+   - *Thêm một ngôn ngữ mới:* đúng danh sách file phải sửa, theo thứ tự.
+   - *Thêm một provider mới:* đúng danh sách file, kèm bộ fixture tối thiểu phải có.
+   - *Thêm một chuỗi UI mới:* thêm vào `en.ts` trước, rồi 6 catalogue còn lại, chạy test parity.
+6. **Cạm bẫy đã biết:** selection snapshot phải chụp trước khi click (lý do đã ghi trong `types.ts`); DeepL `EN` là source còn `EN-US` là target; clip insets phải đi kèm **mọi** lần set vị trí; `normalizeDetectedLang` không được cắt script subtag của `zh`.
+7. **File không sửa tay:** `versions.json`, trường `version` trong `manifest.json` (đi qua `version-bump.mjs`), `package-lock.json`.
+8. **Quy trình release + checklist submit.**
+
+### Ba quy tắc vận hành bắt buộc ghi vào `CLAUDE.md`
+
+> **R1 — Tự kiểm sau mỗi task.** Kết thúc một task, phải đọc lại `CLAUDE.md` và đối chiếu với trạng thái thực tế của dự án. Nếu có mục nào đã lỗi thời (đường dẫn file đổi, quy ước đổi, playbook thiếu bước), sửa ngay trong cùng task đó. `CLAUDE.md` sai còn tệ hơn `CLAUDE.md` không có.
+
+> **R2 — Tài liệu đi cùng code.** Kết thúc một task, rà `README.md` và `docs/**` xem còn mô tả đúng dự án không. Cụ thể phải kiểm: danh sách host mạng, danh sách provider, danh sách ngôn ngữ, danh sách setting, ảnh chụp màn hình. Không để tài liệu trôi khỏi code rồi dồn vào E7.
+
+> **R3 — Không tự ý lệch kế hoạch.** Trong quá trình thực hiện, nếu phát hiện cần làm khác với tài liệu này — đổi cách tiếp cận, thêm/bớt phạm vi, đổi thư viện, đổi cấu trúc thư mục, phát hiện kế hoạch sai — thì **dừng lại và hỏi trước**. Chỉ làm sau khi được đồng ý. Áp dụng cả với thay đổi trông có vẻ nhỏ và hiển nhiên đúng.
+
+**AC:** `CLAUDE.md` tồn tại ở root, chứa đủ 8 mục + 3 quy tắc; cập nhật `CLAUDE.md` là một phần Definition of Done của mọi epic sau.
+
+---
+
+### Kết quả thực hiện (E8)
+
+Thực hiện ngày **2026-08-12**, ngay sau E0, trên version `0.2.3`. Thuần tài liệu — **không chạm `src/`**, nên không bump version.
+
+#### Trạng thái
+
+| Hạng mục | Trạng thái | Ghi chú |
+|---|---|---|
+| 8 mục nội dung | **Xong** | Đủ 8, theo đúng thứ tự kế hoạch liệt kê |
+| 3 quy tắc R1–R3 | **Xong** | Chép nguyên văn từ mục trên, không diễn giải lại |
+| Kiểm chứng trích dẫn | **Xong** | Mọi `file:dòng`, tên hàm, tên lệnh trong `CLAUDE.md` đều được mở ra đối chiếu trước khi viết |
+| `npm run verify` | **Xanh** | 314 test, 0 error / 5 warning, 53 file nguồn, 132 chuỗi UI |
+
+Ngôn ngữ: `CLAUDE.md` viết tiếng Việt cho khớp `DEV-PLAN` / `CONTRIBUTING` / `SUBMISSION`, và ghi rõ ngay đầu file rằng code, comment, chuỗi UI tiếng Anh, CHANGELOG và README vẫn là tiếng Anh.
+
+#### `/init` suy ra được gì, và phải viết lại gì
+
+`/init` **không sinh ra file khung**. Nó nạp một bộ chỉ dẫn phân tích repo rồi để người viết ra `CLAUDE.md`, nên toàn bộ nội dung là viết tay. Đáng ghi lại là **bộ chỉ dẫn mặc định của `/init` mâu thuẫn trực tiếp với ba yêu cầu của E8**:
+
+| Chỉ dẫn mặc định của `/init` | Vì sao E8 phải làm ngược lại |
+|---|---|
+| *"Avoid listing every component or file structure"* | Mục 2 của E8 yêu cầu **bản đồ tầng có tên file**, vì đó chính là thứ E1–E7 tra khi mở phiên mới |
+| *"Do not make up… Common Development Tasks"* | Mục 5 (playbook) là *"phần giá trị nhất"* theo kế hoạch — nhưng nó không phải bịa: mỗi bước được kiểm bằng cách mở đúng file đó |
+| Chỉ nhắm vào "commands + high-level architecture" | Bốn mục 6, 7, 8 và ba quy tắc R1–R3 nằm ngoài phạm vi `/init` hoàn toàn, và cả bốn cạm bẫy mới đều là kết luận của E0 chứ không đọc ra được từ code |
+
+Ba thứ `/init` **không thể** suy ra, dù đọc hết `src/`, và đều là phần đắt nhất của tài liệu: *ý định* đằng sau 5 warning lint còn lại (nhìn từ code chúng chỉ là nợ kỹ thuật), lý do `SelectionManager` cố ý không dùng `registerDomEvent`, và bài học về cổng submit đọc `manifest.json` ở nhánh mặc định nhưng đọc file build ở release.
+
+#### Rà lại trích dẫn `file:dòng` (bước B)
+
+E8 không chạm `src/`, nhưng vẫn mở lại từng chỗ kế hoạch trích dẫn. **Không tìm thấy trích dẫn nào còn sai** — E0 đã cập nhật hết. Đã kiểm:
+
+`ContextDetector.ts:16` · `FloatingLayer.ts:42, :60` · `UiController.ts:196, 428, 429, 433, 434, 572, 583` · `TranslatePopup.ts:350-351` · `PopupContent.ts:68-70` · `styles.css:107, 192` · `langMap.ts:78` · `i18n/index.ts:63-66` · `main.ts:158, 160, 172` · `settings/sections/activation.ts:29` · `SelectionManager.ts:154-159` · `constants.ts:140-147`.
+
+Số dòng trong `docs/CODE-REVIEW.md` và `docs/REVIEW-FINDINGS.md` **cố ý** là số của `0.2.2` và được giữ nguyên — cả hai file đã nói rõ điều đó ở đầu.
+
+#### Commit
+
+| Commit | Nội dung |
+|---|---|
+| `7ee352a` | `docs:` `CLAUDE.md` — 8 mục + 3 quy tắc |
+| *(commit này)* | `docs:` kết quả E8, bảng tiến độ, `docs/prompts/PROMPT-E1.md` |
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| `docs/CONTRIBUTING.md` mục *Lệnh* thiếu 4 cổng CI mới của E0, và câu *"Trong TypeScript chỉ được đặt toạ độ tính lúc chạy"* nay cần kèm cảnh báo rằng rule lint chỉ bắt literal | Tài liệu người dùng/người đóng góp thuộc **E7**; và R2 chỉ yêu cầu rà *host / provider / ngôn ngữ / setting / ảnh*, không mục nào lệch. Ghi lại ở đây để E7 không phải tìm lại. |
+| `docs/ARCHITECTURE.md` sơ đồ khối chưa có `FloatingLayer`, `PopupContent`, `SelectionRules`, `settings/sections/` | Kế hoạch **E7-T1** đã ghi thẳng *"Vẽ lại sau E0 + E3"*. Vẽ bây giờ là vẽ hai lần. |
+| Không mở rộng `tests/i18n.test.ts` hay thêm test nào | E8 thuần tài liệu. |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` (file rác WSL) | Vẫn ngoài phạm vi, như đã ghi ở E0. |
+
+#### Một điều E8 làm lộ ra, đáng biết trước khi vào E1
+
+Playbook 5.4 (*thêm một setting mới*) hoá ra là mục **không có trong đặc tả gốc của E8** nhưng lại cần nhất, vì đường đi đã đổi hẳn ở E0: `settings.ts` → `sections/<đúng section>.ts` → `en.ts` + `vi.ts`, và `SettingTab.ts` **không** phải sửa. Bảng "section nào giữ setting nào" trong `CLAUDE.md` được dựng bằng cách grep `ctx.save(` trong cả 8 file `sections/` — **E5 sẽ cần đúng bảng đó** khi thêm ba cặp credential mới, và giả định trong E5 (*"`SettingTab.ts` phải tách trước khi thêm"*) vẫn đúng, chỉ là việc đó nay đã xong.
+
+Không phát hiện gì buộc một epic sau phải đổi cách làm.
+
+---
+
+## E1 — Lỗi UI/UX: popup và icon lòi ra ở mép trên
+
+### Mô tả lỗi (theo ảnh chụp)
+
+Khi người dùng cuộn xuống, selection đi lên khỏi vùng nội dung. Popup lẽ ra phải bị cắt dần và biến mất, nhưng thực tế phần trong khung đỏ vẫn hiển thị — nó **vẽ đè lên hàng view-header** (hàng chứa nút back/forward và biểu tượng bút chì), ngay dưới thanh tab.
+
+Đây là điểm cần nhấn: **không phải popup "hơi tràn"** — mà là nó tiếp tục được vẽ trong một vùng thuộc về chrome của Obsidian, nơi nó không bao giờ được phép xuất hiện.
+
+### Nguyên nhân gốc (đã xác định trong code)
+
+```ts
+// src/core/ContextDetector.ts:29 (sau E1; là :16 ở 0.2.3)
+const CONTAINER_SELECTORS = '.workspace-leaf-content, .workspace-leaf, .markdown-embed, .popover';
+```
+
+`containerEl` được resolve tới **`.workspace-leaf-content`**, mà phần tử này **bao gồm cả `.view-header`**, không chỉ `.view-content`.
+
+Chuỗi hệ quả:
+
+1. `FloatingLayer.visibleBounds()` (`src/ui/FloatingLayer.ts:42` ở `0.2.3`; nay `:74`) = giao của viewport và `containerEl.getBoundingClientRect()` → biên trên nằm ở **đỉnh `.workspace-leaf-content`**, tức phía trên view-header.
+2. `Positioner.clipInsets()` tính phần thừa so với biên đó → popup nằm trong vùng view-header **không bị coi là thừa**, `--st-clip-top` = 0 ở vùng đó.
+3. `styles.css:107,192` (nay `:107,196`) `clip-path: inset(...)` không cắt gì → popup hiển thị đè lên header. Đúng như ảnh.
+4. Thêm một tầng nữa: `OCCLUSION_SELECTORS` **có** chứa `.view-header` và `.workspace-tab-header-container`, nhưng phép thử occlusion chỉ chạy ở lần đặt vị trí đầu tiên trong `place()`. Đường cập nhật khi cuộn dùng `computeCandidate()`, vốn **cố ý bỏ qua occlusion** vì lý do hiệu năng (`elementsFromPoint` 60 lần/giây). Nên khi cuộn, không có gì chặn cả.
+
+Nói cách khác: cơ chế clip đã đúng, **biên được đo sai**.
+
+### Yêu cầu cụ thể
+
+**E1-T1. Tách hai khái niệm đang bị gộp làm một.**
+
+| Khái niệm | Dùng để | Phần tử |
+|---|---|---|
+| `leafEl` | Nhận diện leaf, gắn sự kiện, thu thập scroll anchor | `.workspace-leaf-content` (giữ nguyên) |
+| `contentEl` | **Biên đặt vị trí và biên cắt** | `.view-content` — và với PDF là `.view-content` trừ chiều cao `.pdf-toolbar` |
+
+Bổ sung `contentEl` vào `ContextInfo` và `SelectionSnapshot`. `FloatingLayer.visibleBounds()` và `UiController.computeBoundary()` (`src/ui/UiController.ts:583` ở `0.2.3`; nay `:578`) chuyển sang dùng `contentEl`.
+
+Với `.markdown-embed` và `.popover` (hover preview) thì phần tử nội dung tương ứng là `.markdown-embed-content` / `.hover-popover` — cần bảng map riêng, không dùng chung một selector.
+
+**E1-T2. Một cổng duy nhất cho hình học.**
+
+> **E0 đã làm trước một nửa việc này.** Ba lời gọi `setClip` rải rác (`UiController.ts:197, 439, 592` trong bản `0.2.2`) nay đã gộp thành **`FloatingLayer.applyVisibility(target, rect, snapshot)`** (`src/ui/FloatingLayer.ts:60`), được gọi từ đúng 4 chỗ trong `UiController.ts` — dòng **196** (`placePopup`), **428** và **433** (`reanchor`, nhánh icon và nhánh popup), **572** (`showIcon`). Một chỗ nhiều hơn bản cũ vì nhánh icon và nhánh popup của `reanchor` giờ tách biệt.
+
+Việc còn lại của E1-T2: đổi `applyVisibility` thành **`applyGeometry(rect)`** làm cả **ba** việc — set vị trí, set clip, set visibility — bằng cách kéo nốt `moveTo()` vào trong nó. Hiện `moveTo` vẫn được gọi riêng ngay sau `applyVisibility` ở `UiController.ts:429` và `:434`. Sau khi gộp, không nơi nào được set vị trí trực tiếp nữa.
+
+Đặc biệt chú ý nhánh popup đổi kích thước theo nội dung (`TranslatePopup.applySize`, `src/ui/TranslatePopup.ts:350-351` ở `0.2.3`; nay `:359-360`) — rect đổi thì clip cũ lập tức sai.
+
+**E1-T3. Xử lý `visibleBounds == null`.** Khi leaf cuộn hết khỏi màn hình, `intersectRects` trả `null`, `clipInsets` trả `{0,0}` → **không cắt gì cả**. Phải ẩn hẳn thay vì rơi về 0.
+
+**E1-T4. Cắt cả trái/phải.** Hiện chỉ cắt trên/dưới. Cần cho split dọc và cho RTL ở E4.
+
+### AC
+
+- Tái hiện đúng kịch bản trong ảnh: chọn một từ, cuộn xuống cho tới khi selection ra khỏi vùng nội dung → popup **biến mất hoàn toàn**, không còn một pixel nào trong vùng view-header hay thanh tab.
+- Cuộn ngược lại → popup hiện lại nguyên vẹn, cùng nội dung, không phải request mới (state machine vẫn ở `result`).
+- Ma trận test thủ công: {Live Preview, Reading, PDF, input/properties, popout, hover preview} × {tab đơn, split ngang, split dọc} × {zoom 100%, 150%}.
+- Unit test mới cho `clipInsets` với `visibleBounds.top > 0` và với `visibleBounds = null`.
+- Test hồi quy: cuộn từng pixel qua mép không gây nhấp nháy (vấn đề này đã được xử lý trong `overlaps()`, không được làm hỏng).
+
+### Kết quả thực hiện (E1)
+
+Thực hiện ngày **2026-08-12**, trên nhánh sau `0.2.3`. **Chưa phát hành** — E1 và E2 cùng đi trong `0.3.0`, nên việc bump version làm sau khi E2 xong.
+
+> Mọi số dòng trong phần mô tả E1 ở trên là ảnh chụp `0.2.3` và được giữ nguyên làm căn cứ; chỗ nào đã trôi thì có ghi số hiện hành ngay cạnh.
+
+#### Trạng thái từng task
+
+| Task | Trạng thái | Ghi chú |
+|---|---|---|
+| **E1-T1** — tách `leafEl` / `contentEl` | **Xong** | `ContextInfo` và `SelectionSnapshot` mọc thêm `contentEl`. Bảng map là hằng `CONTENT_SELECTORS` trong `ContextDetector.ts`, giải bằng `el.closest()` từ vùng chọn đi lên nên **bề mặt trong cùng thắng** — note nhúng trong note lấy đúng hộp nội dung của chính nó. 8 test mới. |
+| **E1-T2** — một cổng hình học | **Xong** | `applyVisibility` → `applyGeometry(target, rect, snapshot)`, làm cả ba việc. Hai chỗ nữa phải đổi để lời hứa đó thành thật, và đó là phần kế hoạch chưa lường: `TriggerIcon.show()` **bỏ tham số rect**, `PopupHandlers.place()` **trả `void`** thay vì trả rect. |
+| **E1-T3** — `visibleBounds == null` | **Xong** | Đúng như prompt E1 dự đoán: `isRectVisible` đã ẩn sẵn. Phần thêm là `clipInsets(rect, null)` nay cắt sạch thay vì trả `{0,0}`, để hai nửa không còn che cho nhau. |
+| **E1-T4** — cắt trái/phải | **Xong** | Đủ 5 điểm chạm mà prompt liệt kê. |
+| **Ma trận test thủ công** | **Xong** | Chủ dự án chạy trên vault thật, ngay sau bốn commit code. Không ô nào hỏng. |
 
 #### Nguyên nhân gốc: xác nhận đúng như kế hoạch mô tả
 
@@ -831,7 +1058,7 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 |---|---|---|
 | **E0** — Audit, review, tái cấu trúc | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) |
 | **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
-| **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), trừ ma trận test thủ công — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
+| **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), ma trận test thủ công đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
 | **E2** — Đồng bộ trigger key | `0.3.0` | ⏭️ **Tiếp theo** |
 | E3 — Registry ngôn ngữ | `0.4.0` | Chưa bắt đầu |
 | E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
@@ -847,10 +1074,9 @@ Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi t�
 
 ### Việc tiếp theo
 
-**Hai việc, theo thứ tự này.**
+**E2 — đồng bộ trigger key với Hotkeys của Obsidian** (`0.3.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E2.md`](prompts/PROMPT-E2.md), mang theo ngữ cảnh vừa học ở E1.
 
-1. **Chạy ma trận test thủ công của E1** — mục còn hở duy nhất của epic vừa xong, và là cổng ra của `0.3.0`. Danh sách ô, cách dựng bản build vào vault, và *điều cụ thể phải nhìn* ở bốn ô đáng ngờ nhất nằm ở [Kết quả thực hiện (E1)](#kết-quả-thực-hiện-e1). Việc này cần người ngồi trước Obsidian; không phiên nào tự làm thay được.
-2. **E2 — đồng bộ trigger key với Hotkeys của Obsidian** (`0.3.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E2.md`](prompts/PROMPT-E2.md), mang theo ngữ cảnh vừa học ở E1.
+E1 nay **xong trọn vẹn**, ma trận test thủ công gồm cả trong đó. Cổng ra còn lại của `0.3.0` là ma trận của chính E2.
 
 Khác với E0 và E8: E1 và E2 **đều** đổi hành vi người dùng, nên là **MINOR** (`0.3.0`), không phải PATCH. Cả hai đi chung một lần phát hành, nên **bump version là việc làm sau khi E2 xong**, không phải bây giờ.
 

@@ -3,7 +3,7 @@
 Đọc thêm, theo thứ tự:
 
 - `CLAUDE.md` ở root — bản đồ tầng, lệnh, quy ước, **mười** cạm bẫy. Viết ở E8, cập nhật ở E1.
-- Mục **Kết quả thực hiện (E1)** trong `docs/DEV-PLAN.md` — E1 vừa đổi gì, và mục nào của nó còn hở.
+- Mục **Kết quả thực hiện (E1)** trong `docs/DEV-PLAN.md` — E1 vừa đổi gì, và những gì nó cố ý không làm.
 - Mục **E2** trong `docs/DEV-PLAN.md` — hiện trạng hai hệ thống phím, phương án B đã chốt, E2-T1 → E2-T5, AC.
 
 Nhiệm vụ lần này: **thực hiện E2 — đồng bộ trigger key với Hotkeys của Obsidian**, milestone `0.3.0`. Chỉ E2. Không làm E3/E4/E5, kể cả khi thấy lỗi rõ ràng thuộc epic đó — ghi lại vào phần *Phát hiện ra nhưng cố ý không làm* của E2 rồi để đấy.
@@ -14,7 +14,7 @@ Nhiệm vụ lần này: **thực hiện E2 — đồng bộ trigger key với H
 
 **Không tự ý lệch kế hoạch (R3).** Nếu trong lúc làm phát hiện cần làm khác với `docs/DEV-PLAN.md` — đổi cách tiếp cận, mở rộng hoặc thu hẹp phạm vi, đổi cấu trúc thư mục, hoặc thấy kế hoạch sai — thì **dừng lại, trình bày vấn đề, chờ tôi đồng ý**. Áp dụng cả với thay đổi trông nhỏ và hiển nhiên đúng. Kế hoạch đã ghi sẵn một điểm thuộc loại này: *"`app.hotkeyManager` ở E2-T2 là API không công khai. Nếu hình dạng của nó khác dự kiến hoặc không truy cập được, báo lại thay vì tự tìm đường vòng."*
 
-**E2 CÓ đổi hành vi người dùng.** Là **MINOR**. Nhưng **đừng tự bump version**: E1 và E2 cùng đi trong một lần phát hành `0.3.0`, nên việc bump + tag + release là việc làm **sau khi E2 xong**, và chỉ khi ma trận test thủ công của E1 đã chạy (xem dưới).
+**E2 CÓ đổi hành vi người dùng.** Là **MINOR**. Nhưng **đừng tự bump version**: E1 và E2 cùng đi trong một lần phát hành `0.3.0`, nên việc bump + tag + release là việc làm **sau khi E2 xong** — và là việc phải hỏi tôi, không tự làm.
 
 **Trước mỗi commit:** `npm run verify` phải xanh — hiện là **327 test, 0 error / 5 warning**. Chia nhỏ thành nhiều commit theo task (`feat(hotkey):` / `refactor(hotkey):` / `fix(hotkey):`), mỗi commit tự đứng được.
 
@@ -24,11 +24,11 @@ Nhiệm vụ lần này: **thực hiện E2 — đồng bộ trigger key với H
 
 ---
 
-## Việc còn nợ từ E1 — kiểm trước khi bắt đầu
+## Trạng thái E1 khi bạn bắt đầu
 
-E1 đã xong bốn task code, nhưng **ma trận test thủ công chưa ai chạy** (phiên đó không có GUI Obsidian). Nó là cổng ra của `0.3.0`, không phải của E2.
+E1 đã **xong trọn vẹn**: bốn task code, cộng ma trận test thủ công do chủ dự án chạy trên vault thật — ổn hết, không hồi quy nào. Nghĩa là bạn không thừa hưởng việc nợ nào, và cổng ra còn lại của `0.3.0` là ma trận test thủ công của chính E2.
 
-**Hỏi tôi một câu ở đầu phiên:** ma trận đó đã chạy chưa? Nếu rồi thì kết quả thế nào — có ô nào hỏng không, vì một ô hỏng ở PDF hay split dọc là việc phải sửa **trước** E2 chứ không phải sau. Nếu chưa chạy, cứ làm E2 bình thường; chỉ đừng phát hành.
+Bản build đang nằm trong vault thật tại `.obsidian/plugins/selection-translate`; chép `main.js` + `manifest.json` + `styles.css` đè lên đó rồi tắt/bật plugin là cách chạy thử nhanh nhất.
 
 ---
 
@@ -165,7 +165,7 @@ Bắt buộc, không phải tuỳ chọn.
 
 **D. Nếu E2 làm lộ ra điều gì khiến một epic sau phải đổi cách làm** — ví dụ việc xoá hai key i18n làm đổi con số mà E4 đang lập kế hoạch dựa trên — thì **báo cho tôi**, đừng tự sửa nội dung epic đó.
 
-**E. Sau khi E2 xong: nhắc tôi về việc phát hành `0.3.0`.** Đừng tự làm. Trình tự đúng ghi ở `CLAUDE.md` §8, và điều kiện tiên quyết là ma trận test thủ công của **cả E1 lẫn E2** đã chạy xong. Nhắc luôn ba bài học ở đó, đặc biệt: kiểm asset của release sau khi workflow chạy — thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó.
+**E. Sau khi E2 xong: nhắc tôi về việc phát hành `0.3.0`.** Đừng tự làm. Trình tự đúng ghi ở `CLAUDE.md` §8, và điều kiện tiên quyết còn lại là ma trận test thủ công của **E2** đã chạy xong (của E1 đã xong rồi). Nhắc luôn ba bài học ở đó, đặc biệt: kiểm asset của release sau khi workflow chạy — thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó.
 
 ---
 
