@@ -57,7 +57,7 @@ go with it, scroll back and they return where they were.
 
 Close the popup with Escape, by clicking elsewhere, or with its close button.
 
-No configuration is needed to start: the default engine requires no account and no key.
+Pick your engine in the options: **DeepL** and **Google Cloud** are documented APIs and take a key; the default is Google's undocumented endpoint, which takes none. What each one costs you, and what it does not promise, is set out under [Network use](#network-use).
 
 ## Network use
 
@@ -78,7 +78,9 @@ Not sent, ever: file names, file paths, vault contents beyond the selection, not
 
 The system voice (the default for reading aloud) uses your operating system's speech synthesiser and sends nothing anywhere.
 
-`translate.googleapis.com` and `translate.google.com` are **endpoints Google does not document or support**. They are the ones the Google Translate browser extension uses. They can change or stop working without notice, and using them is not covered by any published terms of service. They are the default because they need no account; if you would rather use a supported service, choose **DeepL** or **Google Cloud** in the options — both are documented APIs.
+`translate.googleapis.com` and `translate.google.com` are **endpoints Google does not document or support**. They are the ones the Google Translate browser extension uses. They can change or stop working without notice, and using them is not covered by any published terms of service — so whether that use is appropriate is a judgement you are making for yourself, not one this plugin has made on your behalf. Google makes no commitment about how it handles what is sent there either.
+
+They are the default because they need no account. If you would rather use a supported service, choose **DeepL** or **Google Cloud** in the options — both are documented APIs with published terms, and switching is one dropdown away. If you work with sensitive material, or under any compliance obligation, switch.
 
 Details, and how to switch every one of these off, are in [docs/PRIVACY.md](docs/PRIVACY.md) (Vietnamese).
 

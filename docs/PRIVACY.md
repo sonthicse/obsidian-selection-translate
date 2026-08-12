@@ -55,6 +55,7 @@ Hệ quả bạn cần biết:
 - Không có điều khoản dịch vụ công bố nào cho phép sử dụng chúng.
 - Google không cam kết gì về việc họ xử lý dữ liệu gửi tới đó ra sao.
 - Chúng có thể ngừng hoạt động bất cứ lúc nào.
+- Vì không có điều khoản nào để dựa vào, việc dùng chúng có phù hợp với hoàn cảnh của bạn hay không là điều **bạn tự quyết định**. Plugin nêu rõ sự thật này thay vì quyết thay bạn, và để sẵn hai lựa chọn chính thức cách đó một dropdown.
 
 Nếu bạn làm việc với tài liệu nhạy cảm, hoặc trong môi trường có yêu cầu tuân thủ, **hãy chuyển sang DeepL hoặc Google Cloud** — cả hai đều là API có tài liệu, có điều khoản, và có chính sách xử lý dữ liệu công khai:
 

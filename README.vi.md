@@ -58,7 +58,7 @@ thì chúng quay lại đúng chỗ cũ.
 
 Đóng popup bằng Escape, bằng cách click ra ngoài, hoặc bằng nút đóng.
 
-Không cần cấu hình gì để bắt đầu: công cụ dịch mặc định không cần tài khoản và không cần khoá.
+Chọn công cụ dịch trong tuỳ chọn: **DeepL** và **Google Cloud** là API có tài liệu và cần khoá; mặc định là endpoint không công bố của Google, không cần khoá. Mỗi lựa chọn đánh đổi cái gì, và không cam kết cái gì, được nêu rõ ở mục [Dữ liệu gửi ra mạng](#dữ-liệu-gửi-ra-mạng).
 
 ## Dữ liệu gửi ra mạng
 
@@ -79,7 +79,9 @@ Không bao giờ gửi: tên tệp, đường dẫn, nội dung vault ngoài đo
 
 Giọng hệ thống (mặc định khi đọc to) dùng bộ tổng hợp giọng nói của hệ điều hành và không gửi gì ra ngoài.
 
-`translate.googleapis.com` và `translate.google.com` là **endpoint mà Google không công bố cũng không hỗ trợ**. Đây chính là những endpoint mà tiện ích mở rộng Google Translate dùng. Chúng có thể thay đổi hoặc ngừng hoạt động bất cứ lúc nào, và việc sử dụng chúng không được bảo hộ bởi bất kỳ điều khoản dịch vụ công bố nào. Chúng là mặc định vì không cần tài khoản; nếu bạn muốn dùng dịch vụ được hỗ trợ chính thức, hãy chọn **DeepL** hoặc **Google Cloud** trong tuỳ chọn — cả hai đều là API có tài liệu.
+`translate.googleapis.com` và `translate.google.com` là **endpoint mà Google không công bố cũng không hỗ trợ**. Đây chính là những endpoint mà tiện ích mở rộng Google Translate dùng. Chúng có thể thay đổi hoặc ngừng hoạt động bất cứ lúc nào, và việc sử dụng chúng không được bảo hộ bởi bất kỳ điều khoản dịch vụ công bố nào — nên việc dùng chúng có phù hợp hay không là điều bạn tự cân nhắc, không phải điều plugin này đã quyết thay bạn. Google cũng không cam kết gì về cách họ xử lý dữ liệu gửi tới đó.
+
+Chúng là mặc định vì không cần tài khoản. Nếu bạn muốn dùng dịch vụ được hỗ trợ chính thức, hãy chọn **DeepL** hoặc **Google Cloud** trong tuỳ chọn — cả hai đều là API có tài liệu, có điều khoản công bố, và đổi sang chỉ cách một dropdown. Nếu bạn làm việc với tài liệu nhạy cảm, hoặc trong môi trường có yêu cầu tuân thủ, hãy đổi.
 
 Chi tiết, và cách tắt từng thứ một, ở [docs/PRIVACY.md](docs/PRIVACY.md).
 
