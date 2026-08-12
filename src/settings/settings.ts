@@ -1,6 +1,5 @@
 import type {
 	DictionarySourceId,
-	HotkeyBinding,
 	ProviderId,
 	SourceLangCode,
 	TargetLangCode,
@@ -27,7 +26,6 @@ export interface SelectionTranslateSettings {
 	/* Activation */
 	autoPopupOnSelection: boolean;
 	translateOnDoubleClick: boolean;
-	triggerHotkey: HotkeyBinding | null;
 	minSelectionLength: number;
 	maxSelectionLength: number;
 	iconPlacement: IconPlacement;
@@ -76,9 +74,6 @@ export const DEFAULT_SETTINGS: SelectionTranslateSettings = {
 	// both surprising and quota-hungry. The user opts in.
 	autoPopupOnSelection: false,
 	translateOnDoubleClick: false,
-	// No default hotkey, per Obsidian's guidelines. The settings tab suggests
-	// Alt+T but never assigns it.
-	triggerHotkey: null,
 	minSelectionLength: 1,
 	maxSelectionLength: 5000,
 	iconPlacement: 'below-center',
@@ -173,6 +168,11 @@ export function normalizeSettings(stored: unknown): SelectionTranslateSettings {
 		merged.minSelectionLength = DEFAULT_SETTINGS.minSelectionLength;
 		merged.maxSelectionLength = DEFAULT_SETTINGS.maxSelectionLength;
 	}
+
+	// The local trigger key was removed in favour of Obsidian's own hotkey for
+	// the command. Dropped rather than left in place, so the next save does not
+	// keep writing a field nothing reads back into the user's data.
+	delete (merged as { triggerHotkey?: unknown }).triggerHotkey;
 
 	return merged;
 }

@@ -77,16 +77,9 @@ export const vi = {
 	'settings.autoPopupDesc': 'Bỏ qua nút bấm. Mỗi lần bôi đen là một yêu cầu, tiêu hạn mức nhanh hơn.',
 	'settings.translateOnDoubleClick': 'Dịch khi nháy đúp',
 	'settings.translateOnDoubleClickDesc': 'Nháy đúp vào một từ là dịch luôn.',
-	'settings.triggerHotkey': 'Phím kích hoạt',
-	'settings.triggerHotkeyDesc':
-		'Bấm khi nút đang hiện, thay cho việc click. Alt+T là lựa chọn hợp lý.',
-	'settings.recordingHotkey': 'Bấm tổ hợp phím…',
-	'settings.clearHotkey': 'Xoá',
-	'settings.noHotkey': 'Chưa đặt',
-	'settings.hotkeyUnsafe':
-		'Phím không kèm phím bổ trợ sẽ gõ chữ vào note khi đang soạn thảo. Thêm Ctrl, Alt hoặc Shift.',
-	'settings.hotkeyConflict':
-		'Obsidian đã dùng tổ hợp này cho {commands}. Cả hai vẫn chạy: phím này chỉ có tác dụng khi nút đang hiện.',
+	'settings.hotkeyPointer': 'Phím tắt',
+	'settings.hotkeyPointerDesc':
+		'Gán phím cho command Translate selection trong Obsidian, cùng chỗ với mọi phím tắt khác.',
 	'settings.openHotkeys': 'Mở phím tắt của Obsidian',
 	'settings.minLength': 'Vùng chọn ngắn nhất',
 	'settings.minLengthDesc': 'Vùng chọn ngắn hơn mức này sẽ bị bỏ qua.',

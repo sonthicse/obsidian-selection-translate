@@ -3,7 +3,7 @@
   "name": "Selection Translate",
   "version": "0.2.3",
   "minAppVersion": "1.5.0",
-  "description": "Translate selected text in notes and PDFs with an inline popup showing pronunciation, part of speech, and alternative meanings.",
+  "description": "An Obsidian plugin for translating selected text. Vibe coding with Claude.",
   "author": "Thi Duong",
   "authorUrl": "https://github.com/sonthicse",
   "isDesktopOnly": false

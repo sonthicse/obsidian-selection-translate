@@ -212,9 +212,15 @@ export class TranslatePopup {
 	 * of the highlight staying put. Instead the first Tab press moves focus in,
 	 * so the buttons are reachable by keyboard without penalising everyone who
 	 * used the mouse.
+	 *
+	 * Parented to the app's own scope, and that is not decoration. Obsidian
+	 * walks the chain from the active scope upwards and registers its own
+	 * hotkeys on `app.scope`, so a parentless scope here would silence every
+	 * shortcut in the app — the command palette included — for as long as a
+	 * translation is on screen.
 	 */
 	private claimScope(): void {
-		const scope = new Scope();
+		const scope = new Scope(this.app.scope);
 
 		scope.register([], 'Escape', (event) => {
 			event.preventDefault();
@@ -225,10 +231,12 @@ export class TranslatePopup {
 		scope.register([], 'Tab', (event) => {
 			if (this.el == null || this.el.contains(this.el.ownerDocument.activeElement)) {
 				// Focus is already inside; let the browser cycle normally.
-				return true;
+				// `undefined`, not `true`: any defined value would be taken as the
+				// answer and stop Obsidian looking any further.
+				return undefined;
 			}
 			const first = this.el.querySelector<HTMLElement>('button');
-			if (first == null) return true;
+			if (first == null) return undefined;
 
 			event.preventDefault();
 			this.tookFocus = true;

@@ -87,16 +87,9 @@ export const en = {
 		'Skips the button. Every selection becomes a request, which uses quota faster.',
 	'settings.translateOnDoubleClick': 'Translate on double click',
 	'settings.translateOnDoubleClickDesc': 'Double-clicking a word translates it straight away.',
-	'settings.triggerHotkey': 'Trigger key',
-	'settings.triggerHotkeyDesc':
-		'Pressed while the button is showing, instead of clicking it. Alt+T is a good choice.',
-	'settings.recordingHotkey': 'Press a key combination…',
-	'settings.clearHotkey': 'Clear',
-	'settings.noHotkey': 'Not set',
-	'settings.hotkeyUnsafe':
-		'A key with no modifier would type into your note while editing. Add Ctrl, Alt or Shift.',
-	'settings.hotkeyConflict':
-		'Obsidian already uses this combination for {commands}. Both still work: this one only while the button is showing.',
+	'settings.hotkeyPointer': 'Keyboard shortcut',
+	'settings.hotkeyPointerDesc':
+		'Bind a key to the Translate selection command in Obsidian, alongside every other shortcut.',
 	'settings.openHotkeys': 'Open Obsidian hotkeys',
 	'settings.minLength': 'Shortest selection',
 	'settings.minLengthDesc': 'Selections shorter than this are ignored.',

@@ -51,8 +51,10 @@ describe('normalizeSettings', () => {
 		expect(inverted.minSelectionLength).toBeLessThanOrEqual(inverted.maxSelectionLength);
 	});
 
-	it('never assigns a default trigger hotkey', () => {
-		// Obsidian's guidelines forbid shipping a preassigned hotkey.
-		expect(DEFAULT_SETTINGS.triggerHotkey).toBeNull();
+	it('drops the trigger key left behind by an older version', () => {
+		// The plugin no longer has a key of its own, and a field nothing reads
+		// should not keep being written back into the user's data.
+		const migrated = normalizeSettings({ triggerHotkey: { modifiers: ['Alt'], key: 'T' } });
+		expect(migrated).not.toHaveProperty('triggerHotkey');
 	});
 });

@@ -176,10 +176,3 @@ export interface UiErrorInfo {
 	vars?: Record<string, string | number>;
 }
 
-/** A key combination recorded by the settings tab for the local trigger key. */
-export interface HotkeyBinding {
-	/** Obsidian's modifier vocabulary; 'Mod' is Ctrl on Windows/Linux, Cmd on macOS. */
-	modifiers: Array<'Mod' | 'Ctrl' | 'Alt' | 'Shift' | 'Meta'>;
-	/** Single key, uppercased for letters (e.g. 'T', 'Enter'). */
-	key: string;
-}

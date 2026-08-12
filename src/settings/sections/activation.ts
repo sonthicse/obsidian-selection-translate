@@ -1,6 +1,5 @@
-import { Setting } from 'obsidian';
+import { Setting, type App } from 'obsidian';
 import { t } from '../../i18n';
-import { addHotkeyRecorder } from '../HotkeyRecorder';
 import { SETTING_LIMITS, type IconPlacement } from '../settings';
 import type { SectionContext } from './context';
 
@@ -26,11 +25,16 @@ export function addActivationSection(containerEl: HTMLElement, ctx: SectionConte
 				.onChange(async (value) => ctx.save('translateOnDoubleClick', value))
 		);
 
-	addHotkeyRecorder(containerEl, {
-		app: ctx.app,
-		getBinding: () => ctx.settings.triggerHotkey,
-		setBinding: (binding) => ctx.save('triggerHotkey', binding),
-	});
+	// Not a setting: a signpost. The plugin used to record its own trigger key,
+	// which meant two keyboard systems that did not know about each other and a
+	// bare key that typed into the note. The command does the same job, and
+	// Obsidian is where a user expects to bind one.
+	new Setting(containerEl)
+		.setName(t('settings.hotkeyPointer'))
+		.setDesc(t('settings.hotkeyPointerDesc'))
+		.addButton((button) =>
+			button.setButtonText(t('settings.openHotkeys')).onClick(() => openObsidianHotkeys(ctx.app))
+		);
 
 	new Setting(containerEl)
 		.setName(t('settings.minLength'))
@@ -75,4 +79,22 @@ export function addActivationSection(containerEl: HTMLElement, ctx: SectionConte
 				.setValue(ctx.settings.iconOffset)
 				.onChange(async (value) => ctx.save('iconOffset', value))
 		);
+}
+
+/**
+ * Opens Obsidian's own hotkeys pane.
+ *
+ * `App.setting` is real and stable but missing from the published types, so it
+ * is reached through a narrow structural cast rather than `any` — the same way
+ * the plugin opens its own tab in `main.ts`. Doing nothing is the right failure:
+ * the button is a shortcut to a pane the user can still reach by hand.
+ */
+function openObsidianHotkeys(app: App): void {
+	const host = app as unknown as {
+		setting?: { open(): void; openTabById(id: string): void };
+	};
+	if (host.setting == null) return;
+
+	host.setting.open();
+	host.setting.openTabById('hotkeys');
 }
