@@ -8,6 +8,7 @@ import {
 	WHEEL_LINE_HEIGHT_FALLBACK,
 } from '../constants';
 import { StateMachine, type MachineContext } from '../core/StateMachine';
+import { TriggerKeyScope } from '../core/HotkeyManager';
 import type { SelectionCause } from '../core/SelectionManager';
 import type { SelectionTranslateSettings } from '../settings/settings';
 import {
@@ -76,6 +77,8 @@ export class UiController {
 	readonly machine = new StateMachine();
 	/** The two floating elements and every geometric question about them. */
 	private readonly layer: FloatingLayer;
+	/** The local trigger key, live only while the button is. */
+	private readonly triggerKey: TriggerKeyScope;
 
 	/**
 	 * The candidate the full placement search settled on, reused while scrolling.
@@ -127,6 +130,14 @@ export class UiController {
 
 		this.layer = new FloatingLayer(icon, popup);
 
+		this.triggerKey = new TriggerKeyScope({
+			app: options.app,
+			getBinding: () => this.options.getSettings().triggerHotkey,
+			getContext: () => this.machine.getSnapshot()?.context ?? null,
+			isActive: () => this.isIconActive(),
+			fire: () => this.handleIconTrigger(),
+		});
+
 		/*
 		 * The popup renders from the machine rather than from its callers. That
 		 * is the whole point of routing every change through one transition:
@@ -138,6 +149,16 @@ export class UiController {
 
 	/** Draws whatever the machine currently holds. */
 	private render(context: MachineContext): void {
+		// The trigger key belongs to the button, so it is claimed and released
+		// from the same place the button is drawn from. Hanging it off the state
+		// rather than off each call site is what makes the unusual exits — a
+		// dismiss, a change of leaf, the plugin unloading — release it too.
+		if (context.state === 'icon') {
+			this.triggerKey.claim();
+		} else {
+			this.triggerKey.release();
+		}
+
 		switch (context.state) {
 			case 'idle':
 				this.layer.icon.hide();
@@ -357,20 +378,22 @@ export class UiController {
 		this.requestTranslate(snapshot);
 	}
 
-	/** True when the icon is showing and the local trigger key should apply. */
-	isIconActive(): boolean {
+	/**
+	 * True when the icon is showing and the local trigger key should apply.
+	 *
+	 * The visibility half matters: an icon scrolled out of its leaf is clipped
+	 * away, and a key that translates something the user cannot see is a key
+	 * that appears to do nothing.
+	 */
+	private isIconActive(): boolean {
 		return this.machine.getState() === 'icon' && this.layer.icon.isVisible();
-	}
-
-	/** Triggers the icon from the keyboard, as the local hotkey does. */
-	triggerFromHotkey(): boolean {
-		if (!this.isIconActive()) return false;
-		this.handleIconTrigger();
-		return true;
 	}
 
 	destroy(): void {
 		this.cancelPendingFrame();
+		// Unconditional, and before anything else: a scope left on Obsidian's
+		// stack outlives the plugin and breaks the keyboard everywhere else.
+		this.triggerKey.release();
 		this.layer.destroy();
 		this.machine.destroy();
 	}

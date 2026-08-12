@@ -7,7 +7,6 @@ import { normalizeSettings, type SelectionTranslateSettings } from './settings/s
 import { SelectionTranslateSettingTab } from './settings/SettingTab';
 import { SelectionManager } from './core/SelectionManager';
 import { TranslationOrchestrator } from './core/TranslationOrchestrator';
-import { isBindingSafeFor, matchesBinding } from './core/HotkeyManager';
 import { ProviderRegistry } from './providers/ProviderRegistry';
 import type { ValidationResult } from './providers/TranslationProvider';
 import type { ProviderId } from './types';
@@ -78,7 +77,6 @@ export default class SelectionTranslatePlugin extends Plugin {
 			onPointerDownOutside: () => this.ui.handleDismiss(),
 			onViewportChange: (kind) => this.ui.handleViewportChange(kind),
 			onEscape: () => this.ui.handleDismiss(),
-			onKeyDown: (event) => this.handleTriggerKey(event),
 		}, window);
 		// Ties teardown to the plugin's own lifecycle, so unload releases every
 		// listener even though they are not individually registerDomEvent'd.
@@ -178,34 +176,6 @@ export default class SelectionTranslatePlugin extends Plugin {
 				);
 			},
 		});
-	}
-
-	/**
-	 * Handles the local trigger key while the button is showing.
-	 *
-	 * The safety check is the important part. A binding with no modifier would
-	 * insert its character into the note if the editor has focus, so it is
-	 * refused there and left to work in reading view and PDFs, where nothing can
-	 * be typed into. Consuming the event is what stops the character appearing
-	 * even when the binding is accepted.
-	 */
-	private handleTriggerKey(event: KeyboardEvent): void {
-		const binding = this.settings.triggerHotkey;
-		if (binding == null) return;
-		if (!this.ui.isIconActive()) return;
-		if (!matchesBinding(event, binding)) return;
-
-		const snapshot = this.selectionManager.getCurrentSnapshot();
-		if (snapshot == null) return;
-
-		if (!isBindingSafeFor(binding, snapshot.context)) {
-			debug('trigger key refused: it would type into the note', snapshot.context);
-			return;
-		}
-
-		event.preventDefault();
-		event.stopPropagation();
-		this.ui.triggerFromHotkey();
 	}
 
 	/**

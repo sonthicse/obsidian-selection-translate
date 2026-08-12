@@ -34,8 +34,6 @@ export interface SelectionManagerHandlers {
 	onViewportChange(kind: 'scroll' | 'resize'): void;
 	/** Escape was pressed outside the plugin's own UI. */
 	onEscape(): void;
-	/** Any other key press outside the plugin's own UI, for the trigger key. */
-	onKeyDown(event: KeyboardEvent): void;
 }
 
 /** Outcome of trying to read a selection out of a window. */
@@ -247,14 +245,19 @@ export class SelectionManager {
 		this.deferEvaluate(win, 'mouse');
 	}
 
+	/**
+	 * Watches for Escape, and nothing else.
+	 *
+	 * The trigger key used to be routed through here as well. It now lives in an
+	 * Obsidian keymap scope that only exists while the button does, which is both
+	 * the platform's own mechanism for a temporary key and one fewer document
+	 * listener carrying a rule about when it applies.
+	 */
 	private handleKeyDown(event: KeyboardEvent): void {
 		if (isInsideOwnUi(event.target as Node | null)) return;
+		if (event.key !== 'Escape') return;
 
-		if (event.key === 'Escape') {
-			this.handlers.onEscape();
-			return;
-		}
-		this.handlers.onKeyDown(event);
+		this.handlers.onEscape();
 	}
 
 	/**
