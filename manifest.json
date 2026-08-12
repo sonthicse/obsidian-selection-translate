@@ -1,7 +1,7 @@
 {
   "id": "selection-translate",
   "name": "Selection Translate",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "minAppVersion": "1.5.0",
   "description": "Translate selected text inline, with pronunciation, part of speech and alternative meanings. Vibe coded with Claude.",
   "author": "Thi Duong",
