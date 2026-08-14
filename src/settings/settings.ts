@@ -1,10 +1,5 @@
-import type {
-	DictionarySourceId,
-	ProviderId,
-	SourceLangCode,
-	TargetLangCode,
-	TtsEngineId,
-} from '../types';
+import { isSourceLang, isTargetLang, type SourceLangCode, type TargetLangCode } from '../languages';
+import type { DictionarySourceId, ProviderId, TtsEngineId } from '../types';
 
 export type UiLanguage = 'auto' | 'vi' | 'en';
 export type IconPlacement = 'below-center' | 'above-center' | 'cursor';
@@ -114,7 +109,7 @@ function clamp(value: number, min: number, max: number, fallback: number): numbe
 }
 
 /**
- * Merges stored settings over the defaults and repairs out-of-range values.
+ * Merges stored settings over the defaults and repairs invalid values.
  *
  * `loadData()` returns whatever was on disk, which may predate a setting that
  * now exists or may have been edited by hand. Spreading over DEFAULT_SETTINGS
@@ -168,6 +163,13 @@ export function normalizeSettings(stored: unknown): SelectionTranslateSettings {
 		merged.minSelectionLength = DEFAULT_SETTINGS.minSelectionLength;
 		merged.maxSelectionLength = DEFAULT_SETTINGS.maxSelectionLength;
 	}
+
+	// A language that is not in the registry — a hand-edited file, or one this
+	// version stopped offering — would leave the dropdown blank and every
+	// request rejected. Detection is the honest fallback for a source; the
+	// default target is the only sensible answer for a target.
+	if (!isSourceLang(merged.sourceLang)) merged.sourceLang = DEFAULT_SETTINGS.sourceLang;
+	if (!isTargetLang(merged.targetLang)) merged.targetLang = DEFAULT_SETTINGS.targetLang;
 
 	// The local trigger key was removed in favour of Obsidian's own hotkey for
 	// the command. Dropped rather than left in place, so the next save does not

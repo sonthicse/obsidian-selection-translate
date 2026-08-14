@@ -57,4 +57,12 @@ describe('normalizeSettings', () => {
 		const migrated = normalizeSettings({ triggerHotkey: { modifiers: ['Alt'], key: 'T' } });
 		expect(migrated).not.toHaveProperty('triggerHotkey');
 	});
+
+	it('falls back to defaults for a language it does not offer', () => {
+		// A language only ever offered as a source is not a valid target.
+		const result = normalizeSettings({ sourceLang: 'klingon', targetLang: 'de' });
+
+		expect(result.sourceLang).toBe(DEFAULT_SETTINGS.sourceLang);
+		expect(result.targetLang).toBe(DEFAULT_SETTINGS.targetLang);
+	});
 });

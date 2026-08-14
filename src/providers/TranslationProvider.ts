@@ -1,11 +1,35 @@
-import type {
-	Definition,
-	DictionaryEntry,
-	ProviderId,
-	SourceLangCode,
-	TargetLangCode,
-	UiErrorInfo,
-} from '../types';
+import type { LangCode, SourceLangCode, TargetLangCode } from '../languages';
+import type { Definition, DictionaryEntry, ProviderId, UiErrorInfo } from '../types';
+
+/**
+ * Which end of a translation a code is for.
+ *
+ * Worth a type of its own because at least one service spells the same language
+ * differently depending on the role — see `deeplLangCodes.ts` — and a boolean
+ * argument at every call site would say nothing about which way round it is.
+ */
+export type LangRole = 'source' | 'target';
+
+/** A provider's own spelling of a language, or undefined when it has none. */
+export type LangCodeLookup = (code: LangCode, role: LangRole) => string | undefined;
+
+/**
+ * Whether a provider can handle a pair, decided purely from its code table.
+ *
+ * The point is to answer before any network call: a request that comes back
+ * rejected costs a round trip to tell the user something the table already knew.
+ * A missing code on either end is the definition of an unsupported pair, so
+ * every provider gets this for free by handing over its own lookup.
+ */
+export function supportsPair(
+	toCode: LangCodeLookup,
+	source: SourceLangCode,
+	target: TargetLangCode
+): boolean {
+	// 'auto' is a request to detect, not a language, so it needs no code.
+	if (source !== 'auto' && toCode(source, 'source') == null) return false;
+	return toCode(target, 'target') != null;
+}
 
 export interface TranslateRequest {
 	/** Already normalised. Providers never see raw markdown. */

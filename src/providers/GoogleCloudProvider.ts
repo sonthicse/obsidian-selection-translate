@@ -1,10 +1,11 @@
 import { ENDPOINTS } from '../constants';
-import type { SourceLangCode, TargetLangCode } from '../types';
-import { toGoogleCloudSource, toGoogleCode } from './langMap';
+import type { SourceLangCode, TargetLangCode } from '../languages';
+import { toGoogleCode } from './googleLangCodes';
 import { decodeHtmlEntities, parseJsonBody, requestWithRetry } from './http';
 import { toNfc } from '../utils/text';
 import {
 	ProviderError,
+	supportsPair,
 	type ProviderResponse,
 	type TranslateRequest,
 	type TranslationProvider,
@@ -26,21 +27,26 @@ export class GoogleCloudProvider implements TranslationProvider {
 
 	constructor(private readonly getApiKey: () => string) {}
 
-	supports(_source: SourceLangCode, _target: TargetLangCode): boolean {
-		return true;
+	supports(source: SourceLangCode, target: TargetLangCode): boolean {
+		return supportsPair(toGoogleCode, source, target);
 	}
 
 	async translate(request: TranslateRequest): Promise<ProviderResponse> {
 		const key = this.requireKey();
 
+		const targetCode = toGoogleCode(request.target, 'target');
+		if (targetCode == null) throw new ProviderError('unsupported-pair');
+
 		const body: Record<string, unknown> = {
 			q: request.text,
-			target: toGoogleCode(request.target),
+			target: targetCode,
 			// Without this the API treats the input as HTML and escapes the
 			// output as markup.
 			format: 'text',
 		};
-		const source = toGoogleCloudSource(request.source);
+		// Omitting `source` is what asks Google to detect the language; sending
+		// "auto" as a value is an error here, unlike on the free endpoint.
+		const source = request.source === 'auto' ? undefined : toGoogleCode(request.source, 'source');
 		if (source != null) body.source = source;
 
 		const response = await requestWithRetry({

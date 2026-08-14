@@ -146,12 +146,6 @@ export const en = {
 
 	/* Option labels */
 	'lang.auto': 'Detect automatically',
-	'lang.en': 'English',
-	'lang.es': 'Spanish',
-	'lang.fr': 'French',
-	'lang.de': 'German',
-	'lang.ru': 'Russian',
-	'lang.vi': 'Vietnamese',
 	'uiLang.auto': 'Same as Obsidian',
 	'uiLang.en': 'English',
 	'uiLang.vi': 'Tiếng Việt',

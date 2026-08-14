@@ -131,12 +131,6 @@ export const vi = {
 	'settings.resetDone': 'Đã khôi phục tuỳ chọn về mặc định',
 
 	'lang.auto': 'Tự nhận diện',
-	'lang.en': 'Tiếng Anh',
-	'lang.es': 'Tiếng Tây Ban Nha',
-	'lang.fr': 'Tiếng Pháp',
-	'lang.de': 'Tiếng Đức',
-	'lang.ru': 'Tiếng Nga',
-	'lang.vi': 'Tiếng Việt',
 	'uiLang.auto': 'Theo Obsidian',
 	'uiLang.en': 'English',
 	'uiLang.vi': 'Tiếng Việt',

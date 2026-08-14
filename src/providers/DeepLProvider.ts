@@ -1,10 +1,11 @@
 import { ENDPOINTS } from '../constants';
-import type { SourceLangCode, TargetLangCode } from '../types';
-import { toDeepLSource, toDeepLTarget } from './langMap';
+import type { SourceLangCode, TargetLangCode } from '../languages';
+import { toDeepLCode } from './deeplLangCodes';
 import { parseJsonBody, requestWithRetry } from './http';
 import { toNfc } from '../utils/text';
 import {
 	ProviderError,
+	supportsPair,
 	type ProviderResponse,
 	type TranslateRequest,
 	type TranslationProvider,
@@ -27,18 +28,19 @@ export class DeepLProvider implements TranslationProvider {
 	constructor(private readonly getApiKey: () => string) {}
 
 	supports(source: SourceLangCode, target: TargetLangCode): boolean {
-		return toDeepLTarget(target) != null && (source === 'auto' || toDeepLSource(source) != null);
+		return supportsPair(toDeepLCode, source, target);
 	}
 
 	async translate(request: TranslateRequest): Promise<ProviderResponse> {
 		const key = this.requireKey();
 
-		const targetLang = toDeepLTarget(request.target);
+		const targetLang = toDeepLCode(request.target, 'target');
 		if (targetLang == null) throw new ProviderError('unsupported-pair');
 
 		const body: Record<string, unknown> = { text: [request.text], target_lang: targetLang };
 		// Omitting source_lang is what asks DeepL to detect it.
-		const sourceLang = toDeepLSource(request.source);
+		const sourceLang =
+			request.source === 'auto' ? undefined : toDeepLCode(request.source, 'source');
 		if (sourceLang != null) body.source_lang = sourceLang;
 
 		const response = await requestWithRetry({

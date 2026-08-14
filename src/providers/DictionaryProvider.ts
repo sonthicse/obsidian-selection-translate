@@ -2,7 +2,7 @@ import { ENDPOINTS } from '../constants';
 import type { Definition, DictionaryEntry } from '../types';
 import { parseJsonBody, requestWithRetry } from './http';
 import { GoogleFreeProvider } from './GoogleFreeProvider';
-import { normalizeDetectedLang } from './langMap';
+import { normalizeDetectedLang } from '../languages';
 
 /** The extras a dictionary lookup can contribute to a translation. */
 export interface DictionaryLookup {

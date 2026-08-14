@@ -40,14 +40,6 @@ export interface ScrollAnchor {
 	scrollTop: number;
 }
 
-/** Languages offered as a translation source. */
-export type SourceLangCode = 'auto' | 'en' | 'es' | 'fr' | 'de' | 'ru' | 'vi';
-
-/** Languages offered as a translation target ('auto' makes no sense here). */
-export type TargetLangCode = 'vi' | 'en';
-
-export type LangCode = SourceLangCode | TargetLangCode;
-
 /** Which surface the selection came from. Drives both scope settings and the
  *  hotkey guard: 'md-edit' and 'input' are editable, so a bare printable key
  *  would type into the note instead of triggering us. */

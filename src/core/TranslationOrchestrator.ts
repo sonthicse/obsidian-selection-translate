@@ -3,7 +3,7 @@ import type { SelectionTranslateSettings } from '../settings/settings';
 import type { ProviderRegistry } from '../providers/ProviderRegistry';
 import type { DictionaryLookup } from '../providers/DictionaryProvider';
 import { ProviderError, toUiError, type ProviderResponse } from '../providers/TranslationProvider';
-import { normalizeDetectedLang } from '../providers/langMap';
+import { normalizeDetectedLang } from '../languages';
 import { LruCache } from './LruCache';
 import { isSingleWord, normalizeText } from './TextNormalizer';
 import { cacheKey } from '../utils/hash';

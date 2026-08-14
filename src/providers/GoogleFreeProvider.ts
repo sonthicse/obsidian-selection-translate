@@ -1,11 +1,13 @@
 import { ENDPOINTS, GTX_POST_THRESHOLD } from '../constants';
-import type { Definition, DictionaryEntry, SourceLangCode, TargetLangCode } from '../types';
+import type { SourceLangCode, TargetLangCode } from '../languages';
+import type { Definition, DictionaryEntry } from '../types';
 import { warnOnce } from '../utils/log';
 import { toNfc } from '../utils/text';
-import { toGoogleCode } from './langMap';
+import { toGoogleCode } from './googleLangCodes';
 import { parseJsonBody, requestWithRetry } from './http';
 import {
 	ProviderError,
+	supportsPair,
 	type ProviderResponse,
 	type TranslateRequest,
 	type TranslationProvider,
@@ -45,9 +47,8 @@ export class GoogleFreeProvider implements TranslationProvider {
 	readonly supportsDictionary = true;
 	readonly requiresApiKey = false;
 
-	supports(_source: SourceLangCode, _target: TargetLangCode): boolean {
-		// Every language pair the plugin offers is available here.
-		return true;
+	supports(source: SourceLangCode, target: TargetLangCode): boolean {
+		return supportsPair(toGoogleCode, source, target);
 	}
 
 	async translate(request: TranslateRequest): Promise<ProviderResponse> {
@@ -97,9 +98,14 @@ export class GoogleFreeProvider implements TranslationProvider {
 	): Promise<Awaited<ReturnType<typeof requestWithRetry>>> {
 		const params = new URLSearchParams();
 		params.set('client', 'gtx');
-		params.set('sl', toGoogleCode(source));
-		params.set('tl', toGoogleCode(target));
-		params.set('hl', toGoogleCode(target));
+		// 'auto' is the endpoint's own word for "detect", so it is passed through
+		// rather than looked up.
+		params.set('sl', source === 'auto' ? 'auto' : (toGoogleCode(source, 'source') ?? 'auto'));
+		const targetCode = toGoogleCode(target, 'target');
+		if (targetCode == null) throw new ProviderError('unsupported-pair');
+		params.set('tl', targetCode);
+		// Which language the dictionary's own labels come back in.
+		params.set('hl', targetCode);
 		for (const field of DT_FIELDS) params.append('dt', field);
 		params.set('ie', 'UTF-8');
 		params.set('oe', 'UTF-8');

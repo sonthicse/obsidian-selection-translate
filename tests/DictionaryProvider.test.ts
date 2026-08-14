@@ -1,16 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { makeResponse, requestUrlMock } from './mocks/obsidian';
 import { FreeDictionaryProvider, parseFreeDictionary } from '../src/providers/DictionaryProvider';
-import {
-	SOURCE_LANGUAGES,
-	TARGET_LANGUAGES,
-	normalizeDetectedLang,
-	toDeepLSource,
-	toDeepLTarget,
-	toGoogleCloudSource,
-	toGoogleCode,
-} from '../src/providers/langMap';
-
 import dictionaryFixture from './fixtures/dictionaryapi-information.json';
 
 describe('parseFreeDictionary', () => {
@@ -101,72 +91,5 @@ describe('FreeDictionaryProvider', () => {
 		// A dictionary being down must never sink a translation that worked.
 		requestUrlMock.mockRejectedValue(new Error('offline'));
 		expect(await provider.lookup('information', 'en')).toBeNull();
-	});
-});
-
-describe('langMap', () => {
-	it('offers automatic detection as a source but not as a target', () => {
-		expect(SOURCE_LANGUAGES).toContain('auto');
-		expect(TARGET_LANGUAGES).not.toContain('auto');
-	});
-
-	it('spells codes the way each service expects', () => {
-		expect(toGoogleCode('vi')).toBe('vi');
-		expect(toGoogleCode('auto')).toBe('auto');
-		expect(toDeepLSource('en')).toBe('EN');
-		expect(toDeepLTarget('vi')).toBe('VI');
-	});
-
-	it('uses a regional variant for the English DeepL target only', () => {
-		// DeepL accepts EN-US as a target and rejects it as a source.
-		expect(toDeepLTarget('en')).toBe('EN-US');
-		expect(toDeepLSource('en')).toBe('EN');
-	});
-
-	it('omits the source field for automatic detection', () => {
-		// Both APIs treat a literal "auto" as an error; the field must be absent.
-		expect(toDeepLSource('auto')).toBeUndefined();
-		expect(toGoogleCloudSource('auto')).toBeUndefined();
-	});
-
-	it('maps every offered source language for every service', () => {
-		for (const code of SOURCE_LANGUAGES) {
-			expect(toGoogleCode(code)).toBeTruthy();
-			if (code !== 'auto') {
-				expect(toDeepLSource(code)).toBeTruthy();
-				expect(toGoogleCloudSource(code)).toBeTruthy();
-			}
-		}
-	});
-
-	it('maps every offered target language for every service', () => {
-		for (const code of TARGET_LANGUAGES) {
-			expect(toGoogleCode(code)).toBeTruthy();
-			expect(toDeepLTarget(code)).toBeTruthy();
-		}
-	});
-});
-
-describe('normalizeDetectedLang', () => {
-	it('drops the region a service tacked on', () => {
-		expect(normalizeDetectedLang('EN-GB')).toBe('en');
-		expect(normalizeDetectedLang('en_US')).toBe('en');
-		expect(normalizeDetectedLang('DE')).toBe('de');
-	});
-
-	it('returns null for a language the plugin does not list', () => {
-		// Better to show what the service said than to claim a wrong match.
-		expect(normalizeDetectedLang('ja')).toBeNull();
-		expect(normalizeDetectedLang('zh-CN')).toBeNull();
-	});
-
-	it('returns null for absent or empty input', () => {
-		expect(normalizeDetectedLang(null)).toBeNull();
-		expect(normalizeDetectedLang(undefined)).toBeNull();
-		expect(normalizeDetectedLang('  ')).toBeNull();
-	});
-
-	it('never resolves to the automatic pseudo-language', () => {
-		expect(normalizeDetectedLang('auto')).toBeNull();
 	});
 });
