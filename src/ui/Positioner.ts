@@ -1,3 +1,4 @@
+import type { LanguageDir } from '../languages';
 import { makeRect, type Rect } from '../types';
 
 export type Placement =
@@ -44,6 +45,14 @@ export interface PlacementRequest {
 	order: readonly Placement[];
 	/** Pointer position, required only by the `cursor` placement. */
 	cursor?: { x: number; y: number } | null;
+	/**
+	 * Reading direction of the interface, which decides where "end" is.
+	 *
+	 * Required rather than defaulted, so the one place that builds a request has
+	 * to state it. A silent `ltr` default would be right for seven locales out of
+	 * eight and wrong in the only case this field exists for.
+	 */
+	dir: LanguageDir;
 }
 
 export interface PlacementResult {
@@ -97,11 +106,28 @@ export function place(request: PlacementRequest, isOccluded: HitTest = () => fal
  * probe: clamping is what would pin the icon to the screen edge instead of
  * letting it drift off with the text it belongs to, and `elementsFromPoint` on
  * every animation frame is not something to pay for sixty times a second.
+ *
+ * Four of the seven candidates are named after a *physical* side and mean a
+ * *logical* one. "End of the selection" is where reading stops, which is the
+ * right edge in English and the left edge in Arabic; an icon pinned to the
+ * right edge of Arabic text sits at the beginning of the passage, where the
+ * reader is not looking. So every horizontal term below is mirrored for an
+ * RTL interface, and the names are left alone — renaming them to
+ * `after-end`/`before-start` would make the stylesheet, the settings dropdown
+ * and the stored `iconPlacement` value all disagree with the code for no gain.
  */
 export function computeCandidate(placement: Placement, request: PlacementRequest): Rect | null {
-	const { bbox, anchorRect, size, offset } = request;
+	const { bbox, anchorRect, size, offset, dir } = request;
+	const rtl = dir === 'rtl';
+
 	const centerX = bbox.left + bbox.width / 2 - size.width / 2;
-	const endX = anchorRect.right - size.width / 2;
+	// Where the text ends, and where a box hung past that end begins.
+	const endEdge = rtl ? anchorRect.left : anchorRect.right;
+	const startEdge = rtl ? bbox.right : bbox.left;
+	const endX = endEdge - size.width / 2;
+	const beyondEnd = rtl ? endEdge - offset - size.width : endEdge + offset;
+	const beforeStart = rtl ? startEdge + offset : startEdge - offset - size.width;
+	const middleY = anchorRect.top + anchorRect.height / 2 - size.height / 2;
 
 	switch (placement) {
 		case 'below-center':
@@ -113,23 +139,16 @@ export function computeCandidate(placement: Placement, request: PlacementRequest
 		case 'above-end':
 			return makeRect(endX, anchorRect.top - offset - size.height, size.width, size.height);
 		case 'right-of-end':
-			return makeRect(
-				anchorRect.right + offset,
-				anchorRect.top + anchorRect.height / 2 - size.height / 2,
-				size.width,
-				size.height
-			);
+			return makeRect(beyondEnd, middleY, size.width, size.height);
 		case 'left-of-start':
-			return makeRect(
-				bbox.left - offset - size.width,
-				bbox.top + anchorRect.height / 2 - size.height / 2,
-				size.width,
-				size.height
-			);
+			return makeRect(beforeStart, bbox.top + anchorRect.height / 2 - size.height / 2, size.width, size.height);
 		case 'cursor': {
 			const cursor = request.cursor;
 			if (cursor == null) return null;
-			return makeRect(cursor.x + offset, cursor.y + offset, size.width, size.height);
+			// The popup grows away from the pointer along the reading direction,
+			// so it never covers the text the pointer is about to reach.
+			const x = rtl ? cursor.x - offset - size.width : cursor.x + offset;
+			return makeRect(x, cursor.y + offset, size.width, size.height);
 		}
 	}
 }

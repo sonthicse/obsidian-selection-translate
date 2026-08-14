@@ -6,7 +6,7 @@ import { ja } from './ja';
 import { es } from './es';
 import { it } from './it';
 import { ar } from './ar';
-import { normalizeUiLang, type UiLangCode } from '../languages';
+import { getLanguage, normalizeUiLang, type LanguageDir, type UiLangCode } from '../languages';
 import { warnOnce } from '../utils/log';
 
 /**
@@ -26,7 +26,16 @@ export type Locale = UiLangCode;
  * never reach the dropdown with nothing behind it. The same trick the provider
  * code tables use, for the same reason.
  */
-const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja, es, it, ar };
+const CATALOGUES: Record<Locale, Messages> = {
+	en,
+	vi,
+	'zh-Hant': zhHant,
+	'zh-Hans': zhHans,
+	ja,
+	es,
+	it,
+	ar,
+};
 
 /**
  * Lookup for every string the plugin shows.
@@ -37,9 +46,34 @@ const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Ha
  * benefit — there is exactly one UI language at a time.
  */
 let active: Messages = en;
+let activeDir: LanguageDir = 'ltr';
 
-export function setMessages(messages: Messages): void {
+/**
+ * Switches the catalogue, and with it the direction the interface reads in.
+ *
+ * The two travel together because they answer one question. Arabic strings laid
+ * out left to right is the failure this signature exists to make awkward.
+ */
+export function setMessages(messages: Messages, dir: LanguageDir = 'ltr'): void {
 	active = messages;
+	activeDir = dir;
+}
+
+/**
+ * Which way the plugin's own chrome reads.
+ *
+ * Deliberately *not* Obsidian's `mod-rtl` body class. That class follows
+ * Obsidian's interface language, and this plugin has an interface language of
+ * its own — someone reading Obsidian in English can still set the plugin to
+ * Arabic, and the popup then has to lay itself out right to left inside a
+ * left-to-right app. The two agree whenever the setting is "same as Obsidian",
+ * which is the common case, and this is correct in the case where they differ.
+ *
+ * Only the chrome. Which way a *translation* reads is decided by the language
+ * of that text, not by this — see {@link PopupContent}.
+ */
+export function uiDir(): LanguageDir {
+	return activeDir;
 }
 
 /**
@@ -77,7 +111,7 @@ export function resolveLocale(setting: 'auto' | Locale, win: Window): Locale {
 /** Switches the active catalogue. Call after loading or changing settings. */
 export function applyLocale(setting: 'auto' | Locale, win: Window): Locale {
 	const locale = resolveLocale(setting, win);
-	setMessages(CATALOGUES[locale]);
+	setMessages(CATALOGUES[locale], getLanguage(locale)?.dir ?? 'ltr');
 	return locale;
 }
 

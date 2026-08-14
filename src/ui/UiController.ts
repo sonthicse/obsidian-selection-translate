@@ -8,6 +8,7 @@ import {
 	WHEEL_LINE_HEIGHT_FALLBACK,
 } from '../constants';
 import { StateMachine, type MachineContext } from '../core/StateMachine';
+import { uiDir } from '../i18n';
 import type { SelectionCause } from '../core/SelectionManager';
 import type { SelectionTranslateSettings } from '../settings/settings';
 import {
@@ -485,6 +486,10 @@ export class UiController {
 			boundary: this.computeBoundary(snapshot),
 			offset: this.options.getSettings().iconOffset,
 			order: DEFAULT_PLACEMENT_ORDER,
+			// Read from the interface language rather than from the note: this
+			// decides which side of the selection counts as its end, and the icon
+			// belongs where the reader's eye leaves the text.
+			dir: uiDir(),
 			// The pointer position is frozen in viewport space, so it has to travel
 			// with the text; leaving it put would peg a cursor-placed icon to the
 			// screen while everything it refers to scrolls away.

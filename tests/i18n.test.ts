@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi as vitest } from 'vitest';
-import { applyLocale, resolveLocale, setMessages, t, type Locale } from '../src/i18n';
+import { applyLocale, resolveLocale, setMessages, t, uiDir, type Locale } from '../src/i18n';
 import { en, type Messages } from '../src/i18n/en';
 import { vi } from '../src/i18n/vi';
 import { zhHant } from '../src/i18n/zh-Hant';
@@ -13,7 +13,17 @@ import { resetWarnings } from '../src/utils/log';
 import { ProviderError, type ProviderErrorCode } from '../src/providers/TranslationProvider';
 
 /** Every catalogue the plugin ships, keyed the way the i18n layer keys them. */
-const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja, es, it: itCatalogue, ar };
+const CATALOGUES: Record<Locale, Messages> = {
+	en,
+	vi,
+	'zh-Hant': zhHant,
+	'zh-Hans': zhHans,
+	ja,
+	es,
+	// `it` is vitest's own test function in this file, hence the alias.
+	it: itCatalogue,
+	ar,
+};
 
 /** A window whose localStorage reports whatever Obsidian would have written. */
 function windowWithLanguage(language: string | null): Window {
@@ -23,7 +33,7 @@ function windowWithLanguage(language: string | null): Window {
 }
 
 afterEach(() => {
-	setMessages(en);
+	setMessages(en, 'ltr');
 	resetWarnings();
 });
 
@@ -207,6 +217,33 @@ describe('resolveLocale', () => {
 		} as unknown as Window;
 
 		expect(resolveLocale('auto', win)).toBe('en');
+	});
+});
+
+describe('uiDir', () => {
+	it('reads left to right for every locale but Arabic', () => {
+		for (const locale of UI_LANGUAGES) {
+			applyLocale(locale, windowWithLanguage(null));
+			expect(uiDir(), locale).toBe(locale === 'ar' ? 'rtl' : 'ltr');
+		}
+	});
+
+	it('follows the plugin’s own locale, not Obsidian’s', () => {
+		// The case the whole thing exists for: Obsidian in English, the plugin
+		// set to Arabic. Obsidian's `mod-rtl` body class is absent here, and the
+		// popup still has to lay itself out right to left.
+		applyLocale('ar', windowWithLanguage('en'));
+		expect(uiDir()).toBe('rtl');
+
+		// And the reverse: Obsidian in Arabic, the plugin pinned to English.
+		applyLocale('en', windowWithLanguage('ar'));
+		expect(uiDir()).toBe('ltr');
+	});
+
+	it('reverts to left to right when only a catalogue is swapped in', () => {
+		applyLocale('ar', windowWithLanguage(null));
+		setMessages(en);
+		expect(uiDir()).toBe('ltr');
 	});
 });
 

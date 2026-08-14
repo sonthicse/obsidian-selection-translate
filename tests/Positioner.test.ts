@@ -27,6 +27,7 @@ function request(overrides: Partial<PlacementRequest> = {}): PlacementRequest {
 		offset: 8,
 		order: DEFAULT_PLACEMENT_ORDER,
 		cursor: null,
+		dir: 'ltr',
 		...overrides,
 	};
 }
@@ -182,6 +183,67 @@ describe('computeCandidate, as used while scrolling', () => {
 
 	it('returns null for the cursor placement when there is no pointer', () => {
 		expect(computeCandidate('cursor', request({ cursor: null }))).toBeNull();
+	});
+});
+
+describe('computeCandidate in a right-to-left interface', () => {
+	/*
+	 * The selection is the same 400…600 box throughout. What changes is which
+	 * edge counts as its end: the right one in English, the left one in Arabic.
+	 */
+	const rtl = (overrides: Partial<PlacementRequest> = {}): PlacementRequest =>
+		request({ dir: 'rtl', ...overrides });
+
+	it('puts right-of-end on the left, because that is where the text ends', () => {
+		const ltr = computeCandidate('right-of-end', request());
+		const mirrored = computeCandidate('right-of-end', rtl());
+
+		// LTR: one offset past the right edge, 600 + 8.
+		expect(ltr?.left).toBe(608);
+		// RTL: a whole icon plus one offset before the left edge, 400 - 8 - 24.
+		expect(mirrored?.left).toBe(368);
+		expect(mirrored?.left).toBeLessThan(ltr?.left ?? 0);
+	});
+
+	it('puts left-of-start on the right, for the same reason', () => {
+		const ltr = computeCandidate('left-of-start', request());
+		const mirrored = computeCandidate('left-of-start', rtl());
+
+		// LTR: an icon and an offset before the left edge, 400 - 8 - 24.
+		expect(ltr?.left).toBe(368);
+		// RTL: one offset past the right edge, 600 + 8.
+		expect(mirrored?.left).toBe(608);
+	});
+
+	it('anchors the end-hung candidates to the left edge', () => {
+		// Centred on the end edge either way: 600 - 12 in LTR, 400 - 12 in RTL.
+		expect(computeCandidate('below-end', request())?.left).toBe(588);
+		expect(computeCandidate('below-end', rtl())?.left).toBe(388);
+		expect(computeCandidate('above-end', rtl())?.left).toBe(388);
+	});
+
+	it('grows the cursor placement away from the pointer, leftwards', () => {
+		const cursor = { x: 500, y: 200 };
+
+		expect(computeCandidate('cursor', request({ cursor }))?.left).toBe(508);
+		// The box would otherwise cover the text the eye moves towards next.
+		expect(computeCandidate('cursor', rtl({ cursor }))?.left).toBe(500 - 8 - 24);
+	});
+
+	it('leaves the centred candidates alone, which have no side', () => {
+		for (const placement of ['below-center', 'above-center'] as const) {
+			expect(computeCandidate(placement, rtl())).toEqual(computeCandidate(placement, request()));
+		}
+	});
+
+	it('changes nothing vertically', () => {
+		// The mirror is horizontal only. A regression here would show up as an
+		// icon that jumps rows when the interface language changes.
+		for (const placement of DEFAULT_PLACEMENT_ORDER) {
+			expect(computeCandidate(placement, rtl())?.top, placement).toBe(
+				computeCandidate(placement, request())?.top
+			);
+		}
 	});
 });
 

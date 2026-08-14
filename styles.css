@@ -186,7 +186,22 @@
 	background: var(--st-bg);
 	color: var(--st-fg);
 	box-shadow: var(--shadow-s);
-	font-family: var(--st-font-family, var(--font-interface));
+	/*
+	 * The user's font first, Obsidian's interface font next, then the script
+	 * fallbacks.
+	 *
+	 * The tail matters more here than in most plugins: this popup is the one
+	 * place in the app guaranteed to show a script the user does not otherwise
+	 * read. Someone translating into Japanese may have no CJK glyphs in their
+	 * chosen interface font, and a font stack that stops at `--font-interface`
+	 * renders the answer as a row of tofu boxes. The families listed are the
+	 * ones each platform actually ships, ordered Windows, macOS/iOS, Android
+	 * and Linux, ending in the generic keyword so nothing falls off the end.
+	 */
+	font-family: var(--st-font-family, var(--font-interface)), 'Segoe UI', 'Segoe UI Emoji',
+		'Noto Sans Arabic', 'Segoe UI Historic', 'Geeza Pro', 'Arabic Typesetting', 'Yu Gothic UI',
+		'Hiragino Sans', 'Noto Sans CJK JP', 'Meiryo', 'Microsoft JhengHei', 'PingFang TC',
+		'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
 	font-size: var(--st-font-size, 14px);
 	line-height: 1.5;
 	overflow: hidden;
@@ -386,7 +401,9 @@
 .st-setting-warning {
 	margin: -6px 0 12px;
 	padding: 8px 10px;
-	border-left: 3px solid var(--text-warning);
+	/* Logical, not physical: the stripe belongs at the edge the text starts
+	   from, which is the right-hand one under an RTL interface. */
+	border-inline-start: 3px solid var(--text-warning);
 	border-radius: 4px;
 	background: var(--background-secondary);
 	color: var(--text-muted);

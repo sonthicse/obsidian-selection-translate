@@ -1,6 +1,6 @@
 import { Scope, type App } from 'obsidian';
 import { CLS, POPUP_LOADING_HEIGHT, POPUP_MIN_WIDTH, POPUP_RESIZE_MS } from '../constants';
-import { t } from '../i18n';
+import { t, uiDir } from '../i18n';
 import type { SelectionTranslateSettings } from '../settings/settings';
 import type { Rect, SelectionSnapshot, TranslationResult, UiErrorInfo } from '../types';
 import { PopupContent, type PopupContentHandlers } from './PopupContent';
@@ -182,6 +182,14 @@ export class TranslatePopup {
 		this.labelId = `st-popup-label-${++labelSeq}`;
 		el.setAttribute('aria-labelledby', this.labelId);
 		el.toggleClass('mod-follow-theme', this.getSettings().popupTheme === 'follow');
+		/*
+		 * The shell reads in the plugin's interface language, which is not
+		 * necessarily Obsidian's: `body.mod-rtl` follows the app's setting, and
+		 * this one can differ. Everything inheriting from here — the header
+		 * buttons, the footer, an error message — is the plugin talking. The
+		 * translated text is not, and overrides this per block.
+		 */
+		el.setAttribute('dir', uiDir());
 
 		/*
 		 * Explicitly non-passive. The popup does not sit in the scroll chain of
@@ -306,6 +314,9 @@ export class TranslatePopup {
 	private measure(win: Window, build: (parent: HTMLElement) => void): { size: Size; nodes: Node[] } {
 		const twin = win.document.body.createDiv({ cls: `${CLS.popup} ${CLS.measure}` });
 		twin.toggleClass('mod-follow-theme', this.getSettings().popupTheme === 'follow');
+		// Same direction as the real popup, or the twin measures a layout the
+		// popup will never have.
+		twin.setAttribute('dir', uiDir());
 
 		try {
 			build(twin);

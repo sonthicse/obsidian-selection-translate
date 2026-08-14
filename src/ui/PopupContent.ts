@@ -1,6 +1,7 @@
 import { Notice, type App } from 'obsidian';
 import { PLUGIN_ID } from '../constants';
 import { t } from '../i18n';
+import { getLanguage, type LanguageDir } from '../languages';
 import type { SelectionTranslateSettings } from '../settings/settings';
 import type { TranslationResult, UiErrorInfo } from '../types';
 import { debug, logError } from '../utils/log';
@@ -65,22 +66,49 @@ export class PopupContent {
 
 		const body = parent.createDiv({ cls: 'st-popup-body' });
 
+		/*
+		 * The translation reads in *its own* language, not in the interface's.
+		 *
+		 * These are the two questions the popup answers with different facts, and
+		 * conflating them is the easy mistake here: an English interface
+		 * translating into Arabic has to right-align the result while leaving its
+		 * own labels and footer alone. So the direction goes on the blocks holding
+		 * translated text, and never on the popup shell — which carries the
+		 * interface direction and is what these override.
+		 */
+		const dir = this.targetDir();
+
 		if (result.phonetic != null) {
+			// Not given a direction. A pronunciation is a transcription — IPA or a
+			// romanisation — so it is Latin script whatever language it describes.
 			body.createDiv({ cls: 'st-phonetic', text: `/${stripSlashes(result.phonetic)}/` });
 		}
 
-		body.createDiv({ cls: 'st-translation', text: result.translated });
+		body.createDiv({ cls: 'st-translation', text: result.translated, attr: { dir } });
 
 		// The dictionary block is omitted entirely rather than rendered empty,
 		// so a sentence translation leaves no blank space behind.
 		for (const entry of result.entries ?? []) {
-			const entryEl = body.createDiv({ cls: 'st-entry' });
+			const entryEl = body.createDiv({ cls: 'st-entry', attr: { dir } });
 			entryEl.createDiv({ cls: 'st-pos', text: entry.partOfSpeech });
 			entryEl.createDiv({ cls: 'st-meanings', text: entry.meanings.join(', ') });
 		}
 
 		this.buildFooter(parent, result);
 		return unsubscribe;
+	}
+
+	/**
+	 * Which way the translated text reads.
+	 *
+	 * Taken from the current target-language setting rather than from the result,
+	 * for the same reason the footer badge is: the result carries no target code,
+	 * and the setting is what produced it. A language outside the registry cannot
+	 * happen — settings normalisation rejects one — but `ltr` is the safe answer
+	 * if it ever did.
+	 */
+	private targetDir(): LanguageDir {
+		return getLanguage(this.getSettings().targetLang)?.dir ?? 'ltr';
 	}
 
 	/** Renders a failure and its one useful action. */

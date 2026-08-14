@@ -1,4 +1,5 @@
 import { PluginSettingTab, type App } from 'obsidian';
+import { uiDir } from '../i18n';
 import type { ProviderId } from '../types';
 import type { ValidationResult } from '../providers/TranslationProvider';
 import type SelectionTranslatePlugin from '../main';
@@ -42,6 +43,15 @@ export class SelectionTranslateSettingTab extends PluginSettingTab {
 	override display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+
+		/*
+		 * The pane belongs to Obsidian, but the words in it are the plugin's, so
+		 * it reads in the plugin's interface language. Those differ whenever
+		 * someone runs Obsidian in one language and sets this plugin to another —
+		 * and the pane is exactly where they do that, so it has to be right on the
+		 * redraw that follows the change.
+		 */
+		containerEl.setAttribute('dir', uiDir());
 
 		const ctx = this.context();
 
