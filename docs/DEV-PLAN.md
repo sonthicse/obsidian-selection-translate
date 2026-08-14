@@ -2,7 +2,7 @@
 
 Trạng thái repo tại thời điểm phân tích: `main` @ `97ea9f3`, version `0.2.2`, 24 commit, tag `0.1.1 → 0.2.2`, 41 file TS trong `src/` (~7.3k LOC), 18 file test (vitest), có sẵn `scripts/check-guidelines.mjs` và workflow release.
 
-> **Cập nhật sau E0 (2026-08-12, version `0.2.3`).** Con số ở trên là ảnh chụp lúc lập kế hoạch và được giữ nguyên làm mốc lịch sử. Trạng thái hiện tại: **53 file TS** (7 609 LOC), **17 file test**, **314 test**, 132 chuỗi UI. Mọi trích dẫn `file:dòng` trong tài liệu này đã được rà lại sau tái cấu trúc — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e0) ở cuối mục E0.
+> **Cập nhật sau E3 (2026-08-14, chưa phát hành).** Con số ở trên là ảnh chụp lúc lập kế hoạch và được giữ nguyên làm mốc lịch sử. Trạng thái hiện tại: **53 file TS** (7 934 LOC), **17 file test**, **332 test**, **122 chuỗi UI**. Mọi trích dẫn `file:dòng` trong tài liệu này đã được rà lại sau mỗi epic — xem phần *Kết quả thực hiện* ở cuối từng mục.
 >
 > Hai con số trong bản gốc cũng sai ngay từ đầu, sửa luôn ở đây: repo có **16** file test chứ không phải 18, và **42** file TS chứ không phải 41.
 
@@ -43,9 +43,11 @@ Tài liệu này **chỉ đặc tả** — không thực hiện.
 
 Tổng: **10 ngôn ngữ nguồn** (+ `auto`), **10 ngôn ngữ đích**, **8 locale giao diện**.
 
-**Tổng khối lượng giao diện:** 8 locale × 127 key = **1.016 chuỗi**.
+> **Cột *Nguồn* và *Đích* đã thực hiện xong ở E3** — bảng trên nay mô tả `src/languages.ts` chứ không còn là kế hoạch, và `tests/languages.test.ts` canh gác đúng hai con số 10/10. Cột *Giao diện* vẫn là kế hoạch: `ui: true` hiện chỉ đặt cho `en` và `vi`, và **E4** bật sáu cái còn lại cùng lúc với việc viết catalogue cho chúng.
 
-> Số key giảm 134 → 132 ở E0, rồi 132 → 127 ở E2 (gỡ trigger key và hai key tên command). Chi tiết E0:: `popup.otherMeanings` và `settings.recordHotkey` là key mồ côi, không code nào tra tới, nên đã xoá trước khi E4 nhân chúng lên 8 locale.
+**Tổng khối lượng giao diện:** 8 locale × 122 key = **976 chuỗi**.
+
+> Số key giảm 134 → 132 ở E0, rồi 132 → 127 ở E2 (gỡ trigger key và hai key tên command), rồi 127 → **122** ở E3. Chi tiết E0: `popup.otherMeanings` và `settings.recordHotkey` là key mồ côi, không code nào tra tới, nên đã xoá trước khi E4 nhân chúng lên 8 locale. Chi tiết E3: xoá 6 key `lang.<code>` vì dropdown nay hiển thị `nativeName` lấy thẳng từ registry, thêm 1 key `notice.russianRemoved`. `lang.auto` giữ lại — "tự nhận diện" là một chỉ dẫn, không phải tên một ngôn ngữ.
 
 > **Lưu ý về `zh-Hans` (quan trọng, dễ làm sai):** bản giản thể **không phải** là bản phồn thể đổi bộ chữ. Từ vựng tin học khác nhau thật sự — 軟體/软件, 網路/网络, 螢幕/屏幕, 設定/设置, 檔案/文件. Chuyển đổi tự động kiểu OpenCC rồi dùng luôn sẽ cho ra thứ tiếng Trung mà người đại lục đọc là "bản Đài Loan chuyển máy". Quy trình đúng: dịch `zh-Hant` trước như bản chuẩn, chuyển bộ chữ, rồi **rà lại toàn bộ thuật ngữ** theo bản địa hoá chính thức của Obsidian tiếng Trung giản thể.
 
@@ -670,6 +672,126 @@ Yêu cầu: giữ script subtag cho nhóm `zh`. Map `zh-CN` / `zh-Hans` / `zh-SG
 - Test: `normalizeDetectedLang('zh-TW')` → `'zh-Hant'`, `normalizeDetectedLang('zh-CN')` → `'zh-Hans'`.
 - Test migration: load `data.json` phiên bản 0.2.2 → không mất setting nào.
 
+### Kết quả thực hiện (E3)
+
+Thực hiện ngày **2026-08-14**, trên nhánh sau `0.3.1`. **Chưa phát hành** — E3 và E4 cùng đi trong `0.4.0`, và `0.4.0` **bắt buộc qua ít nhất một vòng beta BRAT** trước khi phát hành chính thức.
+
+> Mọi số dòng trong phần mô tả E3 ở trên là ảnh chụp trước E3 và được giữ nguyên làm căn cứ. `src/providers/langMap.ts` **đã bị xoá**; nội dung của nó nay nằm ở `src/languages.ts` (phần chung) và hai file mã ngôn ngữ theo provider.
+
+#### Trạng thái từng task
+
+| Task | Trạng thái | Ghi chú |
+|---|---|---|
+| **E3-T1** — registry thay union | **Xong** | `src/languages.ts` (279 dòng), không import gì. `SourceLangCode` / `TargetLangCode` **suy ra từ cờ** bằng `Extract<>` trên một mảng `as const satisfies`, nên hai kiểu không thể lệch khỏi dữ liệu. Ba danh sách dropdown cũng suy ra, bằng `filter` có type predicate. |
+| **E3-T2** — bảng mã theo provider | **Xong** | `googleLangCodes.ts` (một bảng, hai vai dùng chung) và `deeplLangCodes.ts` (hai bảng, một cho mỗi vai). Bảng đã **kiểm chứng lại** — xem mục riêng bên dưới. |
+| **E3-T3** — `normalizeDetectedLang` giữ script `zh` | **Xong** | Script thắng region (`zh-Hant-CN` → `zh-Hant`), `zh` trần → `zh-Hans`, `zh-*` lạ → `zh-Hant`. 5 test riêng cho nhóm này. |
+| **E3-T4** — ma trận provider × cặp | **Xong** | `supportsPair(toCode, source, target)` trong `TranslationProvider.ts`, dùng chung cho cả ba provider. `GoogleFreeProvider` và `GoogleCloudProvider` không còn trả `true` vô điều kiện. |
+| **E3-T5** — gỡ `ru` + migration | **Xong** | `SETTINGS_SCHEMA_VERSION = 1`, `migrate()` trả `{ settings, changed, notices }`, `main.ts` lưu ngay khi `changed`. 7 test migration. |
+| **Kiểm tay** | **Chờ chủ dự án** | Ba ô ở mục riêng bên dưới. |
+
+#### Kiểm chứng bảng mã ngôn ngữ — **dữ kiện, không phải suy đoán**
+
+Đây là điểm số 2 trong danh sách *"phải hỏi trước khi tự quyết"*. Kết quả: **bảng trong E3-T2 khớp thực tế ở phần đã kiểm được.** Không có gì phải hỏi, nhưng ghi lại đầy đủ vì E5 sẽ cần.
+
+| Ô | Kế hoạch ghi | Kiểm chứng | Nguồn |
+|---|---|---|---|
+| **DeepL — `zh` source** | `ZH` cho cả hai biến thể | **Khớp.** `ZH` là mã source duy nhất; DeepL tự nhận script và không có cách ép | [developers.deepl.com/docs/getting-started/supported-languages](https://developers.deepl.com/docs/getting-started/supported-languages) + [api-reference/languages](https://developers.deepl.com/docs/api-reference/languages) |
+| **DeepL — `zh` target** | `ZH-HANS` / `ZH-HANT` | **Khớp, và tên vẫn đúng.** Đây là bổ sung tương đối mới; `ZH` trần vẫn được giữ để tương thích ngược | như trên, đối chiếu chéo với [machinetranslate.org/deepl](https://machinetranslate.org/deepl) và [DeepL language release process](https://developers.deepl.com/docs/resources/language-release-process) |
+| **DeepL — phủ 10 ngôn ngữ** | ngầm định | **Đủ cả 10.** Danh sách `/v2/languages` chứa AR, DE, EN, ES, FR, IT, JA, RU, VI, ZH | endpoint `/languages` |
+| **Google — `zh`** | `zh-CN` / `zh-TW` | **Khớp.** Google mang **region**, không mang script — ngược với DeepL | [Cloud Translation language support](https://cloud.google.com/translate/docs/languages) |
+| **Youdao** | `zh-CHS` / `zh-CHT` | **Chỉ khớp một nửa.** `zh-CHS` xác nhận được; `zh-CHT` **không** tìm được xác nhận, và một nguồn mô tả Youdao là *中文（含繁体）* — tức `zh-CHS` bao gồm cả phồn thể | [ai.youdao.com](https://ai.youdao.com) — tài liệu tiếng Trung, không có bảng ngôn ngữ đầy đủ công khai |
+| **Baidu, Papago** | — | **Không kiểm.** Thuộc E5, và E3 chỉ cần chỗ trống trong cấu trúc | — |
+
+**Điều đáng mang sang E5:** ô Youdao là ô duy nhất còn ngờ, và nó không phải chuyện nhỏ — nếu Youdao thật sự gộp hai biến thể vào một mã thì `zh-Hant` và `zh-Hans` sẽ ánh xạ về cùng một chuỗi ở provider đó, và người dùng chọn phồn thể sẽ nhận về giản thể mà không có lỗi nào báo. Kiểm lại bằng tài liệu API **tại thời điểm làm E5**, và nếu đúng là gộp thì cân nhắc để `zh-Hant` **không có mã** ở Youdao thay vì ánh xạ sai — `supportsPair()` sẽ biến nó thành `unsupported-pair` ngay, và đó là câu trả lời trung thực hơn.
+
+#### Cache LRU: đã kiểm, và **không viết code**
+
+Kế hoạch E3-T5 ghi *"invalidate cache khi `schemaVersion` tăng"*. Đã kiểm: `TranslationOrchestrator` dựng `new LruCache(...)` trong **constructor**, mà constructor chạy ở mỗi lần `onload`. Cache hoàn toàn trong bộ nhớ, không ghi đĩa, không sống qua một lần khởi động. Không khoá nào chứa `ru` có thể tồn tại sau khi migration chạy.
+
+Nên đây là **vấn đề không tồn tại**, và không có dòng code nào được viết cho nó. Ghi lại vì kế hoạch có nêu, và vì "đã kiểm rồi kết luận không cần" khác hẳn "quên".
+
+#### Ranh giới `migrate()` ↔ `normalizeSettings()`
+
+Kế hoạch cảnh báo đúng: `normalizeSettings()` đã làm một phần việc trông giống migration. Ranh giới đã chốt và ghi thành comment trong `src/settings/settings.ts`, cùng bảng đối chiếu ở `CLAUDE.md` §6.13:
+
+- `normalizeSettings()` — cái gì đúng với **mọi** phiên bản (clamp số, giá trị lạ về mặc định, ngôn ngữ ngoài registry về mặc định). Chạy mọi lần load, **không bao giờ** nói gì với người dùng.
+- `migrate()` — cái gì **đổi nghĩa** giữa hai schema. Chạy một lần cho mỗi `schemaVersion`, và là **nơi duy nhất** được sinh `Notice`.
+
+Hệ quả thực hành đáng nhớ nhất: **giá trị rác không phải việc của `migrate()`.** `data.json` chứa `sourceLang: 42` không cần luật migration nào.
+
+#### AC "thêm một ngôn ngữ = 1 file" — **đã chứng minh bằng cách làm thật**
+
+Thêm tiếng Hàn (`ko`) vào registry, chạy `npx tsc --noEmit`, đếm, rồi hoàn tác. Trình biên dịch chỉ ra **đúng ba chỗ**, kèm file và dòng:
+
+| File | Số dòng phải thêm |
+|---|---|
+| `src/languages.ts` | 1 hàng (10 dòng, đủ 8 trường) |
+| `src/providers/googleLangCodes.ts` | **1** |
+| `src/providers/deeplLangCodes.ts` | **2** — một cho `SOURCE_CODES`, một cho `TARGET_CODES` |
+
+Khớp AC: *1 file registry + 1 dòng mỗi provider map*. DeepL có hai dòng vì nó có **hai bảng trong một file**, đúng theo cạm bẫy §6.2 — đó là cùng một "provider map".
+
+Điều làm cho con số này rẻ như vậy là bảng mã khai `Record<LangCode, string>` chứ không phải `Partial<…>`: thiếu một mã là **lỗi biên dịch có địa chỉ**, không phải bug lúc chạy. Đã ghi thành cạm bẫy §6.14 để E5 không đổi sang `Partial` "cho tiện".
+
+Ngoài ba chỗ đó, **hai test đỏ** — và cả hai đỏ **đúng ý đồ**: `lists the agreed matrix` và `returns null for a language the plugin does not list`. Chúng canh gác ma trận đã chốt, tức chúng hỏi *"ngôn ngữ này có nằm trong kế hoạch không?"*. Đó không phải chi phí của việc thêm ngôn ngữ; đó là cổng chặn việc thêm ngôn ngữ ngoài kế hoạch.
+
+#### Quyết định về `lang.<code>` trong catalogue i18n
+
+E3-T1 để ngỏ: *"`lang.<code>` có thể không còn cần thiết — nhưng đừng xoá vội, hãy quyết định rõ và ghi lý do."*
+
+**Quyết định: xoá 6 key `lang.en/es/fr/de/ru/vi`, giữ `lang.auto`.**
+
+Lý do: dropdown nay hiển thị `nativeName` từ registry, nên tên ngôn ngữ không còn đi qua catalogue. Giữ chúng lại nghĩa là E4 phải nhân **10 tên ngôn ngữ × 8 locale = 80 chuỗi** mà không ai đọc tới. `lang.auto` ở lại vì "tự nhận diện" là một **chỉ dẫn**, không phải tên một ngôn ngữ — nó không có `nativeName` để lấy.
+
+Số chuỗi UI: 127 → **122** (−6 `lang.*`, +1 `notice.russianRemoved`). **E4 lập kế hoạch trên 8 × 122 = 976 chuỗi.**
+
+#### Ma trận test thủ công
+
+*(chờ chủ dự án chạy — sẽ điền vào đây)*
+
+| Ô | Phải nhìn cái gì | Kết quả |
+|---|---|---|
+| **Vault đang đặt `sourceLang: 'ru'`** | Mở Obsidian → `Notice` hiện **một lần**, ngôn ngữ nguồn về *Tự nhận diện*, **không mất setting nào khác**. Khởi động lại → **không** thấy `Notice` nữa | *(chưa chạy)* |
+| **Vault 0.2.2 bình thường** (`sourceLang: 'en'`, `targetLang: 'vi'`) | Mọi setting nguyên vẹn, dịch vẫn chạy, không có `Notice` nào | *(chưa chạy)* |
+| **Dropdown ngôn ngữ** | Hiển thị `nativeName` đúng: 繁體中文, 简体中文, 日本語, العربية… Ra ô vuông thì đó là việc của **E4** (`--st-font-family` fallback), ghi lại chứ đừng sửa | *(chưa chạy)* |
+
+Ô đầu tiên là ô đáng giá nhất: nó xác nhận rằng `schemaVersion` thật sự được ghi xuống đĩa. Nếu `Notice` hiện lại ở lần khởi động thứ hai thì `saveData` sau migration đã không chạy, và đó là bug duy nhất của E3 mà unit test không bắt được — test gọi `migrate()` hai lần trong bộ nhớ, không đi qua đĩa.
+
+#### Danh sách commit
+
+| Commit | Nội dung |
+|---|---|
+| `988bf5f` | `refactor(lang):` registry + tách bảng mã theo provider + `supports()` (E3-T1, T2, T4) |
+| `1e3273d` | `feat(lang):` thêm Trung (hai biến thể), Nhật, Ả Rập, Ý; mở mọi ngôn ngữ làm đích; luật `zh` (E3-T1 ma trận, E3-T3) |
+| `94497cb` | `feat(lang)!:` gỡ tiếng Nga + `schemaVersion` + `migrate()` + `Notice` một lần (E3-T5) |
+| `fc9cffe` | `docs:` `CLAUDE.md` — playbook 5.1 viết lại, 5.2 bước 4, §6.2 và §6.4 viết lại, §6.13 và §6.14 mới |
+| *(commit này)* | `docs:` kết quả E3, bảng tiến độ, `docs/prompts/PROMPT-E4.md` |
+
+Ba commit code tách theo ranh giới **tự nhiên** chứ không theo số thứ tự task: commit đầu là tái cấu trúc không đổi bộ ngôn ngữ, commit hai thêm ngôn ngữ, commit ba là thay đổi phá vỡ tương thích duy nhất. Mỗi commit `npm run verify` xanh và tự đứng được — commit một giữ nguyên 7 ngôn ngữ cũ kể cả `ru`, commit hai vẫn còn `ru`.
+
+`npm run verify` xanh sau **mỗi** commit. Sau E3: **332 test** (từ 306), 0 error / 5 warning, **53 file nguồn** (từ 51: +3 file mới, −1 `langMap.ts`), **122 chuỗi UI** (từ 127).
+
+#### Phát hiện ra nhưng cố ý không làm
+
+| Việc | Vì sao không làm |
+|---|---|
+| `--st-font-family` chưa có fallback cho chữ Ả Rập, CJK và Kana | Là **E4-T4**, đã có yêu cầu riêng ở đó. E3 đưa 日本語 / العربية vào dropdown nên đây là lần đầu vấn đề có thể quan sát được — nếu kiểm tay thấy ô vuông thì đó là **xác nhận sớm cho E4**, không phải hồi quy của E3. |
+| Sửa `t()` trả về key thay vì fallback về `en` (`i18n/index.ts`) | Vẫn là **E4-T1**. Ghi nợ từ E0, nhắc lại ở E1 và E2. Với 2 locale nó vô hại; với 8 thì không. |
+| `Locale`, `UiLanguage` và `LANGUAGES[].ui` là **ba** nơi cùng nói về locale giao diện | Là **E4-T1**. Registry đã sẵn `ui: boolean` và `UI_LANGUAGES` để E4 gom về một mối; gom bây giờ là lấn epic khi chưa có catalogue nào để gom. |
+| `phonetic` chưa ai đọc tới | Là **E6**. Trường đã có, đúng theo bảng chốt của E6, và có test kiểm mọi hàng đều khai nó. |
+| `warning obsidianmd/prefer-get-language` ở `i18n/index.ts:35` | Nằm trong 5 warning cố ý (§6.8), và chính hàm đó là **E4-T3**. Sửa ở E3 là chạm vào code của epic sau. |
+| Xoá `docs/DEV-PLAN.md:Zone.Identifier` | Vẫn ngoài phạm vi, như đã ghi ở E0, E8, E1 và E2. |
+
+#### Có gì buộc một epic sau phải đổi cách làm không?
+
+**Không có gì buộc phải đổi cách làm.** Ba ghi chú để E4/E5/E6 đỡ mất công:
+
+1. **E4 rẻ hơn dự kiến ở phần ngôn ngữ, đắt hơn ở phần soát.** Khối lượng dịch giảm 8 × 127 → **8 × 122 = 976**, vì 6 key tên ngôn ngữ đã biến mất. Nhưng `settings.*` chiếm **73/122** key, và đó toàn là nhãn phải ngắn — phần "đúng độ dài cho vị trí hiển thị" (E4-T2 mục 3) là phần tốn công nhất, không phải phần dịch nghĩa.
+2. **E4-T3 có thể dùng lại luật `zh` thay vì viết bảng thứ hai** — `normalizeDetectedLang()` đã cài đúng hai luật mà E4-T3 mô tả. Nhưng hai hàm trả về hai tập khác nhau (`fr` là ngôn ngữ nguồn nhưng không là locale giao diện), nên dùng lại thì phải xử lý ca đó cho đúng.
+3. **E5 thừa hưởng nguyên `supportsPair()`.** Papago không có tiếng Ả Rập là ca đã có test mô phỏng sẵn (`rejects a pair the provider cannot spell, before any request`). Đường đi cho provider mới đã viết lại trong `CLAUDE.md` playbook 5.2 bước 4.
+
+Giả định của **E6** về `phonetic` vẫn đứng: `kind` quyết định được từ **ngôn ngữ nguồn đã phát hiện**, và `normalizeDetectedLang()` nay trả về đúng `zh-Hans` / `zh-Hant` để tra registry — điều mà trước E3 **không** làm được, vì cả hai đều ra `zh`.
+
 ---
 
 ## E4 — Giao diện 8 locale + RTL
@@ -929,8 +1051,8 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 | **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
 | **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), ma trận test thủ công đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
 | **E2** — Đồng bộ trigger key | `0.3.0` | ✅ **Xong** (2026-08-12) bằng **phương án A** thay vì B, kiểm tay đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e2) |
-| E3 — Registry ngôn ngữ | `0.4.0` | ⏭️ **Tiếp theo** |
-| E4 — 8 locale + RTL | `0.4.0` | Chưa bắt đầu |
+| **E3** — Registry ngôn ngữ | `0.4.0` | ✅ **Xong** (2026-08-14), kiểm tay đang chờ — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e3) |
+| E4 — 8 locale + RTL | `0.4.0` | ⏭️ **Tiếp theo** |
 | E5 — 3 provider mới | `0.5.0` | Chưa bắt đầu |
 | E6 — Phiên âm có điều kiện | `0.5.0` | Chưa bắt đầu |
 | E7 — Tài liệu | `0.6.0` | Chưa bắt đầu |
@@ -938,13 +1060,17 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi tự quyết** (quy tắc R3):
 
 1. ~~**Kết quả `/code-review` ở E0** có thể cho thấy phạm vi tái cấu trúc lớn hơn 4 file đã liệt kê.~~ **Đã giải quyết ở E0:** phạm vi thực tế hoá ra *nhỏ hơn* dự kiến chứ không lớn hơn — audit đề nghị 3 file, chủ dự án duyệt giữ đủ 4.
-2. **Bảng mã ngôn ngữ ở E3-T2** là điểm khởi đầu dựng từ tài liệu API. Nếu thực tế khác (đặc biệt phần `zh` của DeepL và Youdao), báo lại trước khi sửa bảng.
+2. ~~**Bảng mã ngôn ngữ ở E3-T2** là điểm khởi đầu dựng từ tài liệu API.~~ **Đã giải quyết một phần ở E3:** phần Google và DeepL đã kiểm chứng lại với tài liệu API tháng 8/2026 và **khớp kế hoạch** — `ZH` là source, `ZH-HANS`/`ZH-HANT` là target, `zh-CN`/`zh-TW` cho Google. Không phải sửa bảng. **Phần Youdao vẫn còn ngờ** (`zh-CHS` xác nhận được, `zh-CHT` thì không), và Baidu / Papago chưa kiểm — cả ba thuộc **E5** và **vẫn phải hỏi trước khi tự quyết** ở đó. Bảng đầy đủ ở [Kết quả thực hiện (E3)](#kết-quả-thực-hiện-e3).
 3. ~~**`app.hotkeyManager` ở E2-T2** là API không công khai.~~ **Đã giải quyết ở E2:** hình dạng thật được xác minh bằng cách giải nén `obsidian-1.13.6.asar` chứ không suy đoán, và nó *khớp* dự kiến. Bảng chi tiết ở [Kết quả thực hiện (E2)](#kết-quả-thực-hiện-e2). Ba phát hiện kèm theo về `Scope` thì **không** có trong dự kiến và đã ghi vào `CLAUDE.md` §6.11–6.13.
 
 ### Việc tiếp theo
 
-**E3 — refactor mô hình ngôn ngữ (language registry)** (`0.4.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E3.md`](prompts/PROMPT-E3.md), mang theo ngữ cảnh vừa học ở E2.
+**E4 — giao diện 8 locale + RTL** (`0.4.0`). Prompt chi tiết soạn sẵn tại [`docs/prompts/PROMPT-E4.md`](prompts/PROMPT-E4.md), mang theo ngữ cảnh vừa học ở E3 — nhất là hình dạng cuối cùng của registry và ba trường E4 phải cắm vào (`ui`, `dir`, `nativeName`).
 
-Trước đó, **`0.3.0` sẵn sàng phát hành**: E1 và E2 đều xong trọn vẹn, kiểm tay của cả hai đã chạy. Không còn cổng ra nào treo. Trình tự phát hành ở `CLAUDE.md` §8; nhớ kiểm asset của release sau khi workflow chạy, vì thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó.
+**Khối lượng thật của E4 là 8 × 122 = 976 chuỗi**, không phải con số trong đặc tả E4-T1 (đã cũ từ E0).
 
-E3 là **nút thắt** của cả nửa sau kế hoạch (E4, E5, E6 đều đứng trên nó) và là **thay đổi phá vỡ tương thích** — gỡ tiếng Nga, đổi schema settings — nhưng ở giai đoạn `0.x` thì dồn vào MINOR: `0.4.0`, không phải `1.0.0`. `0.4.0` **bắt buộc có ít nhất một vòng beta qua BRAT**, vì lỗi migration làm mất setting là không hồi phục được.
+Trước đó, còn một cổng đang mở: **ma trận test thủ công của E3 chưa chạy**. Ba ô, nhẹ, ở [Kết quả thực hiện (E3)](#kết-quả-thực-hiện-e3). Ô quan trọng nhất là ô `sourceLang: 'ru'` — nó là thứ duy nhất xác nhận rằng `schemaVersion` thật sự được ghi xuống đĩa, điều mà unit test không đi qua được.
+
+**`0.4.0` chưa được phát hành** cho tới khi **E4 xong** *và* **đã qua ít nhất một vòng beta BRAT**. Đây là ràng buộc cứng, không phải khuyến nghị: E3 đổi schema `data.json` của người dùng, và lỗi migration làm mất setting là không hồi phục được. Cách làm beta ở mục [Beta](#beta) (`manifest.version` dạng `0.4.0-beta.1`, tag tương ứng; Obsidian updater bỏ qua tag prerelease, BRAT vẫn cài được).
+
+Khi tới lúc phát hành thật, ba bài học ở `CLAUDE.md` §8 vẫn nguyên giá trị — đặc biệt: **kiểm asset của release sau khi workflow chạy**, vì thiếu `main.js` + `manifest.json` dưới dạng file rời là trượt cổng submit ngay tại bước đó, trước mọi câu hỏi về code.
