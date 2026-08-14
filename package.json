@@ -1,6 +1,6 @@
 {
   "name": "selection-translate",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Translate selected text in notes and PDFs with an inline popup showing pronunciation, part of speech, and alternative meanings.",
   "main": "main.js",
   "private": true,
