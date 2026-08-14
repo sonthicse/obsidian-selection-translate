@@ -83,7 +83,19 @@ Nếu bạn thêm fixture cho endpoint gtx, hãy dùng **bản chụp thật** c
 
 Plugin có **tám** ngôn ngữ giao diện: `en`, `vi`, `zh-Hant`, `zh-Hans`, `ja`, `es`, `it`, `ar`. `en.ts` là nguồn chân lý; bảy file còn lại khai `satisfies Messages`, nên quên một key là **lỗi biên dịch**, không phải một nhãn trống mà ai đó phát hiện sau khi phát hành.
 
-Thêm một chuỗi mới thì thêm vào `en.ts` trước, rồi đủ bảy file kia — playbook đầy đủ ở mục 5.3 của [`CLAUDE.md`](../CLAUDE.md).
+Thêm một chuỗi mới, theo đúng thứ tự:
+
+1. `src/i18n/en.ts` **trước**. Đây là bản chuẩn và là nơi duy nhất định nghĩa tập key.
+2. Tra `GLOSSARY.md` (mục dưới) trước khi đặt bút dịch.
+3. Rồi đủ **bảy** file còn lại. Placeholder dạng `{name}` phải trùng khít tên ở cả tám.
+4. `npm run verify`.
+
+Bốn cổng bắt lỗi ở bốn mức, biết cổng nào bắt gì thì đọc lỗi nhanh hơn nhiều: `tsc` bắt thiếu/thừa key kèm tên file và số dòng; `tests/i18n.test.ts` bắt tập key, tập placeholder và chuỗi rỗng; `npm run check` quét mọi file trong `src/i18n/` chứ không theo danh sách viết tay; và test sentence case chỉ áp cho `en`, vì đó là quy tắc style guide của tiếng Anh.
+
+Hai điều dễ làm sai:
+
+- **Tên ngôn ngữ không nằm trong catalogue.** Cả ba dropdown lấy `nativeName` thẳng từ `src/languages.ts`. Chỉ `lang.auto` và `uiLang.auto` đi qua i18n, vì chúng là chỉ dẫn chứ không phải tên.
+- **Thiếu chuỗi ở một locale rơi về `en`**, không hiện ra key. Tiện cho người dùng, nhưng nghĩa là một key sót sẽ không đập vào mắt lúc chạy — dựa vào bốn cổng trên, đừng dựa vào mắt.
 
 **Đọc [`GLOSSARY.md`](GLOSSARY.md) trước khi dịch.** Mỗi thuật ngữ cốt lõi có một bản dịch cố định cho mỗi ngôn ngữ, và những khái niệm dùng chung với Obsidian phải dùng đúng từ bản địa hoá chính thức của Obsidian đang dùng.
 

@@ -12,8 +12,38 @@
  * this sees the whole repository, including manifest.json and styles.css.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, extname, dirname } from 'node:path';
 import process from 'node:process';
+
+/**
+ * Everything git tracks, or null when git cannot answer.
+ *
+ * The documentation checks below run against this rather than against the
+ * working directory, because the two disagree in exactly the case that matters:
+ * a file listed in .gitignore is on the maintainer's disk and absent from a
+ * clone. A link to one then passes locally and fails in CI — which is precisely
+ * how a release failed, on a link to CLAUDE.md added in the same epic that
+ * stopped publishing it.
+ */
+function trackedFiles() {
+	try {
+		const out = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' });
+		return new Set(out.split('\0').filter((path) => path.length > 0));
+	} catch {
+		// No git, or not a repository: a source tarball being checked. Fall back
+		// to the filesystem rather than failing every documentation check.
+		return null;
+	}
+}
+
+const tracked = trackedFiles();
+
+/** Whether a repo-relative path ships, as opposed to merely existing here. */
+function isPublished(path) {
+	const normalized = path.replace(/\\/g, '/');
+	return tracked == null ? exists(normalized) : tracked.has(normalized);
+}
 
 const failures = [];
 const notes = [];
@@ -266,7 +296,12 @@ for (const host of declaredHosts) {
 
 /* ── Documentation links point at files that exist ────────────────────────── */
 
-const markdownFiles = ['README.md', 'README.vi.md', ...walk('docs', ['.md'])];
+/*
+ * Only the documents that ship are scanned, and only what ships counts as a
+ * link target. Planning material is deliberately untracked, so scanning it here
+ * would report its own perfectly good links to its equally untracked siblings.
+ */
+const markdownFiles = ['README.md', 'README.vi.md', ...walk('docs', ['.md'])].filter(isPublished);
 
 for (const file of markdownFiles) {
 	const text = readFileSync(file, 'utf8');
@@ -277,9 +312,13 @@ for (const file of markdownFiles) {
 
 		// Strip any anchor: the file has to exist, the heading is not checked.
 		const path = join(from, target.split('#')[0]);
-		if (path.length === 0 || exists(path)) continue;
+		if (path.length === 0 || isPublished(path)) continue;
 
-		fail('Dead documentation link', `${file} links to ${target}, which does not exist`);
+		fail(
+			'Dead documentation link',
+			`${file} links to ${target}, which is not in the repository ` +
+				`(it may exist on this machine and still be missing from a clone)`
+		);
 	}
 }
 
