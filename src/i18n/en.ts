@@ -169,6 +169,8 @@ export const en = {
 	   stay stale until the next reload. */
 	'notice.autoPopupOn': 'Translating as soon as text is selected',
 	'notice.autoPopupOff': 'Showing the button instead of translating immediately',
+	'notice.russianRemoved':
+		'Russian is no longer available as a translation source in Selection Translate. The source language is now set to detect automatically, which still translates Russian text.',
 	'tts.noVoice': 'No system voice is installed for this language.',
 	'tts.failed': 'Could not read the text aloud.',
 };

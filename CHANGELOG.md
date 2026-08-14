@@ -5,6 +5,42 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Eight more languages to translate into, two kinds of Chinese told apart, and
+one language gone.
+
+**Breaking:** Russian is no longer offered as a source language, and the
+settings file gains a version stamp. Both are handled for you the first time
+this version loads — nothing needs doing by hand — but a settings file written
+by this version is not readable by 0.3.1, so keep a copy of
+`.obsidian/plugins/selection-translate/data.json` if you plan to go back.
+
+### Added
+
+- **Ten languages, either way round.** Traditional Chinese, Simplified Chinese,
+  Japanese, Arabic and Italian join the list, and Spanish, French and German
+  become targets as well as sources. Previously only Vietnamese and English
+  could be translated *into*.
+- **The two Chinese scripts are separate languages here**, as they should be:
+  simplified is not traditional with the characters swapped. Pick 繁體中文 or
+  简体中文 and you get that one, whichever engine you use.
+- **Language menus name languages in their own script** — 日本語, العربية,
+  Tiếng Việt — instead of in whatever the interface language calls them.
+
+### Changed
+
+- **Picking a language pair an engine cannot handle now says so immediately**,
+  instead of sending the request and reporting whatever the service replied.
+
+### Removed
+
+- **Russian is no longer available as a source language.** If you had it
+  selected, the source language is set to detect automatically the first time
+  this version loads, and you are told once that it happened. Russian text still
+  translates: automatic detection handles it, and the only thing lost is the
+  ability to insist on it.
+
 ## [0.3.1] — 2026-08-12
 
 ### Fixed

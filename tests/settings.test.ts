@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, normalizeSettings } from '../src/settings/settings';
+import {
+	DEFAULT_SETTINGS,
+	SETTINGS_SCHEMA_VERSION,
+	migrate,
+	normalizeSettings,
+} from '../src/settings/settings';
 
 describe('normalizeSettings', () => {
 	it('returns the defaults when nothing has been stored yet', () => {
@@ -59,17 +64,122 @@ describe('normalizeSettings', () => {
 	});
 
 	it('falls back to defaults for a language it does not offer', () => {
-		// Russian is a source and not a target, so it is not a valid one.
 		const result = normalizeSettings({ sourceLang: 'klingon', targetLang: 'ru' });
 
 		expect(result.sourceLang).toBe(DEFAULT_SETTINGS.sourceLang);
 		expect(result.targetLang).toBe(DEFAULT_SETTINGS.targetLang);
 	});
 
-	it('accepts the languages just added', () => {
+	it('accepts the languages E3 added', () => {
 		const result = normalizeSettings({ sourceLang: 'zh-Hant', targetLang: 'ja' });
 
 		expect(result.sourceLang).toBe('zh-Hant');
 		expect(result.targetLang).toBe('ja');
+	});
+});
+
+/*
+ * A settings file as 0.2.2 wrote it: no schemaVersion, the old two-language
+ * target list, and the trigger key that version still had.
+ */
+const V0_2_2_DATA = {
+	sourceLang: 'en',
+	targetLang: 'vi',
+	uiLanguage: 'auto',
+	provider: 'deepl',
+	deeplApiKey: 'fake-key-shaped-string',
+	googleCloudApiKey: '',
+	dictionaryEnrichment: true,
+	dictionarySource: 'auto',
+	autoPopupOnSelection: true,
+	translateOnDoubleClick: true,
+	minSelectionLength: 2,
+	maxSelectionLength: 4000,
+	iconPlacement: 'cursor',
+	iconOffset: 12,
+	triggerHotkey: { modifiers: ['Alt'], key: 'T' },
+	enableInReading: true,
+	enableInEditing: false,
+	enableInProperties: true,
+	enableInPdf: false,
+	pdfSelectionFallback: false,
+	fontSize: 16,
+	fontFamily: 'Inter',
+	popupTheme: 'follow',
+	ttsEngine: 'google',
+	ttsRate: 1.5,
+	cacheSize: 500,
+	stripMarkdown: false,
+	debugLog: true,
+};
+
+describe('migrate', () => {
+	it('loses nothing from a 0.2.2 data.json', () => {
+		const { settings, notices } = migrate(V0_2_2_DATA);
+
+		// Every field the old file set, still set to what it said.
+		for (const [key, value] of Object.entries(V0_2_2_DATA)) {
+			if (key === 'triggerHotkey') continue;
+			expect(settings, key).toHaveProperty(key, value);
+		}
+		// A version with nothing to migrate should say nothing.
+		expect(notices).toEqual([]);
+	});
+
+	it('stamps the schema version so it knows next time', () => {
+		const { settings, changed } = migrate(V0_2_2_DATA);
+
+		expect(settings.schemaVersion).toBe(SETTINGS_SCHEMA_VERSION);
+		expect(changed).toBe(true);
+	});
+
+	it('moves a Russian source to automatic detection, and says so once', () => {
+		const first = migrate({ ...V0_2_2_DATA, sourceLang: 'ru' });
+
+		// 'auto' rather than a fixed language: detection still translates
+		// Russian, so only the ability to force the source is lost.
+		expect(first.settings.sourceLang).toBe('auto');
+		expect(first.notices).toEqual(['notice.russianRemoved']);
+
+		// Second launch, loading what the first one saved.
+		const second = migrate(first.settings);
+		expect(second.notices).toEqual([]);
+		expect(second.changed).toBe(false);
+		expect(second.settings.sourceLang).toBe('auto');
+	});
+
+	it('leaves other languages alone while dropping Russian', () => {
+		const { settings, notices } = migrate({ ...V0_2_2_DATA, sourceLang: 'de' });
+
+		expect(settings.sourceLang).toBe('de');
+		expect(notices).toEqual([]);
+	});
+
+	it('loads a data.json full of rubbish instead of failing', () => {
+		// A hand-edited or corrupted file must still produce a usable plugin.
+		const { settings } = migrate({
+			schemaVersion: 'yesterday',
+			sourceLang: 42,
+			targetLang: { code: 'vi' },
+			provider: 'not-a-provider',
+			fontSize: 'huge',
+			ttsRate: null,
+			cacheSize: -1,
+			minSelectionLength: 'two',
+			enableInPdf: 'yes',
+		});
+
+		expect(settings.sourceLang).toBe(DEFAULT_SETTINGS.sourceLang);
+		expect(settings.targetLang).toBe(DEFAULT_SETTINGS.targetLang);
+		expect(settings.fontSize).toBe(DEFAULT_SETTINGS.fontSize);
+		expect(settings.ttsRate).toBe(DEFAULT_SETTINGS.ttsRate);
+		expect(settings.cacheSize).toBe(0);
+		expect(settings.minSelectionLength).toBe(DEFAULT_SETTINGS.minSelectionLength);
+		expect(settings.schemaVersion).toBe(SETTINGS_SCHEMA_VERSION);
+	});
+
+	it('treats a missing file as a fresh install', () => {
+		expect(migrate(null).settings).toEqual(DEFAULT_SETTINGS);
+		expect(migrate(undefined).notices).toEqual([]);
 	});
 });

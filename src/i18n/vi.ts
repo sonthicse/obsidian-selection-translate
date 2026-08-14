@@ -151,6 +151,8 @@ export const vi = {
 
 	'notice.autoPopupOn': 'Sẽ dịch ngay khi bôi đen',
 	'notice.autoPopupOff': 'Sẽ hiện nút thay vì dịch ngay',
+	'notice.russianRemoved':
+		'Selection Translate không còn nhận tiếng Nga làm ngôn ngữ nguồn. Ngôn ngữ nguồn đã chuyển sang tự nhận diện, vốn vẫn dịch được văn bản tiếng Nga.',
 	'tts.noVoice': 'Hệ thống chưa cài giọng đọc cho ngôn ngữ này.',
 	'tts.failed': 'Không đọc được văn bản.',
 } satisfies Messages;

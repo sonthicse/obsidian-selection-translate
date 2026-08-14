@@ -35,11 +35,16 @@ describe('the language registry', () => {
 		expect(TARGET_LANGUAGES).not.toContain('auto');
 	});
 
-	it('separates the two roles', () => {
-		// Russian translates *from* but not *into*, which is what the two flags
-		// are for. It leaves entirely in the next change.
-		expect(SOURCE_LANGUAGES).toContain('ru');
-		expect(TARGET_LANGUAGES).not.toContain('ru');
+	it('lists the agreed matrix: ten sources, ten targets', () => {
+		// The matrix settled in the plan. A language quietly gaining or losing a
+		// role is exactly the drift this test exists to catch.
+		expect(SOURCE_LANGUAGES.filter((code) => code !== 'auto')).toHaveLength(10);
+		expect(TARGET_LANGUAGES).toHaveLength(10);
+	});
+
+	it('no longer offers Russian', () => {
+		expect(getLanguage('ru')).toBeUndefined();
+		expect(isSourceLang('ru')).toBe(false);
 	});
 
 	it('claims a UI catalogue only where one exists', () => {
@@ -203,8 +208,8 @@ describe('normalizeDetectedLang', () => {
 
 	it('returns null for a language the plugin does not list', () => {
 		// Better to show what the service said than to claim a wrong match.
+		expect(normalizeDetectedLang('ru')).toBeNull();
 		expect(normalizeDetectedLang('ko')).toBeNull();
-		expect(normalizeDetectedLang('th')).toBeNull();
 	});
 
 	it('returns null for absent or empty input', () => {

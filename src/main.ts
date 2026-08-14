@@ -3,7 +3,7 @@ import { PLUGIN_ID } from './constants';
 import { applyLocale, t } from './i18n';
 import { applyCssVariables, clearCssVariables } from './utils/dom';
 import { debug, resetWarnings, setDebugLogging } from './utils/log';
-import { normalizeSettings, type SelectionTranslateSettings } from './settings/settings';
+import { migrate, type SelectionTranslateSettings } from './settings/settings';
 import { SelectionTranslateSettingTab } from './settings/SettingTab';
 import { SelectionManager } from './core/SelectionManager';
 import { TranslationOrchestrator } from './core/TranslationOrchestrator';
@@ -12,6 +12,14 @@ import type { ValidationResult } from './providers/TranslationProvider';
 import type { ProviderId } from './types';
 import { TtsService } from './tts/TtsService';
 import { UiController } from './ui/UiController';
+
+/**
+ * How long a migration notice stays up.
+ *
+ * Longer than the default, because it explains a setting that changed without
+ * the user asking and there is nowhere else to read it afterwards.
+ */
+const MIGRATION_NOTICE_MS = 12_000;
 
 export default class SelectionTranslatePlugin extends Plugin {
 	// `override` because Obsidian's Plugin declares `settings?: unknown` as the
@@ -34,8 +42,9 @@ export default class SelectionTranslatePlugin extends Plugin {
 	private tts!: TtsService;
 
 	override async onload(): Promise<void> {
-		await this.loadSettings();
+		const migrationNotices = await this.loadSettings();
 		applyLocale(this.settings.uiLanguage, window);
+		for (const key of migrationNotices) new Notice(t(key), MIGRATION_NOTICE_MS);
 
 		this.registry = new ProviderRegistry(() => this.settings);
 		this.tts = new TtsService(() => this.settings);
@@ -118,9 +127,24 @@ export default class SelectionTranslatePlugin extends Plugin {
 		// registerEvent are removed by Obsidian itself.
 	}
 
-	async loadSettings(): Promise<void> {
-		this.settings = normalizeSettings(await this.loadData());
+	/**
+	 * Loads settings, bringing an older `data.json` forward if needed.
+	 *
+	 * Returns the message keys for anything the migration changed on the user's
+	 * behalf rather than showing them here: the notices have to wait until the
+	 * interface language has been applied, or they would be phrased in whatever
+	 * language happened to be loaded first.
+	 */
+	async loadSettings(): Promise<string[]> {
+		const outcome = migrate(await this.loadData());
+		this.settings = outcome.settings;
 		setDebugLogging(this.settings.debugLog);
+
+		// Written back immediately: the stored schemaVersion is what stops the
+		// migration, and its notices, from running again on the next launch.
+		if (outcome.changed) await this.saveData(this.settings);
+
+		return outcome.notices;
 	}
 
 	/**

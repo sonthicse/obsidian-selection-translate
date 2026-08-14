@@ -27,7 +27,6 @@ const SOURCE_CODES: Record<LangCode, string> = {
 	it: 'IT',
 	fr: 'FR',
 	de: 'DE',
-	ru: 'RU',
 };
 
 const TARGET_CODES: Record<LangCode, string> = {
@@ -41,7 +40,6 @@ const TARGET_CODES: Record<LangCode, string> = {
 	it: 'IT',
 	fr: 'FR',
 	de: 'DE',
-	ru: 'RU',
 };
 
 /** DeepL's code for a language in that role, or undefined when it has none. */

@@ -15,7 +15,7 @@ Bôi đen bất kỳ đoạn văn bản nào trong Obsidian rồi dịch tại c
 
 - **Chạy ở mọi nơi có chữ.** Chế độ đọc, Live Preview, Source mode, trang PDF, thuộc tính (cả tên lẫn giá trị), bảng, callout, code block, liên kết và cửa sổ popout.
 - **Một nút bấm, không phải một thứ chen ngang.** Bôi đen thì hiện một nút nhỏ bên cạnh. Nút tự né menu, tooltip và thanh công cụ PDF thay vì che chúng, và bám theo vùng bôi đen khi bạn cuộn.
-- **Mười ngôn ngữ, cả hai chiều.** Anh, Việt, Trung phồn thể và giản thể, Nhật, Ả Rập, Tây Ban Nha, Ý, Pháp, Đức đều dùng được làm ngôn ngữ nguồn lẫn ngôn ngữ đích; thêm tiếng Nga làm ngôn ngữ nguồn.
+- **Mười ngôn ngữ, cả hai chiều.** Anh, Việt, Trung phồn thể và giản thể, Nhật, Ả Rập, Tây Ban Nha, Ý, Pháp, Đức đều dùng được làm ngôn ngữ nguồn lẫn ngôn ngữ đích.
 - **Chi tiết từ điển cho từ đơn.** Phiên âm, loại từ và các nghĩa khác, không chỉ một dòng dịch.
 - **Ba công cụ dịch.** Google không cần khoá, Google Cloud Translation, hoặc DeepL. Máy chủ đúng cho khoá DeepL được chọn từ chính khoá đó.
 - **Đọc thành tiếng.** Bằng giọng hệ thống (ngoại tuyến) hoặc bằng Google.

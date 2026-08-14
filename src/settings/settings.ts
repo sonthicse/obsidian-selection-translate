@@ -5,7 +5,22 @@ export type UiLanguage = 'auto' | 'vi' | 'en';
 export type IconPlacement = 'below-center' | 'above-center' | 'cursor';
 export type PopupTheme = 'light' | 'follow';
 
+/**
+ * Schema generation of the stored settings.
+ *
+ * Bumped only when a stored value has to be rewritten rather than merely
+ * validated — see the note on `migrate()` for where that line falls. Data
+ * written before this field existed is treated as generation 0.
+ *
+ *   1 — Russian dropped as a source language; language codes moved to BCP-47
+ *       tags, which gave Chinese its script subtag (`zh-Hans` / `zh-Hant`).
+ */
+export const SETTINGS_SCHEMA_VERSION = 1;
+
 export interface SelectionTranslateSettings {
+	/** Which generation of the schema the stored data was written by. */
+	schemaVersion: number;
+
 	/* Languages */
 	sourceLang: SourceLangCode;
 	targetLang: TargetLangCode;
@@ -55,6 +70,8 @@ export interface SelectionTranslateSettings {
  * (Google TTS, the free-endpoint warning) stays off or behind a prompt.
  */
 export const DEFAULT_SETTINGS: SelectionTranslateSettings = {
+	schemaVersion: SETTINGS_SCHEMA_VERSION,
+
 	sourceLang: 'auto',
 	targetLang: 'vi',
 	uiLanguage: 'auto',
@@ -114,6 +131,17 @@ function clamp(value: number, min: number, max: number, fallback: number): numbe
  * `loadData()` returns whatever was on disk, which may predate a setting that
  * now exists or may have been edited by hand. Spreading over DEFAULT_SETTINGS
  * covers the first case; the clamping below covers the second.
+ *
+ * The division of labour with `migrate()` is worth stating, because a rule
+ * added to the wrong one of the two is a bug that only shows up on someone
+ * else's vault:
+ *
+ *   - This function enforces what is true of *every* version of the settings:
+ *     a number stays within its limits, an unknown value falls back to its
+ *     default. It runs on every load, knows nothing about schema generations,
+ *     and never tells the user anything.
+ *   - `migrate()` rewrites values whose *meaning* changed between generations,
+ *     runs once per generation, and is the only place allowed to raise a notice.
  */
 export function normalizeSettings(stored: unknown): SelectionTranslateSettings {
 	const merged: SelectionTranslateSettings = {
@@ -177,4 +205,54 @@ export function normalizeSettings(stored: unknown): SelectionTranslateSettings {
 	delete (merged as { triggerHotkey?: unknown }).triggerHotkey;
 
 	return merged;
+}
+
+/**
+ * What a migration did, so the caller can save and speak once.
+ *
+ * `notices` are message keys rather than sentences, for the same reason a
+ * provider error carries one: this module has no business knowing which
+ * language the user reads.
+ */
+export interface MigrationOutcome {
+	settings: SelectionTranslateSettings;
+	/** True when the stored data changed and has to be written back. */
+	changed: boolean;
+	/** Message keys to show the user, once, for changes made on their behalf. */
+	notices: string[];
+}
+
+/**
+ * Brings stored settings forward to the current schema generation.
+ *
+ * Runs before `normalizeSettings()` so the rules below see the values as they
+ * were actually written. Anything it rewrites, it also reports: a setting that
+ * silently changes meaning between two versions is the kind of thing a user
+ * discovers weeks later and cannot explain.
+ *
+ * Saving the result is the caller's job, and it is not optional — the stored
+ * `schemaVersion` is the only record that a migration already ran, so skipping
+ * the save means repeating the notice on every launch.
+ */
+export function migrate(stored: unknown): MigrationOutcome {
+	const raw: Record<string, unknown> =
+		stored != null && typeof stored === 'object' ? { ...(stored as Record<string, unknown>) } : {};
+
+	const from = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 0;
+	const notices: string[] = [];
+
+	if (from < 1) {
+		// Russian was dropped as a source language. 'auto' rather than a fixed
+		// language: detection still translates Russian text perfectly well, so
+		// the only thing actually lost is the ability to force the source.
+		if (raw.sourceLang === 'ru') {
+			raw.sourceLang = 'auto';
+			notices.push('notice.russianRemoved');
+		}
+	}
+
+	const settings = normalizeSettings(raw);
+	settings.schemaVersion = SETTINGS_SCHEMA_VERSION;
+
+	return { settings, changed: from < SETTINGS_SCHEMA_VERSION, notices };
 }

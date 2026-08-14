@@ -150,16 +150,6 @@ export const LANGUAGES = [
 		asTarget: true,
 		ui: false,
 	},
-	{
-		code: 'ru',
-		nativeName: 'Русский',
-		englishName: 'Russian',
-		dir: 'ltr',
-		phonetic: 'none',
-		asSource: true,
-		asTarget: false,
-		ui: false,
-	},
 ] as const satisfies readonly LanguageDescriptor[];
 
 /** Any language in the registry. Never includes the `auto` pseudo-value. */

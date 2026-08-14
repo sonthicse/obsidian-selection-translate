@@ -22,7 +22,6 @@ const CODES: Record<LangCode, string> = {
 	it: 'it',
 	fr: 'fr',
 	de: 'de',
-	ru: 'ru',
 };
 
 /** Google's code for a language, or undefined when it has none. */
