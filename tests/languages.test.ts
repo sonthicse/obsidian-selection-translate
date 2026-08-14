@@ -50,9 +50,11 @@ describe('the language registry', () => {
 	});
 
 	it('claims a UI catalogue only where one exists', () => {
-		// Setting `ui: true` before E4 writes the catalogue would let the
-		// interface language dropdown offer a language with no strings behind it.
-		expect([...UI_LANGUAGES].sort()).toEqual(['en', 'vi']);
+		// Setting `ui: true` without writing the catalogue would let the interface
+		// language dropdown offer a language with no strings behind it. The
+		// compiler catches that too — see the CATALOGUES table in src/i18n — and
+		// this is the same guard stated where the flag lives.
+		expect([...UI_LANGUAGES].sort()).toEqual(['en', 'vi', 'zh-Hant']);
 	});
 
 	it('keeps both Chinese variants apart, with the script in the code', () => {

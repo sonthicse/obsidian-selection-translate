@@ -2,12 +2,13 @@ import { afterEach, describe, expect, it, vi as vitest } from 'vitest';
 import { applyLocale, resolveLocale, setMessages, t, type Locale } from '../src/i18n';
 import { en, type Messages } from '../src/i18n/en';
 import { vi } from '../src/i18n/vi';
+import { zhHant } from '../src/i18n/zh-Hant';
 import { UI_LANGUAGES } from '../src/languages';
 import { resetWarnings } from '../src/utils/log';
 import { ProviderError, type ProviderErrorCode } from '../src/providers/TranslationProvider';
 
 /** Every catalogue the plugin ships, keyed the way the i18n layer keys them. */
-const CATALOGUES: Record<Locale, Messages> = { en, vi };
+const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant };
 
 /** A window whose localStorage reports whatever Obsidian would have written. */
 function windowWithLanguage(language: string | null): Window {
@@ -165,6 +166,19 @@ describe('resolveLocale', () => {
 	it('ignores case and the underscore some hosts use', () => {
 		expect(resolveLocale('auto', windowWithLanguage('VI'))).toBe('vi');
 		expect(resolveLocale('auto', windowWithLanguage('vi_VN'))).toBe('vi');
+	});
+
+	it('reads Obsidian’s zh-TW as traditional', () => {
+		// Obsidian ships exactly two Chinese interface languages, `zh` and
+		// `zh-TW`, and this is the one that says which script out loud.
+		expect(resolveLocale('auto', windowWithLanguage('zh-TW'))).toBe('zh-Hant');
+	});
+
+	it('leans traditional for a Chinese variant nobody listed', () => {
+		expect(resolveLocale('auto', windowWithLanguage('zh-HK'))).toBe('zh-Hant');
+		expect(resolveLocale('auto', windowWithLanguage('zh-MO'))).toBe('zh-Hant');
+		expect(resolveLocale('auto', windowWithLanguage('zh-Hant'))).toBe('zh-Hant');
+		expect(resolveLocale('auto', windowWithLanguage('zh-YUE'))).toBe('zh-Hant');
 	});
 
 	it('falls back to English when storage itself is unavailable', () => {

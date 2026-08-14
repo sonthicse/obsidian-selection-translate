@@ -79,7 +79,7 @@ export const LANGUAGES = [
 		phonetic: 'romanization',
 		asSource: true,
 		asTarget: true,
-		ui: false,
+		ui: true,
 	},
 	{
 		code: 'zh-Hans',
