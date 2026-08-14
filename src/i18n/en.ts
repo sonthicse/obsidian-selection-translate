@@ -144,11 +144,11 @@ export const en = {
 	'settings.resetButton': 'Restore',
 	'settings.resetDone': 'Options restored to defaults',
 
-	/* Option labels */
+	/* Option labels. Language names are not here: the dropdowns take them from
+	   the registry, so each language names itself in its own script. Only these
+	   two are instructions rather than names, and so need translating. */
 	'lang.auto': 'Detect automatically',
 	'uiLang.auto': 'Same as Obsidian',
-	'uiLang.en': 'English',
-	'uiLang.vi': 'Tiếng Việt',
 	'provider.google-free': 'Google (no key)',
 	'provider.google-cloud': 'Google Cloud',
 	'provider.deepl': 'DeepL',

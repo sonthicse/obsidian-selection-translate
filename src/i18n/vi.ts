@@ -132,8 +132,6 @@ export const vi = {
 
 	'lang.auto': 'Tự nhận diện',
 	'uiLang.auto': 'Theo Obsidian',
-	'uiLang.en': 'English',
-	'uiLang.vi': 'Tiếng Việt',
 	'provider.google-free': 'Google (không cần khoá)',
 	'provider.google-cloud': 'Google Cloud',
 	'provider.deepl': 'DeepL',

@@ -34,7 +34,8 @@ export interface LanguageDescriptor {
 	phonetic: PhoneticKind;
 	asSource: boolean;
 	asTarget: boolean;
-	/** Whether a UI catalogue exists for it. Only `en` and `vi` until E4. */
+	/** Whether a UI catalogue exists for it. Turning this on without writing one
+	 *  is a compile error; see the CATALOGUES table in `src/i18n/index.ts`. */
 	ui: boolean;
 }
 
@@ -167,6 +168,15 @@ export type SourceLangCode = 'auto' | Extract<(typeof LANGUAGES)[number], { asSo
 /** A translation target. `auto` makes no sense here. */
 export type TargetLangCode = Extract<(typeof LANGUAGES)[number], { asTarget: true }>['code'];
 
+/**
+ * A language the plugin's own interface is available in.
+ *
+ * Derived from the same flag the dropdown reads, which is what makes the three
+ * places that used to spell out the locale list — this type, `Locale` in the
+ * i18n layer and `UiLanguage` in the settings — one fact with three names.
+ */
+export type UiLangCode = Extract<(typeof LANGUAGES)[number], { ui: true }>['code'];
+
 const BY_CODE = new Map<string, LanguageDescriptor>(LANGUAGES.map((lang) => [lang.code, lang]));
 
 /** The descriptor for a code, or undefined for `auto` and anything unknown. */
@@ -197,8 +207,8 @@ export const TARGET_LANGUAGES: readonly TargetLangCode[] = LANGUAGES.filter(
 	(lang): lang is TargetLanguage => lang.asTarget
 ).map((lang) => lang.code);
 
-/** Locales with a UI catalogue. Two until E4 adds the other six. */
-export const UI_LANGUAGES: readonly LangCode[] = LANGUAGES.filter(
+/** Locales with a UI catalogue, in dropdown order. */
+export const UI_LANGUAGES: readonly UiLangCode[] = LANGUAGES.filter(
 	(lang): lang is UiLanguageEntry => lang.ui
 ).map((lang) => lang.code);
 
@@ -209,6 +219,10 @@ export function isSourceLang(value: unknown): value is SourceLangCode {
 
 export function isTargetLang(value: unknown): value is TargetLangCode {
 	return typeof value === 'string' && (getLanguage(value)?.asTarget ?? false);
+}
+
+export function isUiLang(value: unknown): value is UiLangCode {
+	return typeof value === 'string' && (getLanguage(value)?.ui ?? false);
 }
 
 /*
@@ -255,15 +269,20 @@ function resolveChinese(subtags: readonly string[]): LangCode {
 }
 
 /**
- * Maps a code a provider or the host app reported onto one of ours.
+ * Maps a language tag from anywhere outside the plugin onto one of ours.
  *
- * Detected languages arrive in whatever form the service prefers — "EN-GB" from
- * DeepL, "zh-CN" from Google — so the region is dropped before matching, with
- * Chinese as the documented exception above. Returns null for a language the
- * plugin does not list, which the UI shows verbatim rather than pretending to
- * recognise.
+ * Tags arrive in whatever form the source prefers — "EN-GB" from DeepL, "zh-CN"
+ * from Google, "zh-TW" from Obsidian's own interface setting — so the region is
+ * dropped before matching, with Chinese as the documented exception above.
+ *
+ * One rule rather than one per caller. A translated language and an interface
+ * language are asked about by different parts of the plugin and answered from
+ * different columns of the registry, but "which of our languages is this tag" is
+ * the same question both times, and the Chinese rule in particular is the kind
+ * of thing that goes wrong the moment it exists in two copies. Which column
+ * applies is left to the two exported wrappers below.
  */
-export function normalizeDetectedLang(reported: string | undefined | null): SourceLangCode | null {
+function normalizeTag(reported: string | undefined | null): LangCode | null {
 	if (reported == null) return null;
 
 	const subtags = reported.trim().toLowerCase().split(/[-_]/).filter((part) => part.length > 0);
@@ -273,7 +292,31 @@ export function normalizeDetectedLang(reported: string | undefined | null): Sour
 	if (base === 'zh') return resolveChinese(subtags.slice(1));
 
 	for (const lang of LANGUAGES) {
-		if (lang.asSource && lang.code === base) return lang.code;
+		if (lang.code === base) return lang.code;
 	}
 	return null;
+}
+
+/**
+ * The source language a provider says it detected.
+ *
+ * Returns null for a language the plugin does not list, which the UI shows
+ * verbatim rather than pretending to recognise.
+ */
+export function normalizeDetectedLang(reported: string | undefined | null): SourceLangCode | null {
+	const code = normalizeTag(reported);
+	return code != null && isSourceLang(code) ? code : null;
+}
+
+/**
+ * The interface locale Obsidian's own language setting asks for.
+ *
+ * Null rather than a near-miss when the plugin has no catalogue for it: Obsidian
+ * ships far more interface languages than this plugin does, so `fr` resolves to
+ * a real registry entry and still has no strings behind it. The caller falls
+ * back to English, which is the only locale guaranteed to be complete.
+ */
+export function normalizeUiLang(reported: string | undefined | null): UiLangCode | null {
+	const code = normalizeTag(reported);
+	return code != null && isUiLang(code) ? code : null;
 }

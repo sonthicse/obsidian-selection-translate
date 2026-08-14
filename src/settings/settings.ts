@@ -1,7 +1,20 @@
-import { isSourceLang, isTargetLang, type SourceLangCode, type TargetLangCode } from '../languages';
+import {
+	isSourceLang,
+	isTargetLang,
+	isUiLang,
+	type SourceLangCode,
+	type TargetLangCode,
+	type UiLangCode,
+} from '../languages';
 import type { DictionarySourceId, ProviderId, TtsEngineId } from '../types';
 
-export type UiLanguage = 'auto' | 'vi' | 'en';
+/**
+ * The interface language, or a request to follow Obsidian's.
+ *
+ * Derived from the registry rather than listed again, so a locale added there
+ * reaches this setting without anyone remembering to widen a union here.
+ */
+export type UiLanguage = 'auto' | UiLangCode;
 export type IconPlacement = 'below-center' | 'above-center' | 'cursor';
 export type PopupTheme = 'light' | 'follow';
 
@@ -198,6 +211,13 @@ export function normalizeSettings(stored: unknown): SelectionTranslateSettings {
 	// default target is the only sensible answer for a target.
 	if (!isSourceLang(merged.sourceLang)) merged.sourceLang = DEFAULT_SETTINGS.sourceLang;
 	if (!isTargetLang(merged.targetLang)) merged.targetLang = DEFAULT_SETTINGS.targetLang;
+
+	// The interface language is the same kind of check one layer up: an unknown
+	// value here would be looked up in the catalogue table and found missing,
+	// which leaves the plugin with no strings at all rather than the wrong ones.
+	if (merged.uiLanguage !== 'auto' && !isUiLang(merged.uiLanguage)) {
+		merged.uiLanguage = DEFAULT_SETTINGS.uiLanguage;
+	}
 
 	// The local trigger key was removed in favour of Obsidian's own hotkey for
 	// the command. Dropped rather than left in place, so the next save does not

@@ -1,7 +1,25 @@
-import { describe, expect, it } from 'vitest';
-import { t } from '../src/i18n';
-import { en } from '../src/i18n/en';
+import { afterEach, describe, expect, it, vi as vitest } from 'vitest';
+import { applyLocale, resolveLocale, setMessages, t, type Locale } from '../src/i18n';
+import { en, type Messages } from '../src/i18n/en';
+import { vi } from '../src/i18n/vi';
+import { UI_LANGUAGES } from '../src/languages';
+import { resetWarnings } from '../src/utils/log';
 import { ProviderError, type ProviderErrorCode } from '../src/providers/TranslationProvider';
+
+/** Every catalogue the plugin ships, keyed the way the i18n layer keys them. */
+const CATALOGUES: Record<Locale, Messages> = { en, vi };
+
+/** A window whose localStorage reports whatever Obsidian would have written. */
+function windowWithLanguage(language: string | null): Window {
+	return {
+		localStorage: { getItem: (key: string) => (key === 'language' ? language : null) },
+	} as unknown as Window;
+}
+
+afterEach(() => {
+	setMessages(en);
+	resetWarnings();
+});
 
 describe('t', () => {
 	it('returns the message for a known key', () => {
@@ -19,7 +37,7 @@ describe('t', () => {
 		expect(t('error.tooLong', { length: 10 })).toContain('{max}');
 	});
 
-	it('returns the key itself for an unknown message', () => {
+	it('returns the key itself for a message no catalogue has', () => {
 		// Obviously wrong on screen and reported to the console, both of which
 		// beat rendering an empty popup.
 		expect(t('error.doesNotExist')).toBe('error.doesNotExist');
@@ -27,6 +45,155 @@ describe('t', () => {
 
 	it('handles a message with no placeholders even when vars are passed', () => {
 		expect(t('popup.close', { unused: 1 })).toBe(en['popup.close']);
+	});
+
+	it('falls back to English for a key the active catalogue lacks', () => {
+		// The compiler keeps the shipped catalogues complete, so the gap has to be
+		// simulated. What matters is the shape of the answer: a sentence somebody
+		// can read, not the identifier `popup.close`.
+		const warn = vitest.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const incomplete: Messages = { ...vi };
+		delete (incomplete as Record<string, unknown>)['popup.close'];
+
+		setMessages(incomplete);
+
+		expect(t('popup.close')).toBe(en['popup.close']);
+		// Still reported, or a permanently missing translation would be invisible.
+		expect(warn).toHaveBeenCalledOnce();
+		warn.mockRestore();
+	});
+
+	it('substitutes into the English fallback too', () => {
+		const warn = vitest.spyOn(console, 'warn').mockImplementation(() => undefined);
+		const incomplete: Messages = { ...vi };
+		delete (incomplete as Record<string, unknown>)['error.tooLong'];
+
+		setMessages(incomplete);
+
+		expect(t('error.tooLong', { length: 12, max: 10 })).toBe(
+			'The selection is 12 characters. The limit is 10.'
+		);
+		warn.mockRestore();
+	});
+
+	it('warns once per key, however often the string is asked for', () => {
+		const warn = vitest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+		t('error.doesNotExist');
+		t('error.doesNotExist');
+		t('error.doesNotExist');
+
+		expect(warn).toHaveBeenCalledOnce();
+		warn.mockRestore();
+	});
+});
+
+describe('every locale', () => {
+	it('has a catalogue for each language the registry offers as an interface', () => {
+		// The compile-time check has a runtime twin here so the failure reads as a
+		// missing catalogue rather than as a type error in an unrelated file.
+		expect(Object.keys(CATALOGUES).sort()).toEqual([...UI_LANGUAGES].sort());
+	});
+
+	it('carries exactly English’s keys — none missing, none extra', () => {
+		const expected = Object.keys(en).sort();
+
+		for (const [locale, catalogue] of Object.entries(CATALOGUES)) {
+			expect(Object.keys(catalogue).sort(), locale).toEqual(expected);
+		}
+	});
+
+	it('substitutes the same placeholders as English in every string', () => {
+		// A catalogue can have every key and still be broken: `{ms}` misspelled in
+		// one language renders the braces to the user.
+		const names = (value: string): string[] =>
+			[...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1] ?? '').sort();
+
+		for (const [locale, catalogue] of Object.entries(CATALOGUES)) {
+			for (const [key, value] of Object.entries(en)) {
+				const theirs = (catalogue as Record<string, string | undefined>)[key] ?? '';
+				expect(names(theirs), `${locale} ${key}: "${theirs}"`).toEqual(names(value));
+			}
+		}
+	});
+
+	it('leaves no string empty', () => {
+		for (const [locale, catalogue] of Object.entries(CATALOGUES)) {
+			for (const [key, value] of Object.entries(catalogue)) {
+				expect(value.trim().length, `${locale} ${key}`).toBeGreaterThan(0);
+			}
+		}
+	});
+});
+
+describe('resolveLocale', () => {
+	it('honours an explicit choice without consulting Obsidian', () => {
+		// A window whose storage would answer differently, to prove it is not read.
+		const win = windowWithLanguage('vi');
+
+		expect(resolveLocale('en', win)).toBe('en');
+		expect(resolveLocale('vi', windowWithLanguage('en'))).toBe('vi');
+	});
+
+	it('follows Obsidian’s interface language when set to auto', () => {
+		expect(resolveLocale('auto', windowWithLanguage('vi'))).toBe('vi');
+		expect(resolveLocale('auto', windowWithLanguage('en'))).toBe('en');
+	});
+
+	it('matches on the base language when Obsidian carries a region', () => {
+		expect(resolveLocale('auto', windowWithLanguage('vi-VN'))).toBe('vi');
+		expect(resolveLocale('auto', windowWithLanguage('en-GB'))).toBe('en');
+	});
+
+	it('falls back to English for a language Obsidian has and this plugin does not', () => {
+		// Obsidian ships far more interface languages than the plugin does, so
+		// this is the ordinary case rather than an edge one.
+		expect(resolveLocale('auto', windowWithLanguage('fr'))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage('ko'))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage('ru'))).toBe('en');
+	});
+
+	it('falls back to English for absent or nonsense values', () => {
+		expect(resolveLocale('auto', windowWithLanguage(null))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage(''))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage('   '))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage('-'))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage('klingon'))).toBe('en');
+		expect(resolveLocale('auto', windowWithLanguage('{"lang":"vi"}'))).toBe('en');
+	});
+
+	it('ignores case and the underscore some hosts use', () => {
+		expect(resolveLocale('auto', windowWithLanguage('VI'))).toBe('vi');
+		expect(resolveLocale('auto', windowWithLanguage('vi_VN'))).toBe('vi');
+	});
+
+	it('falls back to English when storage itself is unavailable', () => {
+		// Reading localStorage throws rather than returning null when the
+		// embedder has blocked it, which would otherwise take the plugin down
+		// before it drew anything.
+		const win = {
+			localStorage: {
+				getItem: () => {
+					throw new Error('storage disabled');
+				},
+			},
+		} as unknown as Window;
+
+		expect(resolveLocale('auto', win)).toBe('en');
+	});
+});
+
+describe('applyLocale', () => {
+	it('switches the strings t() answers with', () => {
+		applyLocale('vi', windowWithLanguage(null));
+		expect(t('popup.close')).toBe(vi['popup.close']);
+
+		applyLocale('en', windowWithLanguage(null));
+		expect(t('popup.close')).toBe(en['popup.close']);
+	});
+
+	it('returns the locale it settled on', () => {
+		expect(applyLocale('auto', windowWithLanguage('vi'))).toBe('vi');
 	});
 });
 

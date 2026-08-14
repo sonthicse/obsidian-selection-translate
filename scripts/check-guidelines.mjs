@@ -167,34 +167,50 @@ for (const { line, number } of colourLines) {
 
 /* ── Locales stay in step ─────────────────────────────────────────────────── */
 
-const enKeys = keysOf('src/i18n/en.ts');
-const viKeys = keysOf('src/i18n/vi.ts');
-
-for (const key of enKeys) {
-	if (!viKeys.includes(key)) fail('Missing translation', `vi.ts has no "${key}"`);
-}
-for (const key of viKeys) {
-	if (!enKeys.includes(key)) fail('Extra translation', `vi.ts has "${key}", which en.ts does not`);
-}
-
 /*
- * Placeholders too, not just key names.
+ * Every catalogue beside English, found rather than listed.
  *
- * A catalogue can have every key and still be broken: `{ms}` misspelled in one
- * language renders the braces to the user. English is the source of truth, so
- * every other catalogue has to substitute exactly the same names.
+ * A hand-written list here is the one place a new locale could be added and
+ * silently go unchecked, which is precisely the failure this section exists to
+ * prevent.
  */
-const enPlaceholders = placeholdersOf('src/i18n/en.ts');
-const viPlaceholders = placeholdersOf('src/i18n/vi.ts');
+const localeFiles = walk('src/i18n', ['.ts']).filter(
+	(file) => !/[/\\](index|en)\.ts$/.test(file)
+);
 
-for (const [key, names] of enPlaceholders) {
-	const theirs = viPlaceholders.get(key);
-	if (theirs == null) continue;
-	if (names.join(',') !== theirs.join(',')) {
-		fail(
-			'Placeholder mismatch',
-			`"${key}" substitutes {${names.join('}, {')}} in en.ts but {${theirs.join('}, {')}} in vi.ts`
-		);
+const enKeys = keysOf('src/i18n/en.ts');
+const enPlaceholders = placeholdersOf('src/i18n/en.ts');
+
+for (const file of localeFiles) {
+	const keys = keysOf(file);
+
+	for (const key of enKeys) {
+		if (!keys.includes(key)) fail('Missing translation', `${file} has no "${key}"`);
+	}
+	for (const key of keys) {
+		if (!enKeys.includes(key)) {
+			fail('Extra translation', `${file} has "${key}", which en.ts does not`);
+		}
+	}
+
+	/*
+	 * Placeholders too, not just key names.
+	 *
+	 * A catalogue can have every key and still be broken: `{ms}` misspelled in
+	 * one language renders the braces to the user. English is the source of
+	 * truth, so every other catalogue has to substitute exactly the same names.
+	 */
+	const placeholders = placeholdersOf(file);
+
+	for (const [key, names] of enPlaceholders) {
+		const theirs = placeholders.get(key);
+		if (theirs == null) continue;
+		if (names.join(',') !== theirs.join(',')) {
+			fail(
+				'Placeholder mismatch',
+				`"${key}" substitutes {${names.join('}, {')}} in en.ts but {${theirs.join('}, {')}} in ${file}`
+			);
+		}
 	}
 }
 
@@ -285,4 +301,7 @@ if (failures.length > 0) {
 	process.exit(1);
 }
 
-console.log(`All guideline checks passed (${sourceFiles.length} source files, ${enKeys.length} UI strings).`);
+console.log(
+	`All guideline checks passed (${sourceFiles.length} source files, ${enKeys.length} UI strings ` +
+		`× ${localeFiles.length + 1} locales).`
+);

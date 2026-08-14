@@ -8,6 +8,8 @@ import {
 	isSourceLang,
 	isTargetLang,
 	normalizeDetectedLang,
+	normalizeUiLang,
+	isUiLang,
 } from '../src/languages';
 import { toDeepLCode } from '../src/providers/deeplLangCodes';
 import { toGoogleCode } from '../src/providers/googleLangCodes';
@@ -221,5 +223,34 @@ describe('normalizeDetectedLang', () => {
 
 	it('never resolves to the automatic pseudo-language', () => {
 		expect(normalizeDetectedLang('auto')).toBeNull();
+	});
+});
+
+describe('normalizeUiLang', () => {
+	it('answers from the interface column, not the source one', () => {
+		// The distinction the two wrappers exist for: every language here is a
+		// translation source, and only some of them have strings of their own.
+		expect(normalizeDetectedLang('fr')).toBe('fr');
+		expect(normalizeUiLang('fr')).toBeNull();
+		expect(isUiLang('fr')).toBe(false);
+	});
+
+	it('recognises the locales that do have a catalogue', () => {
+		for (const code of UI_LANGUAGES) {
+			expect(normalizeUiLang(code), code).toBe(code);
+		}
+	});
+
+	it('shares the region-dropping rule with detected languages', () => {
+		expect(normalizeUiLang('en-GB')).toBe('en');
+		expect(normalizeUiLang('vi_VN')).toBe('vi');
+		expect(normalizeUiLang('VI')).toBe('vi');
+	});
+
+	it('returns null for absent, empty or unknown input', () => {
+		expect(normalizeUiLang(null)).toBeNull();
+		expect(normalizeUiLang(undefined)).toBeNull();
+		expect(normalizeUiLang('  ')).toBeNull();
+		expect(normalizeUiLang('klingon')).toBeNull();
 	});
 });
