@@ -99,7 +99,7 @@ export const LANGUAGES = [
 		phonetic: 'none',
 		asSource: true,
 		asTarget: true,
-		ui: false,
+		ui: true,
 	},
 	{
 		code: 'ja',
