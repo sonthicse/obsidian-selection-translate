@@ -745,17 +745,27 @@ Lý do: dropdown nay hiển thị `nativeName` từ registry, nên tên ngôn ng
 
 Số chuỗi UI: 127 → **122** (−6 `lang.*`, +1 `notice.russianRemoved`). **E4 lập kế hoạch trên 8 × 122 = 976 chuỗi.**
 
-#### Ma trận test thủ công
+#### Ma trận test thủ công — **đã chạy, không ô nào hỏng**
 
-*(chờ chủ dự án chạy — sẽ điền vào đây)*
+Chạy bởi **chủ dự án** trên vault thật (`C:\Users\SONTHI\OneDrive\Documents\Obsidian`) với bản build chép thẳng vào `.obsidian/plugins/selection-translate`. Phiên làm việc chạy trong WSL nên không thao tác được GUI Obsidian; ba ô do người ngồi trước máy thử.
 
 | Ô | Phải nhìn cái gì | Kết quả |
 |---|---|---|
-| **Vault đang đặt `sourceLang: 'ru'`** | Mở Obsidian → `Notice` hiện **một lần**, ngôn ngữ nguồn về *Tự nhận diện*, **không mất setting nào khác**. Khởi động lại → **không** thấy `Notice` nữa | *(chưa chạy)* |
-| **Vault 0.2.2 bình thường** (`sourceLang: 'en'`, `targetLang: 'vi'`) | Mọi setting nguyên vẹn, dịch vẫn chạy, không có `Notice` nào | *(chưa chạy)* |
-| **Dropdown ngôn ngữ** | Hiển thị `nativeName` đúng: 繁體中文, 简体中文, 日本語, العربية… Ra ô vuông thì đó là việc của **E4** (`--st-font-family` fallback), ghi lại chứ đừng sửa | *(chưa chạy)* |
+| **Vault đang đặt `sourceLang: 'ru'`** | Ngôn ngữ nguồn về *Tự nhận diện*, **không mất setting nào khác**, và `Notice` **không** lặp lại ở lần khởi động sau | **Đạt.** Xác nhận bằng trạng thái đĩa, xem dưới |
+| **Vault bình thường** (`sourceLang: 'en'`, `targetLang: 'vi'`) | Mọi setting nguyên vẹn, dịch vẫn chạy, không `Notice` nào | **Đạt** |
+| **Dropdown ngôn ngữ** | `nativeName` hiển thị đúng: 繁體中文, 简体中文, 日本語, العربية… | **Đạt, không có ô vuông.** Phông của vault đó đã phủ cả CJK lẫn Ả Rập — nhưng điều này **không** chứng minh `--st-font-family` không cần fallback; nó chỉ nói máy này không lộ vấn đề. E4-T4 vẫn phải làm |
 
-Ô đầu tiên là ô đáng giá nhất: nó xác nhận rằng `schemaVersion` thật sự được ghi xuống đĩa. Nếu `Notice` hiện lại ở lần khởi động thứ hai thì `saveData` sau migration đã không chạy, và đó là bug duy nhất của E3 mà unit test không bắt được — test gọi `migrate()` hai lần trong bộ nhớ, không đi qua đĩa.
+Ô đầu tiên là ô đáng giá nhất, và cách nó được xác nhận đáng ghi lại: không chỉ dựa vào việc *nhìn thấy* `Notice`, mà đọc thẳng `data.json` sau khi plugin load. Trước: không có `schemaVersion`, `sourceLang: 'ru'`. Sau: **`schemaVersion: 1` đã ghi xuống đĩa**, `sourceLang: 'auto'`, và đủ 28 trường với `provider`, `fontSize` cùng cả hai khoá API nguyên vẹn.
+
+Đó là bằng chứng trực tiếp cho thứ duy nhất unit test không đi qua được — test gọi `migrate()` hai lần **trong bộ nhớ**, nên nó không thể chứng minh `saveData` sau migration thật sự chạy. Nếu `saveData` bị bỏ sót thì `schemaVersion` không bao giờ xuống đĩa và `Notice` sẽ hiện lại **mọi** lần khởi động.
+
+#### Một cái bẫy của chính quy trình kiểm tay, phát hiện trong lúc chạy
+
+Vòng kiểm đầu tiên **báo sai là hỏng**: đặt `sourceLang: 'ru'` rồi mở lại, không thấy `Notice` nào. Nguyên nhân không nằm ở code — `data.json` lúc đó **đã có `schemaVersion: 1`**, vì bản E3 đã được load một lần trước đó và đóng dấu phiên bản schema xuống đĩa. `migrate()` thấy `from = 1`, không `< 1`, nên đúng ra là không có gì để migrate; `normalizeSettings()` đưa `'ru'` về `'auto'` im lặng, vì với một file đã ở schema hiện tại thì `'ru'` là **giá trị rác sửa tay**, không phải một giá trị đổi nghĩa.
+
+Đó chính xác là ranh giới `CLAUDE.md` §6.13 mô tả, và hành vi đúng. Nhưng nó nghĩa là: **kiểm tay migration phải xoá `schemaVersion` cùng lúc với việc đặt giá trị cũ**, nếu không thì đang kiểm một kịch bản khác hẳn kịch bản của người dùng thật (người dùng thật lên từ `0.3.1` không có trường đó trong file).
+
+Đã khoá lại bằng một test để lần sau không ai phải suy luận: `says nothing about Russian in a file already stamped with this schema`.
 
 #### Danh sách commit
 
@@ -765,7 +775,8 @@ Số chuỗi UI: 127 → **122** (−6 `lang.*`, +1 `notice.russianRemoved`). **
 | `1e3273d` | `feat(lang):` thêm Trung (hai biến thể), Nhật, Ả Rập, Ý; mở mọi ngôn ngữ làm đích; luật `zh` (E3-T1 ma trận, E3-T3) |
 | `94497cb` | `feat(lang)!:` gỡ tiếng Nga + `schemaVersion` + `migrate()` + `Notice` một lần (E3-T5) |
 | `fc9cffe` | `docs:` `CLAUDE.md` — playbook 5.1 viết lại, 5.2 bước 4, §6.2 và §6.4 viết lại, §6.13 và §6.14 mới |
-| *(commit này)* | `docs:` kết quả E3, bảng tiến độ, `docs/prompts/PROMPT-E4.md` |
+| `28dd272` | `docs:` kết quả E3, bảng tiến độ, `docs/prompts/PROMPT-E4.md` |
+| *(commit này)* | `test(settings):` khoá hành vi của một file đã đóng dấu schema + kết quả kiểm tay |
 
 Ba commit code tách theo ranh giới **tự nhiên** chứ không theo số thứ tự task: commit đầu là tái cấu trúc không đổi bộ ngôn ngữ, commit hai thêm ngôn ngữ, commit ba là thay đổi phá vỡ tương thích duy nhất. Mỗi commit `npm run verify` xanh và tự đứng được — commit một giữ nguyên 7 ngôn ngữ cũ kể cả `ru`, commit hai vẫn còn `ru`.
 
@@ -1051,7 +1062,7 @@ Theo **Keep a Changelog**: nhóm `Added` / `Changed` / `Fixed` / `Removed` / `Se
 | **E8** — `CLAUDE.md` | `0.2.3` | ✅ **Xong** (2026-08-12) — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e8) |
 | **E1** — Popup lòi ra mép trên | `0.3.0` | ✅ **Xong** (2026-08-12), ma trận test thủ công đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e1) |
 | **E2** — Đồng bộ trigger key | `0.3.0` | ✅ **Xong** (2026-08-12) bằng **phương án A** thay vì B, kiểm tay đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e2) |
-| **E3** — Registry ngôn ngữ | `0.4.0` | ✅ **Xong** (2026-08-14), kiểm tay đang chờ — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e3) |
+| **E3** — Registry ngôn ngữ | `0.4.0` | ✅ **Xong** (2026-08-14), ma trận test thủ công đã chạy — xem [Kết quả thực hiện](#kết-quả-thực-hiện-e3) |
 | E4 — 8 locale + RTL | `0.4.0` | ⏭️ **Tiếp theo** |
 | E5 — 3 provider mới | `0.5.0` | Chưa bắt đầu |
 | E6 — Phiên âm có điều kiện | `0.5.0` | Chưa bắt đầu |
@@ -1069,7 +1080,7 @@ Ba điểm sẽ chỉ lộ ra trong lúc làm và **phải hỏi trước khi t�
 
 **Khối lượng thật của E4 là 8 × 122 = 976 chuỗi**, không phải con số trong đặc tả E4-T1 (đã cũ từ E0).
 
-Trước đó, còn một cổng đang mở: **ma trận test thủ công của E3 chưa chạy**. Ba ô, nhẹ, ở [Kết quả thực hiện (E3)](#kết-quả-thực-hiện-e3). Ô quan trọng nhất là ô `sourceLang: 'ru'` — nó là thứ duy nhất xác nhận rằng `schemaVersion` thật sự được ghi xuống đĩa, điều mà unit test không đi qua được.
+**E3 không còn cổng ra nào treo**: ma trận test thủ công đã chạy, cả ba ô đạt, và ô migration được xác nhận bằng trạng thái `data.json` trên đĩa chứ không chỉ bằng mắt.
 
 **`0.4.0` chưa được phát hành** cho tới khi **E4 xong** *và* **đã qua ít nhất một vòng beta BRAT**. Đây là ràng buộc cứng, không phải khuyến nghị: E3 đổi schema `data.json` của người dùng, và lỗi migration làm mất setting là không hồi phục được. Cách làm beta ở mục [Beta](#beta) (`manifest.version` dạng `0.4.0-beta.1`, tag tương ứng; Obsidian updater bỏ qua tag prerelease, BRAT vẫn cài được).
 

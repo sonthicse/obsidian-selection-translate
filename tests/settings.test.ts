@@ -148,6 +148,23 @@ describe('migrate', () => {
 		expect(second.settings.sourceLang).toBe('auto');
 	});
 
+	it('says nothing about Russian in a file already stamped with this schema', () => {
+		// Only reachable by hand-editing: the migration ran once and stamped the
+		// version, so a stale 'ru' after that is rubbish rather than a value
+		// whose meaning changed. normalizeSettings repairs it quietly, which is
+		// the split described on that function — and it is also why testing the
+		// migration by hand means removing schemaVersion, not just setting 'ru'.
+		const { settings, notices, changed } = migrate({
+			...V0_2_2_DATA,
+			schemaVersion: SETTINGS_SCHEMA_VERSION,
+			sourceLang: 'ru',
+		});
+
+		expect(settings.sourceLang).toBe('auto');
+		expect(notices).toEqual([]);
+		expect(changed).toBe(false);
+	});
+
 	it('leaves other languages alone while dropping Russian', () => {
 		const { settings, notices } = migrate({ ...V0_2_2_DATA, sourceLang: 'de' });
 
