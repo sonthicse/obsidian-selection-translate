@@ -7,6 +7,8 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-14
+
 Eight more languages to translate into, two kinds of Chinese told apart, and
 one language gone.
 
@@ -245,7 +247,8 @@ First release.
 - Restoring default options deliberately preserves API keys.
 - Translations are never written to `data.json`, which syncs between devices.
 
-[Unreleased]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.3.1...0.4.0
 [0.3.1]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.2.3...0.3.0
 [0.2.3]: https://github.com/sonthicse/obsidian-selection-translate/compare/0.2.2...0.2.3
