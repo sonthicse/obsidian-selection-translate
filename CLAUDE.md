@@ -4,15 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Tài liệu này viết bằng tiếng Việt vì bộ tài liệu phát triển của dự án (`docs/DEV-PLAN.md`, `docs/CONTRIBUTING.md`, `docs/SUBMISSION.md`) dùng tiếng Việt. **Mã nguồn, comment trong code, chuỗi UI tiếng Anh, CHANGELOG và README vẫn viết bằng tiếng Anh** — đừng dịch chúng.
 >
-> Trạng thái khi viết: version `0.2.3`, sau **E2** (chưa phát hành; E1 + E2 cùng đi trong `0.3.0`). **51 file TS** trong `src/` (7 524 LOC), **16 file test**, **306 test**, **127 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
+> Trạng thái khi viết: sau **E3** (chưa phát hành; E3 + E4 cùng đi trong `0.4.0`, và `0.4.0` **bắt buộc qua beta BRAT** trước khi phát hành). **53 file TS** trong `src/` (7 934 LOC), **17 file test**, **332 test**, **122 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
 >
-> Số chuỗi UI giảm 132 → **127** ở E2: xoá 2 key `command.*` (tên command nay là literal tiếng Anh) và 5 key của trigger key đã gỡ, thêm 2 key trỏ sang trang Hotkeys. **E4 phải lập kế hoạch trên 8 × 127 = 1.016 chuỗi**, không phải con số cũ.
+> Số chuỗi UI 127 → **122** ở E3: xoá 6 key `lang.<code>` (dropdown ngôn ngữ nay hiển thị `nativeName` lấy từ registry, không qua catalogue), thêm 1 key `notice.russianRemoved`. `lang.auto` **giữ lại** — "tự nhận diện" là một chỉ dẫn, không phải tên một ngôn ngữ. **E4 phải lập kế hoạch trên 8 × 122 = 976 chuỗi**, không phải con số cũ.
 
 ---
 
 ## 1. Plugin làm gì, cho ai
 
-Selection Translate dịch đoạn văn bản người dùng bôi đen ngay tại chỗ trong Obsidian: một icon nhỏ hiện cạnh vùng chọn, bấm vào thì popup hiện bản dịch kèm phiên âm, từ loại và các nghĩa thay thế. Nó phục vụ người đọc/ghi chú song ngữ — đối tượng chính hiện tại là cặp Anh ↔ Việt — làm việc trong note Markdown (cả Live Preview lẫn Reading), trong PDF, trong ô properties và trong popout window. Bốn engine dịch nằm sau một giao diện chung (`google-free` mặc định vì không cần khoá, `google-cloud`, `deepl`, cộng hai nguồn từ điển), nên đổi engine là đổi một dropdown chứ không phải đổi cách dùng.
+Selection Translate dịch đoạn văn bản người dùng bôi đen ngay tại chỗ trong Obsidian: một icon nhỏ hiện cạnh vùng chọn, bấm vào thì popup hiện bản dịch kèm phiên âm, từ loại và các nghĩa thay thế. Nó phục vụ người đọc/ghi chú song ngữ — cặp Anh ↔ Việt vẫn là đối tượng chính, nhưng từ E3 thì **10 ngôn ngữ đều dùng được ở cả hai vai** — làm việc trong note Markdown (cả Live Preview lẫn Reading), trong PDF, trong ô properties và trong popout window. Bốn engine dịch nằm sau một giao diện chung (`google-free` mặc định vì không cần khoá, `google-cloud`, `deepl`, cộng hai nguồn từ điển), nên đổi engine là đổi một dropdown chứ không phải đổi cách dùng.
 
 Kế hoạch phát triển đã chốt nằm ở [`docs/DEV-PLAN.md`](docs/DEV-PLAN.md) — **đọc nó trước khi làm bất kỳ epic nào**.
 
@@ -29,7 +29,11 @@ Chiều phụ thuộc: `selection/` → `core/` → `providers/`, và `ui/` treo
 **Bất biến này nay đã được CI ép, không còn dựa vào kỷ luật** — `no-restricted-imports` trong [`eslint.config.mjs:87-101`](eslint.config.mjs#L87-L101) (providers cấm import `ui|selection|core`) và [`:104-118`](eslint.config.mjs#L104-L118) (ui cấm import `providers`). Một import sai làm `npm run lint` đỏ ngay.
 
 ```
-src/main.ts (223)          vòng đời plugin, command, ghép các khối, this.register() teardown
+src/main.ts (247)          vòng đời plugin, command, ghép các khối, this.register() teardown
+src/languages.ts    (279)  ⟵ mới ở E3. Registry ngôn ngữ: MỘT nơi mô tả một ngôn ngữ.
+                           LANGUAGES + LanguageDescriptor + SourceLangCode/TargetLangCode
+                           (suy ra từ cờ, không viết tay) + normalizeDetectedLang.
+                           Không import gì — đáy đồ thị phụ thuộc, mọi tầng đọc được.
 
 src/selection/             đọc vùng chọn từ từng bề mặt
   SelectionSource.ts       giao diện chung
@@ -47,13 +51,15 @@ src/providers/             chỉ nhận/trả dữ liệu thuần, test được
   TranslationProvider.ts     interface + ProviderError + toUiError
   GoogleFreeProvider.ts · GoogleCloudProvider.ts · DeepLProvider.ts
   DictionaryProvider.ts      gtx + dictionaryapi.dev
-  ProviderRegistry.ts · langMap.ts · http.ts
+  ProviderRegistry.ts · http.ts
+  googleLangCodes.ts  (30)   ⟵ tách ở E3. Mã ngôn ngữ của riêng Google (free + Cloud)
+  deeplLangCodes.ts   (48)   ⟵ tách ở E3. Hai bảng: source và target (xem §6.2)
 
 src/ui/                    tầng duy nhất được chạm DOM của popup/icon
   UiController.ts     (671)  điều phối: state machine, placement search, dismiss
   FloatingLayer.ts    (106)  ⟵ tách ở E0. Sở hữu icon + popup; mọi câu hỏi hình học.
                              applyGeometry() là cổng DUY NHẤT set vị trí/clip/visibility
-  TranslatePopup.ts   (376)  vòng đời element, đo kích thước, animation grow
+  TranslatePopup.ts   (384)  vòng đời element, đo kích thước, animation grow
   PopupContent.ts     (239)  ⟵ tách ở E0. Dựng nội dung kết quả/lỗi
   TriggerIcon.ts · Positioner.ts (hình học thuần, có test) · icons.ts
 
@@ -62,13 +68,15 @@ src/settings/
   sections/                  ⟵ tách ở E0. context.ts (kiểu SectionContext),
                              language.ts, provider.ts, activation.ts, scope.ts,
                              appearance.ts, speech.ts, advanced.ts
-  settings.ts                kiểu + DEFAULT_SETTINGS + SETTING_LIMITS + normalizeSettings
+  settings.ts        (258)   kiểu + DEFAULT_SETTINGS + SETTING_LIMITS +
+                             normalizeSettings (bất biến mọi phiên bản) +
+                             migrate (đổi ý nghĩa giữa các schemaVersion) — §6.13
 
 src/i18n/                  en.ts (nguồn chân lý) · vi.ts · index.ts (t, resolveLocale)
 src/tts/                   TtsService · WebSpeechEngine · GoogleTtsEngine
 src/utils/                 log.ts (cổng console duy nhất) · dom.ts · scroll.ts ·
                            debounce.ts · hash.ts · text.ts
-src/constants.ts · src/types.ts
+src/constants.ts · src/types.ts (170; KHÔNG còn mã ngôn ngữ — xem `languages.ts`)
 ```
 
 Sơ đồ khối và máy trạng thái vẽ đầy đủ ở [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
@@ -120,21 +128,39 @@ Mỗi playbook là danh sách file **theo đúng thứ tự phải sửa**.
 
 ### 5.1. Thêm một ngôn ngữ mới
 
-> Đường đi này đúng cho trạng thái hiện tại. **E3 sẽ thay nó bằng registry** (`languages.ts`) — sau E3 phải viết lại mục này (quy tắc R1).
+> Viết lại toàn bộ ở **E3**. Đường cũ đi qua bốn nơi (union trong `types.ts`, bảng chung `langMap.ts`, mảng dropdown, key `lang.<code>` trong mọi catalogue); nay chỉ còn **một hàng trong registry, cộng một dòng cho mỗi bảng mã provider**. Đã kiểm bằng cách thêm thật một ngôn ngữ rồi hoàn tác — xem *Kết quả thực hiện (E3)* trong `docs/DEV-PLAN.md`.
 
-1. [`src/types.ts:44`](src/types.ts#L44) — thêm mã vào `SourceLangCode`; [`:47`](src/types.ts#L47) `TargetLangCode` nếu làm ngôn ngữ đích.
-2. [`src/providers/langMap.ts`](src/providers/langMap.ts) — một hàng trong `TABLE` (`google`, `deeplSource`, `deeplTarget`), rồi thêm mã vào `SOURCE_LANGUAGES` / `TARGET_LANGUAGES` (thứ tự trong mảng chính là thứ tự dropdown).
-3. `src/i18n/en.ts` rồi `src/i18n/vi.ts` — key `lang.<code>`; dropdown gọi `t('lang.' + code)` ở [`src/settings/sections/language.ts:18`](src/settings/sections/language.ts#L18).
-4. Kiểm `normalizeDetectedLang` xử lý đúng mã mà provider báo về (xem cạm bẫy §6.4 với `zh`).
-5. `README.md` + `README.vi.md` — danh sách ngôn ngữ (quy tắc R2).
-6. `npm run verify`.
+1. [`src/languages.ts`](src/languages.ts) — **một hàng** trong `LANGUAGES`. Đủ 8 trường; ba trường dễ điền sai:
+   - `code`: thẻ **BCP-47**, không phải mã của provider nào. Có script subtag chỉ khi script mới là thứ phân biệt (`zh-Hant` / `zh-Hans`); ngoài ra dùng mã hai chữ cái trần.
+   - `ui`: đặt `true` **chỉ khi** catalogue giao diện đã tồn tại trong `src/i18n/`. Đặt trước là dựng bẫy — dropdown ngôn ngữ giao diện sẽ mời một ngôn ngữ không có chuỗi nào phía sau.
+   - `phonetic`: E6 đọc trường này để quyết định cách render (`ipa` bọc trong `/…/`, `romanization` thì không, `none` thì không render khối nào cả).
+
+   Thứ tự trong mảng **chính là thứ tự dropdown**; `SOURCE_LANGUAGES` / `TARGET_LANGUAGES` / `UI_LANGUAGES` và cả kiểu `SourceLangCode` / `TargetLangCode` đều suy ra từ cờ, **không sửa tay**.
+
+2. **Trình biên dịch sẽ tự liệt kê phần còn lại.** Mỗi bảng mã provider khai `Record<LangCode, string>`, nên thiếu một mã là lỗi biên dịch chỉ đúng file và đúng dòng. Chạy `npx tsc --noEmit` rồi điền:
+   - [`src/providers/googleLangCodes.ts`](src/providers/googleLangCodes.ts) — **1 dòng** (free và Cloud dùng chung một bảng).
+   - [`src/providers/deeplLangCodes.ts`](src/providers/deeplLangCodes.ts) — **2 dòng**, một cho `SOURCE_CODES` và một cho `TARGET_CODES`. Hai bảng riêng là cố ý, xem §6.2.
+
+   Ngôn ngữ mà một provider **không** hỗ trợ: nếu bảng không thể để trống (kiểu `Record` bắt buộc đủ khoá), khai kiểu `Partial<Record<LangCode, string>>` cho provider đó — `supportsPair()` đọc `undefined` là "không hỗ trợ" và trả lời `unsupported-pair` **trước khi gọi mạng**.
+
+3. `normalizeDetectedLang` trong cùng file — kiểm mã mà provider **báo về** có rơi đúng chỗ không. Mặc định là cắt region, và điều đó đủ cho hầu hết ngôn ngữ. Nhóm nào cần luật riêng thì làm như `zh` đã làm (§6.4).
+
+4. **Không** thêm key `lang.<code>` vào catalogue. Dropdown hiển thị `nativeName` lấy thẳng từ registry — người chọn tiếng Nhật tìm 日本語, không tìm chữ "Japanese". Chỉ `lang.auto` còn đi qua i18n, vì "tự nhận diện" là chỉ dẫn chứ không phải tên ngôn ngữ. Xem `languageLabel()` ở [`src/settings/sections/language.ts`](src/settings/sections/language.ts).
+
+5. `tests/languages.test.ts` — hai test cố ý **canh gác ma trận đã chốt** và sẽ đỏ khi thêm ngôn ngữ: `lists the agreed matrix` và `returns null for a language the plugin does not list`. Đỏ ở đó nghĩa là "ngôn ngữ này có nằm trong kế hoạch không?" — trả lời rồi mới sửa test, đừng sửa trước.
+
+6. `README.md` + `README.vi.md` — dòng *Ten languages* trong mục Features (quy tắc R2).
+
+7. `npm run verify`.
 
 ### 5.2. Thêm một provider mới
 
-1. [`src/types.ts:158`](src/types.ts#L158) — thêm id vào `ProviderId`.
+1. [`src/types.ts:150`](src/types.ts#L150) — thêm id vào `ProviderId`.
 2. [`src/constants.ts:143-150`](src/constants.ts#L143-L150) — endpoint vào `ENDPOINTS`.
-3. `src/providers/<Tên>Provider.ts` — implement `TranslationProvider` ([`src/providers/TranslationProvider.ts:111-120`](src/providers/TranslationProvider.ts#L111-L120)): `id`, `supportsDictionary`, `requiresApiKey`, `supports()`, `translate()`, `validate()`. Lỗi ném `ProviderError` với `ProviderErrorCode` — **map theo việc người dùng làm được gì, không theo HTTP status**. Mọi request qua `requestWithRetry`.
-4. `src/providers/langMap.ts` — cột mã ngôn ngữ của provider mới.
+3. `src/providers/<Tên>Provider.ts` — implement `TranslationProvider` ([`src/providers/TranslationProvider.ts:135-144`](src/providers/TranslationProvider.ts#L135-L144)): `id`, `supportsDictionary`, `requiresApiKey`, `supports()`, `translate()`, `validate()`. Lỗi ném `ProviderError` với `ProviderErrorCode` — **map theo việc người dùng làm được gì, không theo HTTP status**. Mọi request qua `requestWithRetry`.
+4. `src/providers/<tên>LangCodes.ts` — **file mã ngôn ngữ của riêng provider đó** (đường đi này đổi hẳn ở E3; không còn bảng chung). Mẫu ở [`googleLangCodes.ts`](src/providers/googleLangCodes.ts) (một bảng, hai vai dùng chung) và [`deeplLangCodes.ts`](src/providers/deeplLangCodes.ts) (hai bảng, một cho mỗi vai). Export một hàm khớp `LangCodeLookup` = `(code: LangCode, role: LangRole) => string | undefined`, rồi `supports()` chỉ còn một dòng: `return supportsPair(to<Tên>Code, source, target)`.
+   - Provider **không phủ hết** registry — đây là ca bình thường ở E5, ví dụ Papago không có tiếng Ả Rập — thì khai `Partial<Record<LangCode, string>>` và bỏ trống hàng đó. `supportsPair` biến `undefined` thành `unsupported-pair` **không tốn một request nào**.
+   - **Kiểm chứng bảng mã bằng tài liệu API tại thời điểm làm, đừng chép từ kế hoạch.** Bảng trong E3-T2 của `docs/DEV-PLAN.md` dựng từ tài liệu lúc lập kế hoạch; phần đã kiểm và phần chưa kiểm ghi trong *Kết quả thực hiện (E3)*.
 5. [`src/providers/ProviderRegistry.ts:26-30`](src/providers/ProviderRegistry.ts#L26-L30) — thêm vào `this.translators`. Khoá API đọc qua **getter**, không truyền giá trị vào constructor, để đổi khoá có hiệu lực ngay.
 6. `src/settings/settings.ts` — trường `<tên>ApiKey` trong `SelectionTranslateSettings` + `DEFAULT_SETTINGS`.
 7. [`src/settings/sections/provider.ts:19`](src/settings/sections/provider.ts#L19) — thêm id vào mảng dropdown, rồi một khối `addApiKeyField(...)` như DeepL/Google Cloud.
@@ -160,6 +186,8 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 > Mục này **không có trong đặc tả gốc của E8**; đường đi đã đổi ở E0 khi `SettingTab.ts` tách thành `sections/`.
 
 1. [`src/settings/settings.ts`](src/settings/settings.ts) — trường trong `SelectionTranslateSettings` (nhóm theo comment `/* Languages */`, `/* Activation */`…) và giá trị trong `DEFAULT_SETTINGS`. Nếu là số: thêm `SETTING_LIMITS` + một lời gọi `clamp` trong `normalizeSettings()`.
+
+   **Thêm một setting mới KHÔNG cần tăng `SETTINGS_SCHEMA_VERSION`.** Giá trị vắng mặt đã được lấp bằng `DEFAULT_SETTINGS` ở `normalizeSettings()`, không ai mất gì. Chỉ tăng khi một giá trị **đã lưu** đổi nghĩa hoặc bị gỡ — và khi ấy phải viết một nhánh `if (from < N)` trong `migrate()`. Ranh giới giữa hai hàm ở §6.13.
 2. `src/settings/sections/<đúng section>.ts` — vẽ control. **Chỉ ghi qua `ctx.save(key, value)`**; không chạm `plugin.settings` trực tiếp. Cần vẽ lại cả tab (control này quyết định control khác có tồn tại không) thì gọi `ctx.redisplay()`. `ctx.app` có sẵn từ E2 cho hai việc chính đáng — đọc thứ Obsidian đã gắn, và mở một pane của chính Obsidian — **không** phải đường vòng để ghi settings.
 
    | Section | Giữ setting nào |
@@ -185,22 +213,37 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 
 ### Bốn cái từ đặc tả gốc
 
-**6.1. Selection snapshot phải chụp *trước* khi click.** Bấm vào icon làm collapse selection trước khi handler chạy, nên mọi thứ đọc từ `getSelection()` lúc click đã mất. Mọi consumer làm việc trên `SelectionSnapshot` — lý do ghi đầy đủ ở [`src/types.ts:56-64`](src/types.ts#L56-L64).
+**6.1. Selection snapshot phải chụp *trước* khi click.** Bấm vào icon làm collapse selection trước khi handler chạy, nên mọi thứ đọc từ `getSelection()` lúc click đã mất. Mọi consumer làm việc trên `SelectionSnapshot` — lý do ghi đầy đủ ở [`src/types.ts:49-57`](src/types.ts#L49-L57).
 
-**6.2. DeepL: `EN` là source, `EN-US` là target.** Biến thể theo vùng được chấp nhận làm *target* nhưng bị từ chối làm *source*, nên `langMap.ts` có hai cột riêng ([`src/providers/langMap.ts:6-9,20`](src/providers/langMap.ts#L6-L9)). Gộp một cột là hỏng.
+**6.2. DeepL: `EN` là source, `EN-US` là target — và `ZH` là source, `ZH-HANS`/`ZH-HANT` là target.** Mã mang subtag vùng **hoặc** subtag script được chấp nhận làm *target* nhưng bị từ chối làm *source*. Vì thế [`src/providers/deeplLangCodes.ts`](src/providers/deeplLangCodes.ts) có **hai bảng riêng**, `SOURCE_CODES` và `TARGET_CODES`, và `toDeepLCode(code, role)` chọn bảng theo vai. **Gộp một bảng là hỏng.**
+
+Ở E3 việc tách bảng theo provider làm chỗ này *dễ* hơn chứ không mất đi: chỉ file của DeepL biết DeepL kỳ quặc, phần còn lại của code chỉ thấy một `LangCodeLookup` giống mọi provider khác. Tiếng Trung là ca thứ hai của cùng một luật, và là ca mới — cả hai mã target đã được kiểm chứng lại với tài liệu DeepL vào tháng 8/2026, khớp kế hoạch.
 
 **6.3. Vị trí, clip và visibility là **một** câu trả lời, và đã gộp xong ở E1-T2.** Cổng duy nhất là [`FloatingLayer.applyGeometry(target, rect, snapshot)`](src/ui/FloatingLayer.ts#L94) — nó làm cả ba việc, theo đúng thứ tự đó. **Không nơi nào ngoài `FloatingLayer` được set vị trí, clip hay visibility của icon/popup.** Hai hệ quả cho người viết code sau:
 
 - `TriggerIcon.show(win)` **không nhận rect** — nó chỉ dựng element và bắt đầu animation; controller gọi `applyGeometry` ngay sau đó.
 - `PopupHandlers.place(size)` trả về **`void`**, không trả rect. Popup biết kích thước của nó, không bao giờ biết vị trí. Nhánh popup phình theo nội dung là nhánh dễ quên nhất: rect đổi thì clip cũ lập tức sai, nên mọi `applySize` phải kèm một lời gọi `place`.
 
-**6.4. `normalizeDetectedLang` không được cắt script subtag của `zh`.** Hiện [`src/providers/langMap.ts:78`](src/providers/langMap.ts#L78) cắt tại `-`/`_`, nên `zh-TW` và `zh-CN` cùng ra `zh` — giản thể và phồn thể không phân biệt được. Đây là **điều kiện chặn của tính năng tiếng Trung**, và là việc của **E3-T3**. Đừng sửa sớm (lấn epic), đừng quên khi tới E3.
+**6.4. `normalizeDetectedLang` giữ script subtag của `zh`, và cắt region của mọi ngôn ngữ khác. Đây là luật, đừng phá.** Sửa xong ở **E3-T3**; trước đó nó cắt tại `-`/`_` nên `zh-TW` và `zh-CN` cùng ra `zh`, và đó là điều kiện chặn khiến tính năng tiếng Trung không thể đúng.
+
+Vì sao `zh` khác mọi ngôn ngữ khác: với `en-GB` hay `it-IT`, phần bị cắt chỉ là biến thể vùng của **cùng một thứ chữ**, nên cắt đi không mất gì. Với `zh`, phần đuôi là **thứ duy nhất** phân biệt giản thể và phồn thể — hai bộ chữ và hai hệ thuật ngữ khác nhau (軟體/软件, 網路/网络, 設定/设置). Cắt nó đi là vứt bỏ chính thông tin cần dùng.
+
+Luật hiện hành, trong [`src/languages.ts`](src/languages.ts) (`CHINESE_SCRIPTS`, `CHINESE_REGIONS`, `resolveChinese`):
+
+| Đầu vào | Ra | Vì sao |
+|---|---|---|
+| `zh-Hans`, `zh-CN`, `zh-SG` | `zh-Hans` | script thắng region, rồi tới region |
+| `zh-Hant`, `zh-TW`, `zh-HK`, `zh-MO` | `zh-Hant` | như trên |
+| `zh` **trần** | `zh-Hans` | quy ước của **Obsidian** — nó dùng `zh` trần cho giản thể (E4-T3) |
+| `zh-*` **không nhận ra** | `zh-Hant` | phồn thể là bản Trung chuẩn của dự án |
+
+**Hai dòng cuối ngược nhau, và cố ý.** `zh` trần đi theo Obsidian vì mục đích là *đồng ý với ứng dụng đang chứa plugin*; `zh-XX` lạ đi theo mặc định của dự án. **Đừng gộp hai luật thành một** — chúng trả lời hai câu hỏi khác nhau. `zh-Hant-CN` ra `zh-Hant`: script quyết định thứ chữ được sinh ra, không phải region.
 
 ### Bốn cái mới — **phát hiện từ E0, không có trong kế hoạch gốc**
 
 **6.5. `obsidianmd/no-static-styles-assignment` chỉ bắt giá trị *literal*.** `el.style.left = \`${x}px\`` (template literal có expression) **không** bị bắt; `el.style.height = 'auto'` thì bị. Hai hệ quả: (a) lint xanh **không** nghĩa là không có chỗ nào gán style; (b) **đừng** đi chuyển toạ độ runtime sang CSS custom property vì tưởng nó vi phạm — 21 vị trí `.style.*` hiện tại đều hợp lệ. Bằng chứng đầy đủ ở [`docs/REVIEW-FINDINGS.md` §H2](docs/REVIEW-FINDINGS.md).
 
-**6.6. `registerDomEvent` không dùng được cho listener theo phiên.** Obsidian chỉ giải phóng chúng khi **toàn bộ plugin** unload, nên một phiên mở/đóng popout nhiều lần sẽ tích luỹ đăng ký trên document đã chết. `SelectionManager` **cố ý** tự `addEventListener`, tự track teardown, và gắn vào `this.register()` trong [`main.ts:83`](src/main.ts#L83) — lý do ghi tại [`src/core/SelectionManager.ts:152-157`](src/core/SelectionManager.ts#L152-L157). **Đừng "sửa" chỗ này.**
+**6.6. `registerDomEvent` không dùng được cho listener theo phiên.** Obsidian chỉ giải phóng chúng khi **toàn bộ plugin** unload, nên một phiên mở/đóng popout nhiều lần sẽ tích luỹ đăng ký trên document đã chết. `SelectionManager` **cố ý** tự `addEventListener`, tự track teardown, và gắn vào `this.register()` trong [`main.ts:92`](src/main.ts#L92) — lý do ghi tại [`src/core/SelectionManager.ts:152-158`](src/core/SelectionManager.ts#L152-L158). **Đừng "sửa" chỗ này.**
 
 **6.7. `/code-review` review *diff*, không review thư mục.** Nhánh sạch thì nó lấy commit cuối làm phạm vi — ở E0 nó phủ đúng một commit thay vì 42 file. Muốn phủ rộng phải chỉ định phạm vi rõ ràng hoặc tự đọc code.
 
@@ -224,6 +267,27 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
 Đó đúng là lý do command palette chết trong lúc popup mở. [`TranslatePopup.claimScope()`](src/ui/TranslatePopup.ts) nay dựng `new Scope(this.app.scope)` và trả `undefined` thay vì `true`. **Bất kỳ `Scope` nào thêm sau này phải làm y hệt.**
 
 Ghi thêm, vì có ngày sẽ cần: `pushScope` đẩy vào stack riêng của `activeWindow` (`WeakMap<Window, …>`), nên popout có stack riêng và không cần xử lý đặc biệt. Và cách lấy dữ kiện: `AppData/Roaming/obsidian/obsidian-<version>.asar` là asar chuẩn — 4 byte ở offset 12 cho kích thước header JSON, header từ byte 16, dữ liệu ngay sau. Giải nén `app.js` rồi grep.
+
+### Hai cái mới — **phát hiện từ E3, không có trong kế hoạch gốc**
+
+**6.13. `migrate()` và `normalizeSettings()` chia việc theo một ranh giới cứng. Thêm luật vào nhầm bên là bug chỉ hiện ra trên vault của người khác.** Cả hai ở [`src/settings/settings.ts`](src/settings/settings.ts):
+
+| | `normalizeSettings()` | `migrate()` |
+|---|---|---|
+| Trả lời | cái gì đúng với **mọi** phiên bản | cái gì **đổi nghĩa** giữa hai schema |
+| Ví dụ | clamp số, giá trị lạ rơi về mặc định, ngôn ngữ không có trong registry rơi về mặc định | `sourceLang: 'ru'` → `'auto'` |
+| Chạy khi nào | **mọi** lần load | một lần cho mỗi `schemaVersion` |
+| Được nói với người dùng không | **không bao giờ** | **đây là nơi duy nhất** được sinh `Notice` |
+
+Hệ quả thực hành: **giá trị rác không phải việc của `migrate()`.** Một `data.json` bị sửa tay chứa `sourceLang: 42` không cần một luật migration nào — `normalizeSettings` đã lo, im lặng, ở mọi phiên bản.
+
+Và một điều **không được quên**: `migrate()` không tự lưu. `main.ts:loadSettings()` phải gọi `saveData` ngay khi `outcome.changed` — `schemaVersion` đã ghi xuống đĩa là **thứ duy nhất** ngăn migration, và cái `Notice` của nó, chạy lại ở lần khởi động sau.
+
+Còn cache LRU thì **không cần invalidate**, dù khoá cache có chứa mã ngôn ngữ. Nó dựng mới trong constructor của `TranslationOrchestrator` ở mỗi lần `onload`, hoàn toàn trong bộ nhớ, không ghi đĩa — không khoá nào sống qua được lần đổi schema. Kế hoạch E3-T5 có nhắc "invalidate cache khi `schemaVersion` tăng"; đã kiểm và **không viết code cho vấn đề không tồn tại**.
+
+**6.14. Bảng mã ngôn ngữ của provider phải khai `Record<LangCode, string>`, không phải `Partial<…>`, trừ khi provider thật sự thiếu ngôn ngữ.** Đây là thứ làm cho playbook 5.1 rẻ như hiện nay: thêm một hàng vào registry thì **trình biên dịch tự liệt kê** từng bảng còn thiếu mã, kèm đúng file và đúng dòng. Đổi sang `Partial` "cho tiện" là vứt bỏ đúng cái lưới an toàn đó, và ngôn ngữ mới sẽ lặng lẽ trở thành "không hỗ trợ" ở provider đó thay vì báo lỗi lúc build.
+
+Chỉ dùng `Partial<Record<LangCode, string>>` khi provider **thật sự** không có ngôn ngữ nào đó — ca của E5, ví dụ Papago không có tiếng Ả Rập. Khi ấy thiếu mã là câu trả lời đúng, và `supportsPair()` biến nó thành `unsupported-pair` **trước khi gọi mạng**.
 
 ---
 
