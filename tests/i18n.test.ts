@@ -4,12 +4,13 @@ import { en, type Messages } from '../src/i18n/en';
 import { vi } from '../src/i18n/vi';
 import { zhHant } from '../src/i18n/zh-Hant';
 import { zhHans } from '../src/i18n/zh-Hans';
+import { ja } from '../src/i18n/ja';
 import { UI_LANGUAGES } from '../src/languages';
 import { resetWarnings } from '../src/utils/log';
 import { ProviderError, type ProviderErrorCode } from '../src/providers/TranslationProvider';
 
 /** Every catalogue the plugin ships, keyed the way the i18n layer keys them. */
-const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Hans': zhHans };
+const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Hans': zhHans, ja };
 
 /** A window whose localStorage reports whatever Obsidian would have written. */
 function windowWithLanguage(language: string | null): Window {
