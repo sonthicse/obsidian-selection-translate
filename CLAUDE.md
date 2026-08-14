@@ -18,6 +18,8 @@ Selection Translate dịch đoạn văn bản người dùng bôi đen ngay tạ
 
 Kế hoạch phát triển đã chốt nằm ở [`docs/DEV-PLAN.md`](docs/DEV-PLAN.md) — **đọc nó trước khi làm bất kỳ epic nào**.
 
+> **Ba tài liệu chỉ có trên máy, không nằm trong repo:** `docs/DEV-PLAN.md`, `docs/REVIEW-FINDINGS.md` và cả thư mục `docs/prompts/`. Chúng là tài liệu làm việc của người xây plugin, không phải của người cài hay người review, nên đã đưa vào `.gitignore` — vẫn được đọc và cập nhật bình thường, chỉ là không phát hành kèm. **Vài link trong file này trỏ tới chúng và sẽ chết trên một bản clone mới; trên máy chủ dự án thì không.** `docs/CODE-REVIEW.md` **vẫn nằm trong repo** vì nó ghi lại các quyết định đã định hình code.
+
 ---
 
 ## 2. Bản đồ tầng

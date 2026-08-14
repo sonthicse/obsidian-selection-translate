@@ -18,3 +18,20 @@ Thumbs.db
 coverage/
 .eslintcache
 *.log
+
+# WSL leftovers from files downloaded on the Windows side.
+*:Zone.Identifier
+
+# Internal planning material, kept local rather than published.
+#
+# These are working documents for whoever is building the plugin, not for
+# anyone installing or reviewing it: the epic plan and its per-epic prompts,
+# and the investigation notes behind the failed submission. They stay on disk
+# and keep being updated — `npm run check` still reads them for dead links —
+# they are simply not part of what the repository ships.
+#
+# docs/CODE-REVIEW.md is deliberately NOT here: it is the record of decisions
+# that shaped the code, which is worth publishing alongside it.
+docs/DEV-PLAN.md
+docs/REVIEW-FINDINGS.md
+docs/prompts/
