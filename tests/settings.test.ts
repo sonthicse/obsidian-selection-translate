@@ -59,10 +59,17 @@ describe('normalizeSettings', () => {
 	});
 
 	it('falls back to defaults for a language it does not offer', () => {
-		// A language only ever offered as a source is not a valid target.
-		const result = normalizeSettings({ sourceLang: 'klingon', targetLang: 'de' });
+		// Russian is a source and not a target, so it is not a valid one.
+		const result = normalizeSettings({ sourceLang: 'klingon', targetLang: 'ru' });
 
 		expect(result.sourceLang).toBe(DEFAULT_SETTINGS.sourceLang);
 		expect(result.targetLang).toBe(DEFAULT_SETTINGS.targetLang);
+	});
+
+	it('accepts the languages just added', () => {
+		const result = normalizeSettings({ sourceLang: 'zh-Hant', targetLang: 'ja' });
+
+		expect(result.sourceLang).toBe('zh-Hant');
+		expect(result.targetLang).toBe('ja');
 	});
 });

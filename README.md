@@ -14,6 +14,7 @@ Select any text in Obsidian and translate it in place — in notes, in PDFs, in 
 
 - **Works everywhere text does.** Reading view, Live Preview, Source mode, PDF pages, properties (both names and values), tables, callouts, code blocks, links and popout windows.
 - **A button, not an interruption.** Selecting text shows a small button beside it. It moves out of the way of menus, tooltips and the PDF toolbar rather than covering them, and it stays with the text as you scroll.
+- **Ten languages, either way.** English, Vietnamese, both Chinese scripts, Japanese, Arabic, Spanish, Italian, French and German all work as a source and as a target, plus Russian as a source.
 - **Dictionary detail for single words.** Pronunciation, part of speech and alternative meanings, not just a one-line translation.
 - **Three engines.** Google without a key, Google Cloud Translation, or DeepL. The right server for a DeepL key is chosen from the key itself.
 - **Read aloud.** Through your system voice, offline, or through Google.

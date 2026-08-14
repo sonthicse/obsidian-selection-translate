@@ -12,20 +12,20 @@
  * of them learning about each other.
  */
 
-/** Writing direction. */
+/** Writing direction, for the RTL work in E4. */
 export type LanguageDir = 'ltr' | 'rtl';
 
 /**
  * What kind of pronunciation, if any, makes sense for a language.
  *
- * Recorded per language so the popup can eventually tell them apart: IPA
- * belongs in slashes, a romanisation does not, and `none` means render no
- * pronunciation block at all rather than an empty one.
+ * Read in E6 to decide how the popup renders it: IPA belongs in slashes, a
+ * romanisation does not, and `none` means render no pronunciation block at all
+ * rather than an empty one.
  */
 export type PhoneticKind = 'ipa' | 'romanization' | 'none';
 
 export interface LanguageDescriptor {
-	/** Internal BCP-47 tag. */
+	/** Internal BCP-47 tag. Chinese keeps its script subtag; see the note below. */
 	code: string;
 	/** Shown in the language dropdowns — someone picking Japanese looks for 日本語. */
 	nativeName: string;
@@ -34,7 +34,7 @@ export interface LanguageDescriptor {
 	phonetic: PhoneticKind;
 	asSource: boolean;
 	asTarget: boolean;
-	/** Whether a UI catalogue exists for it. Only `en` and `vi` so far. */
+	/** Whether a UI catalogue exists for it. Only `en` and `vi` until E4. */
 	ui: boolean;
 }
 
@@ -45,6 +45,9 @@ export interface LanguageDescriptor {
  * which is what lets SourceLangCode and TargetLangCode below be derived from the
  * `asSource` / `asTarget` flags instead of being maintained alongside them.
  *
+ * Chinese is two entries, not one with a variant flag. Simplified and
+ * traditional differ in vocabulary and not only in script — 軟體/软件, 網路/网络,
+ * 設定/设置 — so they are as separate here as any other pair of languages.
  */
 export const LANGUAGES = [
 	{
@@ -68,13 +71,63 @@ export const LANGUAGES = [
 		ui: true,
 	},
 	{
+		code: 'zh-Hant',
+		nativeName: '繁體中文',
+		englishName: 'Chinese (Traditional)',
+		dir: 'ltr',
+		phonetic: 'romanization',
+		asSource: true,
+		asTarget: true,
+		ui: false,
+	},
+	{
+		code: 'zh-Hans',
+		nativeName: '简体中文',
+		englishName: 'Chinese (Simplified)',
+		dir: 'ltr',
+		phonetic: 'romanization',
+		asSource: true,
+		asTarget: true,
+		ui: false,
+	},
+	{
 		code: 'es',
 		nativeName: 'Español',
 		englishName: 'Spanish',
 		dir: 'ltr',
 		phonetic: 'none',
 		asSource: true,
-		asTarget: false,
+		asTarget: true,
+		ui: false,
+	},
+	{
+		code: 'ja',
+		nativeName: '日本語',
+		englishName: 'Japanese',
+		dir: 'ltr',
+		phonetic: 'romanization',
+		asSource: true,
+		asTarget: true,
+		ui: false,
+	},
+	{
+		code: 'it',
+		nativeName: 'Italiano',
+		englishName: 'Italian',
+		dir: 'ltr',
+		phonetic: 'none',
+		asSource: true,
+		asTarget: true,
+		ui: false,
+	},
+	{
+		code: 'ar',
+		nativeName: 'العربية',
+		englishName: 'Arabic',
+		dir: 'rtl',
+		phonetic: 'romanization',
+		asSource: true,
+		asTarget: true,
 		ui: false,
 	},
 	{
@@ -84,7 +137,7 @@ export const LANGUAGES = [
 		dir: 'ltr',
 		phonetic: 'none',
 		asSource: true,
-		asTarget: false,
+		asTarget: true,
 		ui: false,
 	},
 	{
@@ -94,7 +147,7 @@ export const LANGUAGES = [
 		dir: 'ltr',
 		phonetic: 'none',
 		asSource: true,
-		asTarget: false,
+		asTarget: true,
 		ui: false,
 	},
 	{
@@ -154,7 +207,7 @@ export const TARGET_LANGUAGES: readonly TargetLangCode[] = LANGUAGES.filter(
 	(lang): lang is TargetLanguage => lang.asTarget
 ).map((lang) => lang.code);
 
-/** Locales with a UI catalogue. */
+/** Locales with a UI catalogue. Two until E4 adds the other six. */
 export const UI_LANGUAGES: readonly LangCode[] = LANGUAGES.filter(
 	(lang): lang is UiLanguageEntry => lang.ui
 ).map((lang) => lang.code);
@@ -168,13 +221,57 @@ export function isTargetLang(value: unknown): value is TargetLangCode {
 	return typeof value === 'string' && (getLanguage(value)?.asTarget ?? false);
 }
 
+/*
+ * Chinese variants, resolved from whatever a service or Obsidian reports.
+ *
+ * The rest of the world drops the region from a tag and matches on the base
+ * language; Chinese cannot, because `zh-CN` and `zh-TW` are the only thing
+ * distinguishing simplified from traditional and both would collapse to `zh`.
+ * Two rules apply here and they point opposite ways on purpose:
+ *
+ *   - A bare `zh` means *simplified*. That is Obsidian's own convention for its
+ *     interface language, and following it is what makes the plugin agree with
+ *     the app it lives in.
+ *   - An unrecognised `zh-*` variant means *traditional*, because traditional is
+ *     this project's reference Chinese and the one its other catalogue derives
+ *     from.
+ */
+const CHINESE_SCRIPTS: Record<string, LangCode> = {
+	hans: 'zh-Hans',
+	hant: 'zh-Hant',
+};
+
+const CHINESE_REGIONS: Record<string, LangCode> = {
+	cn: 'zh-Hans',
+	sg: 'zh-Hans',
+	tw: 'zh-Hant',
+	hk: 'zh-Hant',
+	mo: 'zh-Hant',
+};
+
+function resolveChinese(subtags: readonly string[]): LangCode {
+	// Script wins over region: `zh-Hant-CN` is traditional written in the
+	// mainland, and the script is the part that decides which text we produce.
+	for (const subtag of subtags) {
+		const byScript = CHINESE_SCRIPTS[subtag];
+		if (byScript != null) return byScript;
+	}
+	for (const subtag of subtags) {
+		const byRegion = CHINESE_REGIONS[subtag];
+		if (byRegion != null) return byRegion;
+	}
+	// A bare `zh` is simplified; anything else unrecognised leans traditional.
+	return subtags.length === 0 ? 'zh-Hans' : 'zh-Hant';
+}
+
 /**
  * Maps a code a provider or the host app reported onto one of ours.
  *
  * Detected languages arrive in whatever form the service prefers — "EN-GB" from
- * DeepL, "zh-CN" from Google — so the region is dropped before matching. Returns
- * null for a language the plugin does not list, which the UI shows verbatim
- * rather than pretending to recognise.
+ * DeepL, "zh-CN" from Google — so the region is dropped before matching, with
+ * Chinese as the documented exception above. Returns null for a language the
+ * plugin does not list, which the UI shows verbatim rather than pretending to
+ * recognise.
  */
 export function normalizeDetectedLang(reported: string | undefined | null): SourceLangCode | null {
 	if (reported == null) return null;
@@ -182,6 +279,8 @@ export function normalizeDetectedLang(reported: string | undefined | null): Sour
 	const subtags = reported.trim().toLowerCase().split(/[-_]/).filter((part) => part.length > 0);
 	const base = subtags[0];
 	if (base == null) return null;
+
+	if (base === 'zh') return resolveChinese(subtags.slice(1));
 
 	for (const lang of LANGUAGES) {
 		if (lang.asSource && lang.code === base) return lang.code;

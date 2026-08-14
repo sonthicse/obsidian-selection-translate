@@ -6,12 +6,20 @@ import type { LangRole } from './TranslationProvider';
  *
  * Shared by the free endpoint (`sl`/`tl`) and Cloud Translation v2
  * (`source`/`target`), which agree on every code, so the role is accepted for
- * the sake of a uniform signature and then ignored.
+ * the sake of a uniform signature and then ignored. Verified against Cloud
+ * Translation's language support page in August 2026: Chinese is the only
+ * language whose code differs from its plain ISO-639-1 form, and it carries a
+ * region rather than a script — `zh-CN` and `zh-TW`, not `zh-Hans`/`zh-Hant`.
  */
 const CODES: Record<LangCode, string> = {
 	en: 'en',
 	vi: 'vi',
+	'zh-Hant': 'zh-TW',
+	'zh-Hans': 'zh-CN',
+	ja: 'ja',
+	ar: 'ar',
 	es: 'es',
+	it: 'it',
 	fr: 'fr',
 	de: 'de',
 	ru: 'ru',
