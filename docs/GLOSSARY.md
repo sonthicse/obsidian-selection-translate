@@ -77,7 +77,9 @@ Hàng **không** có dấu ✓ là khái niệm Obsidian không có — plugin t
 
 Giữ nguyên trong **mọi** ngôn ngữ, kể cả tiếng Ả Rập và tiếng Nhật:
 
-`Markdown` · `PDF` · `YAML` · `API` · `Obsidian` · `DeepL` · `Google` · `Google Cloud` · `Free Dictionary API` · `IPA` · `ms` (đơn vị mili giây trong `popup.elapsed`)
+`Markdown` · `PDF` · `YAML` · `API` · `Obsidian` · `DeepL` · `Google` · `Google Cloud` · `Free Dictionary API` · `IPA` · `ms` (đơn vị mili giây trong `popup.elapsed`) · `verbose`
+
+> **`verbose` giữ nguyên là cố ý.** Nó là nhãn thật trong ô chọn mức log của DevTools, và ô đó hầu như luôn hiển thị tiếng Anh. Dịch ra thì câu đọc mượt hơn nhưng người dùng không tìm thấy thứ cần bấm.
 
 Tên ngôn ngữ **không** nằm trong catalogue: dropdown lấy `nativeName` thẳng từ `src/languages.ts`, nên 日本語 hiện là 日本語 ở mọi giao diện. Chỉ `lang.auto` ("tự nhận diện") và `uiLang.auto` ("theo Obsidian") đi qua i18n, vì cả hai là **chỉ dẫn** chứ không phải tên một ngôn ngữ.
 

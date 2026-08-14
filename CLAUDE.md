@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Tài liệu này viết bằng tiếng Việt vì bộ tài liệu phát triển của dự án (`docs/DEV-PLAN.md`, `docs/CONTRIBUTING.md`, `docs/SUBMISSION.md`) dùng tiếng Việt. **Mã nguồn, comment trong code, chuỗi UI tiếng Anh, CHANGELOG và README vẫn viết bằng tiếng Anh** — đừng dịch chúng.
 >
-> Trạng thái khi viết: sau **E4** (chưa phát hành; E3 + E4 cùng đi trong `0.4.0`, và `0.4.0` **bắt buộc qua beta BRAT** trước khi phát hành). **59 file TS** trong `src/` (9 097 LOC), **17 file test**, **365 test**, **120 chuỗi UI × 8 locale = 960**, `npm run lint` = **0 error / 5 warning**.
+> Trạng thái khi viết: sau **E4** (chưa phát hành; E3 + E4 cùng đi trong `0.4.0`, và `0.4.0` **bắt buộc qua beta BRAT** trước khi phát hành). **59 file TS** trong `src/` (9 097 LOC), **17 file test**, **365 test**, **120 chuỗi UI × 8 locale = 960**. `npm run lint` **và** `npx obsidian-plugin-validator` đều = **0 error / 5 warning**, trùng khít nhau — xem §6.18 để biết vì sao phải chạy cả hai.
 >
 > Số chuỗi UI 122 → **120** ở E4: xoá `uiLang.en` và `uiLang.vi`, vì dropdown ngôn ngữ giao diện nay cũng lấy `nativeName` từ registry như hai dropdown kia. Chỉ còn **hai** key ngôn ngữ đi qua i18n — `lang.auto` và `uiLang.auto` — và cả hai là **chỉ dẫn** chứ không phải tên một ngôn ngữ.
 >
@@ -30,7 +30,7 @@ Chiều phụ thuộc: `selection/` → `core/` → `providers/`, và `ui/` treo
 > **UI không bao giờ biết provider nào trả lời. Provider không bao giờ thấy một node DOM.**
 > Mọi thứ đi qua ranh giới đó là object thuần khai báo trong `src/types.ts`.
 
-**Bất biến này nay đã được CI ép, không còn dựa vào kỷ luật** — `no-restricted-imports` trong [`eslint.config.mjs:87-101`](eslint.config.mjs#L87-L101) (providers cấm import `ui|selection|core`) và [`:104-118`](eslint.config.mjs#L104-L118) (ui cấm import `providers`). Một import sai làm `npm run lint` đỏ ngay.
+**Bất biến này nay đã được CI ép, không còn dựa vào kỷ luật** — `no-restricted-imports` trong [`eslint.config.mjs:97-111`](eslint.config.mjs#L97-L111) (providers cấm import `ui|selection|core`) và [`:114-128`](eslint.config.mjs#L114-L128) (ui cấm import `providers`). Một import sai làm `npm run lint` đỏ ngay.
 
 ```
 src/main.ts (247)          vòng đời plugin, command, ghép các khối, this.register() teardown
@@ -110,12 +110,12 @@ Chạy một file test: `npx vitest run tests/Positioner.test.ts` · một test:
 
 **Bốn cổng thêm ở E0 — biết chúng tồn tại để không ngạc nhiên khi CI đỏ:**
 
-1. **Ranh giới tầng** — `no-restricted-imports`, [`eslint.config.mjs:87-118`](eslint.config.mjs#L87-L118).
+1. **Ranh giới tầng** — `no-restricted-imports`, [`eslint.config.mjs:97-128`](eslint.config.mjs#L97-L128).
 2. **i18n key-parity + placeholder-parity** — [`scripts/check-guidelines.mjs:168-216`](scripts/check-guidelines.mjs#L168-L216). Thiếu key là fail; `{ms}` viết sai ở một catalogue cũng là fail.
 3. **Đối chiếu host README ↔ `src/`, hai chiều** — [`scripts/check-guidelines.mjs:217-249`](scripts/check-guidelines.mjs#L217-L249). Host mới trong code mà README chưa khai = fail; README khai host không ai gọi = cũng fail.
 4. **Link chết trong `docs/`** — [`scripts/check-guidelines.mjs:251-268`](scripts/check-guidelines.mjs#L251-L268).
 
-`npm run check` cũng chặn: `innerHTML`/`outerHTML`/`insertAdjacentHTML`, `window.app`, `console.log` ngoài `src/utils/log.ts`, hotkey mặc định cho command, màu literal ngoài khối token trong `styles.css`, và lệch version giữa `package.json` / `manifest.json` / `versions.json`.
+`npm run check` cũng chặn: `innerHTML`/`outerHTML`/`insertAdjacentHTML`, `window.app`, **`console.log` ở mọi nơi** và `console.debug` ngoài `src/utils/log.ts` (§6.18), hotkey mặc định cho command, màu literal ngoài khối token trong `styles.css`, và lệch version giữa `package.json` / `manifest.json` / `versions.json`.
 
 ---
 
@@ -127,7 +127,7 @@ Chạy một file test: `npx vitest run tests/Positioner.test.ts` · một test:
 - **Không dựng DOM từ chuỗi markup.** `innerHTML` / `outerHTML` / `insertAdjacentHTML` bị cấm ở cả ESLint lẫn `npm run check`. Dùng `createDiv` / `createEl` / `setText`.
 - **Mạng đi qua `requestWithRetry` ở [`src/providers/http.ts:20`](src/providers/http.ts#L20)** (dùng `requestUrl` của Obsidian). **Không bao giờ `fetch`** — CORS chặn DeepL, và mobile cần `requestUrl`.
 - **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. Bốn custom property hình học — `--st-clip-top` / `--st-clip-right` / `--st-clip-bottom` / `--st-clip-left` — được ghi từ `setClip()` của icon và popup, và chỉ hai dòng `clip-path` trong `styles.css` đọc chúng ([`:109`](styles.css#L109), [`:213`](styles.css#L213)). Thêm cạnh thì phải sửa **cả hai** dòng. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
-- **Log qua `src/utils/log.ts`** — cổng duy nhất, mặc định tắt, không bao giờ log nội dung note hay API key.
+- **Log qua `src/utils/log.ts`** — cổng duy nhất, mặc định tắt, không bao giờ log nội dung note hay API key. Ba kênh được phép là `console.debug` / `warn` / `error`; **`console.log` bị cấm tuyệt đối** (§6.18).
 - `type` import tường minh (`consistent-type-imports`), `no-explicit-any` ở mức error.
 - Commit theo Conventional Commits, scope theo epic: `fix(ui):`, `feat(hotkey):`, `refactor(lang):`, `feat(provider):`, `feat(i18n):`, `docs(i18n):`.
 
@@ -380,6 +380,30 @@ Và một thứ **không cần** sửa, đã kiểm: `ClipInsets` cùng bốn cu
 Một bản OpenCC chuyển máy cho ra 快取 → 快取 và 外掛程式 → 外挂程式, đều **sai** với người đại lục và đọc ra ngay là "bản Đài Loan chuyển máy". Quy trình bắt buộc: `zh-Hant` trước như bản chuẩn, chuyển bộ chữ, rồi **rà lại toàn bộ thuật ngữ** theo catalogue `zh` chính thức của Obsidian.
 
 Cách tra thuật ngữ chính thức của Obsidian cho **mọi** ngôn ngữ, ghi trong `docs/GLOSSARY.md` vì E7 sẽ cần lại: giải nén `obsidian-<version>.asar` (kỹ thuật ở §6.12) rồi ghép `i18n/mapping.txt` (khoá, mỗi dòng một khoá) với `i18n/<locale>.txt` (bản dịch, **cùng số dòng**); bản English nằm trong `i18n.js` dưới `window.OBSIDIAN_DEFAULT_I18N`.
+
+### Một cái mới — **phát hiện sau E4, bằng một validator bên ngoài**
+
+**6.18. `npm run lint` xanh KHÔNG chứng minh ruleset của người review cũng xanh. Đây là bài học §8 số 2 tái xuất, và lần này nó bắt được một lỗi thật.**
+
+Chuyện đã xảy ra: `eslint.config.mjs` có một override tắt `no-console` **riêng cho `src/utils/log.ts`**, vì cổng log gọi `console.log` sau một setting. Repo xanh suốt. Nhưng [obsidian-plugin-validator](https://github.com/philpalmieri/obsidian-plugin-validator) chạy config **của chính nó** — không thấy override — và báo **1 error** ở đúng dòng đó.
+
+Dữ kiện chốt vấn đề: allow-list của `obsidianmd/rule-custom-message` là **`["warn", "error", "debug"]`**. `console.log` **không** nằm trong đó; `console.debug` thì có. Nên:
+
+- `debug()` nay dùng **`console.debug`**, và override đã **gỡ hẳn** — không còn chỗ nào trong repo tắt rule này.
+- `no-console` của ta khai `allow: ['error', 'warn', 'debug']`, **chép đúng** allow-list của obsidianmd. Giữ hai danh sách này giống nhau; lệch một cái là tái diễn đúng lỗi trên.
+- `npm run check` siết thêm: **`console.log` cấm ở mọi nơi**, `console.debug` chỉ được ở `src/utils/log.ts`. Bất biến "một cổng log duy nhất" giữ nguyên, chỉ đổi kênh.
+
+**Hệ quả người dùng, đừng quên:** DevTools **ẩn** `console.debug` cho tới khi bật mức log *Verbose*. Người bật `debugLog` mà không biết điều đó sẽ thấy console trống và tưởng plugin hỏng — nên `settings.debugLogDesc` ở **cả tám locale** đã nói rõ chỗ phải bấm, và `verbose` nằm trong mục "không dịch" của glossary vì đó là nhãn thật trong DevTools.
+
+**Cách dùng validator đó, vì nó dễ cho kết quả sai:**
+
+```bash
+npx obsidian-plugin-validator      # chạy trong repo ĐÃ npm install
+```
+
+Chạy trên một bản tải về **chưa `npm install`** thì `import … from 'obsidian'` không phân giải được, TypeScript gán kiểu *error* cho toàn bộ API của Obsidian, và mọi rule type-aware nổ dây chuyền — đã gặp **268 lỗi giả**, tất cả đều ghi *"a type that could not be resolved"*. Thấy chuỗi đó trong output thì kiểm `node_modules` **trước**, đừng đi sửa code.
+
+Ngưỡng đúng hiện nay: **cả `npm run lint` lẫn validator đều 0 error / 5 warning**, và 5 warning trùng khít nhau (§6.8).
 
 ---
 

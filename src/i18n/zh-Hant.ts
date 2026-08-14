@@ -119,7 +119,7 @@ export const zhHant = {
 	'settings.stripMarkdown': '翻譯前移除 Markdown 語法',
 	'settings.stripMarkdownDesc': '去除 ** 與連結之類的語法，讓翻譯引擎看到的內容與讀者所見一致。',
 	'settings.debugLog': '偵錯記錄',
-	'settings.debugLogDesc': '將診斷訊息寫入開發人員主控台。除非要回報問題，否則請保持關閉。',
+	'settings.debugLogDesc': '將診斷訊息寫入開發人員主控台，主控台只在 verbose 層級顯示這些訊息。除非要回報問題，否則請保持關閉。',
 	'settings.reset': '還原至預設值',
 	'settings.resetDesc': '將上方所有選項還原為初始值。API 金鑰會保留。',
 	'settings.resetButton': '還原',

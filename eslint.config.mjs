@@ -57,8 +57,18 @@ export default tseslint.config(
         },
       ],
 
-      // Guideline: no console noise by default. utils/log.ts is the one gate.
-      'no-console': ['error', { allow: ['error', 'warn'] }],
+      /*
+       * Guideline: no console noise by default. utils/log.ts is the one gate.
+       *
+       * The allow list is copied from `obsidianmd/rule-custom-message`, which
+       * permits exactly warn, error and debug. Matching it rather than choosing
+       * our own is the point: this file used to be laxer in one direction (an
+       * override switching the rule off for log.ts) and stricter in another (no
+       * `debug`), which meant `npm run lint` could pass while a reviewer running
+       * the plugin's own ruleset saw an error. It did — that is how this was
+       * found. Keep the two lists identical.
+       */
+      'no-console': ['error', { allow: ['error', 'warn', 'debug'] }],
 
       'no-var': 'error',
       'prefer-const': 'error',
@@ -116,19 +126,6 @@ export default tseslint.config(
         },
       ],
     },
-  },
-  {
-    /*
-     * The single sanctioned console.log site.
-     *
-     * Both spellings of the rule are switched off here — the core one and
-     * obsidianmd's own — because the call behind them is gated on a setting the
-     * user has to turn on to collect a bug report. Turning them off in the
-     * config rather than with an inline `eslint-disable` is deliberate: Obsidian
-     * rejects submissions that suppress their rules from inside the source.
-     */
-    files: ['src/utils/log.ts'],
-    rules: { 'no-console': 'off', 'obsidianmd/rule-custom-message': 'off' },
   },
   {
     // Tests are not a plugin: they neither ship nor run inside Obsidian, so the

@@ -23,7 +23,7 @@ Chạy `npm run verify` trước. Lệnh này tự kiểm phần lớn các mụ
 - [ ] 🤖 `npm run lint` sạch
 - [ ] 🤖 Không có `innerHTML` / `outerHTML` / `insertAdjacentHTML` trong `src/`
 - [ ] 🤖 Không dùng biến toàn cục `app`, chỉ `this.app`
-- [ ] 🤖 `console.log` chỉ nằm trong `src/utils/log.ts`
+- [ ] 🤖 Không có `console.log` ở bất kỳ đâu; `console.debug` chỉ nằm trong `src/utils/log.ts`
 - [ ] 🤖 Không còn tên mẫu `MyPlugin`, `SampleSettingTab`, `Sample Plugin`
 - [ ] 🤖 Không command nào đặt hotkey mặc định
 - [ ] Đã xoá hết mã mẫu còn sót của `obsidian-sample-plugin`

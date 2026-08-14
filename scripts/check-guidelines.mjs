@@ -60,12 +60,28 @@ for (const file of sourceFiles) {
 
 /* ── Console output goes through the one logging gate ─────────────────────── */
 
+/*
+ * `console.log` is banned outright, everywhere.
+ *
+ * It is not on the list eslint-plugin-obsidianmd allows — warn, error and debug
+ * are — so a single call is an error in the ruleset a reviewer runs, whatever
+ * this repo's own config says. The gate in utils/log.ts uses `console.debug`
+ * for exactly that reason.
+ *
+ * `console.debug` is allowed, but only in the gate: routine chatter has to stay
+ * behind the `debugLog` setting, and a direct call anywhere else escapes it.
+ * ESLint enforces the allow list; this enforces the single call site.
+ */
 for (const file of sourceFiles) {
+	const text = readFileSync(file, 'utf8');
+
+	if (text.includes('console.log')) {
+		fail('No stray console output', `${file} calls console.log, which no ruleset allows`);
+	}
 	if (file.replace(/\\/g, '/') === 'src/utils/log.ts') continue;
 
-	const text = readFileSync(file, 'utf8');
-	if (text.includes('console.log')) {
-		fail('No stray console output', `${file} calls console.log directly`);
+	if (text.includes('console.debug')) {
+		fail('No stray console output', `${file} calls console.debug outside the logging gate`);
 	}
 }
 

@@ -129,7 +129,7 @@ export const it = {
 		'Toglie la sintassi come ** e i collegamenti, così il motore vede il testo come lo vede chi legge.',
 	'settings.debugLog': 'Log di debug',
 	'settings.debugLogDesc':
-		'Scrive messaggi diagnostici nella console per sviluppatori. Tienilo spento se non stai segnalando un problema.',
+		'Scrive messaggi diagnostici nella console per sviluppatori, che li mostra solo al livello verbose. Tienilo spento se non stai segnalando un problema.',
 	'settings.reset': 'Ripristina i valori predefiniti',
 	'settings.resetDesc': 'Riporta tutte le opzioni qui sopra al valore iniziale. Le chiavi API restano.',
 	'settings.resetButton': 'Ripristina',

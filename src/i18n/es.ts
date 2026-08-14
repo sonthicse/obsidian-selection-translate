@@ -131,7 +131,7 @@ export const es = {
 		'Elimina la sintaxis como ** y los enlaces, para que el motor vea el texto igual que un lector.',
 	'settings.debugLog': 'Registro de depuración',
 	'settings.debugLogDesc':
-		'Escribe mensajes de diagnóstico en la consola de desarrollo. Manténgalo desactivado salvo para informar de un fallo.',
+		'Escribe mensajes de diagnóstico en la consola de desarrollo, que solo los muestra en el nivel verbose. Manténgalo desactivado salvo para informar de un fallo.',
 	'settings.reset': 'Restaurar los valores por defecto',
 	'settings.resetDesc': 'Devuelve todas las opciones anteriores a su valor inicial. Las claves de API se conservan.',
 	'settings.resetButton': 'Restaurar',

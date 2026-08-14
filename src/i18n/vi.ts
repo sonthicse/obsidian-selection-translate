@@ -124,7 +124,7 @@ export const vi = {
 		'Bỏ các ký hiệu như ** và liên kết, để công cụ dịch nhìn thấy văn bản giống người đọc.',
 	'settings.debugLog': 'Ghi log gỡ lỗi',
 	'settings.debugLogDesc':
-		'Ghi thông tin chẩn đoán ra console của nhà phát triển. Chỉ bật khi cần báo lỗi.',
+		'Ghi thông tin chẩn đoán ra console của nhà phát triển, nơi chỉ hiện chúng ở mức verbose. Chỉ bật khi cần báo lỗi.',
 	'settings.reset': 'Khôi phục mặc định',
 	'settings.resetDesc': 'Đưa mọi tuỳ chọn ở trên về giá trị ban đầu. Khoá API được giữ nguyên.',
 	'settings.resetButton': 'Khôi phục',

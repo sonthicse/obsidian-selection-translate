@@ -138,7 +138,7 @@ export const en = {
 		'Strips syntax such as ** and links so the engine sees the text as a reader would.',
 	'settings.debugLog': 'Debug logging',
 	'settings.debugLogDesc':
-		'Writes diagnostic messages to the developer console. Off unless you are reporting a bug.',
+		'Writes diagnostic messages to the developer console, which shows them only at verbose level. Off unless you are reporting a bug.',
 	'settings.reset': 'Restore defaults',
 	'settings.resetDesc': 'Returns every option above to its original value. API keys are kept.',
 	'settings.resetButton': 'Restore',

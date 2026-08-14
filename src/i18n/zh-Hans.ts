@@ -120,7 +120,7 @@ export const zhHans = {
 	'settings.stripMarkdown': '翻译前移除 Markdown 语法',
 	'settings.stripMarkdownDesc': '去掉 ** 和链接之类的语法，让翻译引擎看到的内容与读者所见一致。',
 	'settings.debugLog': '调试日志',
-	'settings.debugLogDesc': '将诊断信息写入开发者控制台。除非要反馈问题，否则请保持关闭。',
+	'settings.debugLogDesc': '将诊断信息写入开发者控制台，控制台只在 verbose 级别显示这些信息。除非要反馈问题，否则请保持关闭。',
 	'settings.reset': '恢复默认',
 	'settings.resetDesc': '将上方所有选项恢复为初始值。API 密钥会保留。',
 	'settings.resetButton': '恢复',
