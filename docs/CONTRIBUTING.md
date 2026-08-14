@@ -69,7 +69,7 @@ Nếu bạn thêm fixture cho endpoint gtx, hãy dùng **bản chụp thật** c
 - Không đặt hotkey mặc định cho command.
 - Không đưa plugin id vào command id — Obsidian tự thêm tiền tố.
 - Màu sắc và khoảng cách nằm trong `styles.css`. Trong TypeScript chỉ được đặt toạ độ tính lúc chạy (`top`/`left`/`width`/`height`).
-- Mọi chuỗi hiển thị đi qua `t()`, và phải có mặt ở **cả** `en.ts` lẫn `vi.ts`.
+- Mọi chuỗi hiển thị đi qua `t()`, và phải có mặt ở **cả tám** catalogue trong `src/i18n/`.
 - Dọn sạch tài nguyên trong `onunload`.
 
 ### Mạng
@@ -81,7 +81,11 @@ Nếu bạn thêm fixture cho endpoint gtx, hãy dùng **bản chụp thật** c
 
 ### Đa ngôn ngữ
 
-Thêm chuỗi mới thì thêm vào `src/i18n/en.ts` **và** `src/i18n/vi.ts`. `vi.ts` khai báo `satisfies Messages`, nên quên một key là lỗi biên dịch, không phải một nhãn trống mà ai đó phát hiện sau khi phát hành.
+Plugin có **tám** ngôn ngữ giao diện: `en`, `vi`, `zh-Hant`, `zh-Hans`, `ja`, `es`, `it`, `ar`. `en.ts` là nguồn chân lý; bảy file còn lại khai `satisfies Messages`, nên quên một key là **lỗi biên dịch**, không phải một nhãn trống mà ai đó phát hiện sau khi phát hành.
+
+Thêm một chuỗi mới thì thêm vào `en.ts` trước, rồi đủ bảy file kia — playbook đầy đủ ở mục 5.3 của [`CLAUDE.md`](../CLAUDE.md).
+
+**Đọc [`GLOSSARY.md`](GLOSSARY.md) trước khi dịch.** Mỗi thuật ngữ cốt lõi có một bản dịch cố định cho mỗi ngôn ngữ, và những khái niệm dùng chung với Obsidian phải dùng đúng từ bản địa hoá chính thức của Obsidian đang dùng.
 
 Chuỗi tiếng Việt phải **đủ dấu**. Không viết "cai dat" thay cho "cài đặt".
 

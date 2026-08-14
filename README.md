@@ -19,7 +19,7 @@ Select any text in Obsidian and translate it in place — in notes, in PDFs, in 
 - **Three engines.** Google without a key, Google Cloud Translation, or DeepL. The right server for a DeepL key is chosen from the key itself.
 - **Read aloud.** Through your system voice, offline, or through Google.
 - **Reads Markdown as a reader would.** Selecting `**Domain** [information](https://example.com)` sends `Domain information`, not the syntax and the URL.
-- **Vietnamese and English interface**, following Obsidian's own language by default.
+- **An interface in eight languages.** English, Vietnamese, Traditional and Simplified Chinese, Japanese, Spanish, Italian and Arabic, following Obsidian's own language by default. Right-to-left layout included.
 - **Nothing stored, nothing tracked.** No telemetry of any kind, and translations are never written to disk.
 
 ## Installation

@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 > Tài liệu này viết bằng tiếng Việt vì bộ tài liệu phát triển của dự án (`docs/DEV-PLAN.md`, `docs/CONTRIBUTING.md`, `docs/SUBMISSION.md`) dùng tiếng Việt. **Mã nguồn, comment trong code, chuỗi UI tiếng Anh, CHANGELOG và README vẫn viết bằng tiếng Anh** — đừng dịch chúng.
 >
-> Trạng thái khi viết: sau **E3** (chưa phát hành; E3 + E4 cùng đi trong `0.4.0`, và `0.4.0` **bắt buộc qua beta BRAT** trước khi phát hành). **53 file TS** trong `src/` (7 934 LOC), **17 file test**, **332 test**, **122 chuỗi UI**, `npm run lint` = **0 error / 5 warning**.
+> Trạng thái khi viết: sau **E4** (chưa phát hành; E3 + E4 cùng đi trong `0.4.0`, và `0.4.0` **bắt buộc qua beta BRAT** trước khi phát hành). **59 file TS** trong `src/` (9 097 LOC), **17 file test**, **365 test**, **120 chuỗi UI × 8 locale = 960**, `npm run lint` = **0 error / 5 warning**.
 >
-> Số chuỗi UI 127 → **122** ở E3: xoá 6 key `lang.<code>` (dropdown ngôn ngữ nay hiển thị `nativeName` lấy từ registry, không qua catalogue), thêm 1 key `notice.russianRemoved`. `lang.auto` **giữ lại** — "tự nhận diện" là một chỉ dẫn, không phải tên một ngôn ngữ. **E4 phải lập kế hoạch trên 8 × 122 = 976 chuỗi**, không phải con số cũ.
+> Số chuỗi UI 122 → **120** ở E4: xoá `uiLang.en` và `uiLang.vi`, vì dropdown ngôn ngữ giao diện nay cũng lấy `nativeName` từ registry như hai dropdown kia. Chỉ còn **hai** key ngôn ngữ đi qua i18n — `lang.auto` và `uiLang.auto` — và cả hai là **chỉ dẫn** chứ không phải tên một ngôn ngữ.
+>
+> Tám locale: `en` (chuẩn), `vi`, `zh-Hant`, `zh-Hans`, `ja`, `es`, `it`, `ar`. **`ar` là locale RTL duy nhất.**
 
 ---
 
 ## 1. Plugin làm gì, cho ai
 
-Selection Translate dịch đoạn văn bản người dùng bôi đen ngay tại chỗ trong Obsidian: một icon nhỏ hiện cạnh vùng chọn, bấm vào thì popup hiện bản dịch kèm phiên âm, từ loại và các nghĩa thay thế. Nó phục vụ người đọc/ghi chú song ngữ — cặp Anh ↔ Việt vẫn là đối tượng chính, nhưng từ E3 thì **10 ngôn ngữ đều dùng được ở cả hai vai** — làm việc trong note Markdown (cả Live Preview lẫn Reading), trong PDF, trong ô properties và trong popout window. Bốn engine dịch nằm sau một giao diện chung (`google-free` mặc định vì không cần khoá, `google-cloud`, `deepl`, cộng hai nguồn từ điển), nên đổi engine là đổi một dropdown chứ không phải đổi cách dùng.
+Selection Translate dịch đoạn văn bản người dùng bôi đen ngay tại chỗ trong Obsidian: một icon nhỏ hiện cạnh vùng chọn, bấm vào thì popup hiện bản dịch kèm phiên âm, từ loại và các nghĩa thay thế. Nó phục vụ người đọc/ghi chú song ngữ — cặp Anh ↔ Việt vẫn là đối tượng chính, nhưng từ E3 thì **10 ngôn ngữ đều dùng được ở cả hai vai** — làm việc trong note Markdown (cả Live Preview lẫn Reading), trong PDF, trong ô properties và trong popout window. Bốn engine dịch nằm sau một giao diện chung (`google-free` mặc định vì không cần khoá, `google-cloud`, `deepl`, cộng hai nguồn từ điển), nên đổi engine là đổi một dropdown chứ không phải đổi cách dùng. Từ **E4**, giao diện của chính plugin có **8 ngôn ngữ** và bố trí đúng chiều đọc, kể cả phải-sang-trái.
 
 Kế hoạch phát triển đã chốt nằm ở [`docs/DEV-PLAN.md`](docs/DEV-PLAN.md) — **đọc nó trước khi làm bất kỳ epic nào**.
 
@@ -30,9 +32,11 @@ Chiều phụ thuộc: `selection/` → `core/` → `providers/`, và `ui/` treo
 
 ```
 src/main.ts (247)          vòng đời plugin, command, ghép các khối, this.register() teardown
-src/languages.ts    (279)  ⟵ mới ở E3. Registry ngôn ngữ: MỘT nơi mô tả một ngôn ngữ.
-                           LANGUAGES + LanguageDescriptor + SourceLangCode/TargetLangCode
-                           (suy ra từ cờ, không viết tay) + normalizeDetectedLang.
+src/languages.ts    (322)  ⟵ mới ở E3, mở rộng ở E4. Registry ngôn ngữ: MỘT nơi mô tả
+                           một ngôn ngữ. LANGUAGES + LanguageDescriptor +
+                           SourceLangCode/TargetLangCode/UiLangCode (suy ra từ cờ, không
+                           viết tay) + normalizeDetectedLang / normalizeUiLang (một luật
+                           phân tích thẻ, hai bộ lọc theo vai — §6.15).
                            Không import gì — đáy đồ thị phụ thuộc, mọi tầng đọc được.
 
 src/selection/             đọc vùng chọn từ từng bề mặt
@@ -56,23 +60,28 @@ src/providers/             chỉ nhận/trả dữ liệu thuần, test được
   deeplLangCodes.ts   (48)   ⟵ tách ở E3. Hai bảng: source và target (xem §6.2)
 
 src/ui/                    tầng duy nhất được chạm DOM của popup/icon
-  UiController.ts     (671)  điều phối: state machine, placement search, dismiss
+  UiController.ts     (676)  điều phối: state machine, placement search, dismiss
   FloatingLayer.ts    (106)  ⟵ tách ở E0. Sở hữu icon + popup; mọi câu hỏi hình học.
                              applyGeometry() là cổng DUY NHẤT set vị trí/clip/visibility
-  TranslatePopup.ts   (384)  vòng đời element, đo kích thước, animation grow
-  PopupContent.ts     (239)  ⟵ tách ở E0. Dựng nội dung kết quả/lỗi
+  TranslatePopup.ts   (395)  vòng đời element, đo kích thước, animation grow
+  PopupContent.ts     (267)  ⟵ tách ở E0. Dựng nội dung kết quả/lỗi
   TriggerIcon.ts · Positioner.ts (hình học thuần, có test) · icons.ts
 
 src/settings/
-  SettingTab.ts       (96)   chỉ còn: thứ tự section + điểm ghi settings duy nhất
+  SettingTab.ts      (106)   chỉ còn: thứ tự section + điểm ghi settings duy nhất
   sections/                  ⟵ tách ở E0. context.ts (kiểu SectionContext),
                              language.ts, provider.ts, activation.ts, scope.ts,
                              appearance.ts, speech.ts, advanced.ts
-  settings.ts        (258)   kiểu + DEFAULT_SETTINGS + SETTING_LIMITS +
+  settings.ts        (278)   kiểu + DEFAULT_SETTINGS + SETTING_LIMITS +
                              normalizeSettings (bất biến mọi phiên bản) +
                              migrate (đổi ý nghĩa giữa các schemaVersion) — §6.13
 
-src/i18n/                  en.ts (nguồn chân lý) · vi.ts · index.ts (t, resolveLocale)
+src/i18n/                  ⟵ 8 catalogue sau E4. en.ts (nguồn chân lý, 120 key) ·
+                           vi.ts · zh-Hant.ts · zh-Hans.ts · ja.ts · es.ts · it.ts · ar.ts
+  index.ts          (155)  Locale (= UiLangCode, suy từ registry) · CATALOGUES
+                           (Record<Locale, Messages> — bật ui: true mà quên catalogue
+                           là LỖI BIÊN DỊCH) · t() fallback về en · resolveLocale ·
+                           uiDir() — hướng đọc của CHROME, không phải của nội dung (§6.16)
 src/tts/                   TtsService · WebSpeechEngine · GoogleTtsEngine
 src/utils/                 log.ts (cổng console duy nhất) · dom.ts · scroll.ts ·
                            debounce.ts · hash.ts · text.ts
@@ -100,9 +109,9 @@ Chạy một file test: `npx vitest run tests/Positioner.test.ts` · một test:
 **Bốn cổng thêm ở E0 — biết chúng tồn tại để không ngạc nhiên khi CI đỏ:**
 
 1. **Ranh giới tầng** — `no-restricted-imports`, [`eslint.config.mjs:87-118`](eslint.config.mjs#L87-L118).
-2. **i18n key-parity + placeholder-parity** — [`scripts/check-guidelines.mjs:158-187`](scripts/check-guidelines.mjs#L158-L187). Thiếu key là fail; `{ms}` viết sai ở một catalogue cũng là fail.
-3. **Đối chiếu host README ↔ `src/`, hai chiều** — [`scripts/check-guidelines.mjs:198-221`](scripts/check-guidelines.mjs#L198-L221). Host mới trong code mà README chưa khai = fail; README khai host không ai gọi = cũng fail.
-4. **Link chết trong `docs/`** — [`scripts/check-guidelines.mjs:225-240`](scripts/check-guidelines.mjs#L225-L240).
+2. **i18n key-parity + placeholder-parity** — [`scripts/check-guidelines.mjs:168-216`](scripts/check-guidelines.mjs#L168-L216). Thiếu key là fail; `{ms}` viết sai ở một catalogue cũng là fail.
+3. **Đối chiếu host README ↔ `src/`, hai chiều** — [`scripts/check-guidelines.mjs:217-249`](scripts/check-guidelines.mjs#L217-L249). Host mới trong code mà README chưa khai = fail; README khai host không ai gọi = cũng fail.
+4. **Link chết trong `docs/`** — [`scripts/check-guidelines.mjs:251-268`](scripts/check-guidelines.mjs#L251-L268).
 
 `npm run check` cũng chặn: `innerHTML`/`outerHTML`/`insertAdjacentHTML`, `window.app`, `console.log` ngoài `src/utils/log.ts`, hotkey mặc định cho command, màu literal ngoài khối token trong `styles.css`, và lệch version giữa `package.json` / `manifest.json` / `versions.json`.
 
@@ -115,7 +124,7 @@ Chạy một file test: `npx vitest run tests/Positioner.test.ts` · một test:
 - **Chuỗi UI sentence case**, theo style guide của Obsidian. Heading trong settings không lặp tên plugin, không chứa từ "settings". Câu lỗi phải nói người dùng làm gì tiếp theo.
 - **Không dựng DOM từ chuỗi markup.** `innerHTML` / `outerHTML` / `insertAdjacentHTML` bị cấm ở cả ESLint lẫn `npm run check`. Dùng `createDiv` / `createEl` / `setText`.
 - **Mạng đi qua `requestWithRetry` ở [`src/providers/http.ts:20`](src/providers/http.ts#L20)** (dùng `requestUrl` của Obsidian). **Không bao giờ `fetch`** — CORS chặn DeepL, và mobile cần `requestUrl`.
-- **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. Bốn custom property hình học — `--st-clip-top` / `--st-clip-right` / `--st-clip-bottom` / `--st-clip-left` — được ghi từ `setClip()` của icon và popup, và chỉ hai dòng `clip-path` trong `styles.css` đọc chúng ([`:109`](styles.css#L109), [`:198`](styles.css#L198)). Thêm cạnh thì phải sửa **cả hai** dòng. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
+- **Không gán style tĩnh trong JS.** Màu và khoảng cách nằm trong `styles.css` dưới dạng token `--st-*`; TypeScript chỉ đặt toạ độ/kích thước tính lúc chạy. Bốn custom property hình học — `--st-clip-top` / `--st-clip-right` / `--st-clip-bottom` / `--st-clip-left` — được ghi từ `setClip()` của icon và popup, và chỉ hai dòng `clip-path` trong `styles.css` đọc chúng ([`:109`](styles.css#L109), [`:213`](styles.css#L213)). Thêm cạnh thì phải sửa **cả hai** dòng. ⚠️ Xem cạm bẫy §6.5: rule lint chỉ bắt **literal**, nên "lint xanh" *không* chứng minh chỗ đó không gán style.
 - **Log qua `src/utils/log.ts`** — cổng duy nhất, mặc định tắt, không bao giờ log nội dung note hay API key.
 - `type` import tường minh (`consistent-type-imports`), `no-explicit-any` ở mức error.
 - Commit theo Conventional Commits, scope theo epic: `fix(ui):`, `feat(hotkey):`, `refactor(lang):`, `feat(provider):`, `feat(i18n):`, `docs(i18n):`.
@@ -132,7 +141,7 @@ Mỗi playbook là danh sách file **theo đúng thứ tự phải sửa**.
 
 1. [`src/languages.ts`](src/languages.ts) — **một hàng** trong `LANGUAGES`. Đủ 8 trường; ba trường dễ điền sai:
    - `code`: thẻ **BCP-47**, không phải mã của provider nào. Có script subtag chỉ khi script mới là thứ phân biệt (`zh-Hant` / `zh-Hans`); ngoài ra dùng mã hai chữ cái trần.
-   - `ui`: đặt `true` **chỉ khi** catalogue giao diện đã tồn tại trong `src/i18n/`. Đặt trước là dựng bẫy — dropdown ngôn ngữ giao diện sẽ mời một ngôn ngữ không có chuỗi nào phía sau.
+   - `ui`: đặt `true` **chỉ khi** catalogue giao diện đã tồn tại trong `src/i18n/` **và đã có mặt trong `CATALOGUES`**. Từ E4 điều này được **trình biên dịch ép**: `CATALOGUES` khai `Record<Locale, Messages>`, nên bật cờ mà quên catalogue là lỗi biên dịch chứ không còn là cái bẫy lúc chạy. Playbook viết catalogue ở §5.3.
    - `phonetic`: E6 đọc trường này để quyết định cách render (`ipa` bọc trong `/…/`, `romanization` thì không, `none` thì không render khối nào cả).
 
    Thứ tự trong mảng **chính là thứ tự dropdown**; `SOURCE_LANGUAGES` / `TARGET_LANGUAGES` / `UI_LANGUAGES` và cả kiểu `SourceLangCode` / `TargetLangCode` đều suy ra từ cờ, **không sửa tay**.
@@ -145,7 +154,9 @@ Mỗi playbook là danh sách file **theo đúng thứ tự phải sửa**.
 
 3. `normalizeDetectedLang` trong cùng file — kiểm mã mà provider **báo về** có rơi đúng chỗ không. Mặc định là cắt region, và điều đó đủ cho hầu hết ngôn ngữ. Nhóm nào cần luật riêng thì làm như `zh` đã làm (§6.4).
 
-4. **Không** thêm key `lang.<code>` vào catalogue. Dropdown hiển thị `nativeName` lấy thẳng từ registry — người chọn tiếng Nhật tìm 日本語, không tìm chữ "Japanese". Chỉ `lang.auto` còn đi qua i18n, vì "tự nhận diện" là chỉ dẫn chứ không phải tên ngôn ngữ. Xem `languageLabel()` ở [`src/settings/sections/language.ts`](src/settings/sections/language.ts).
+4. **Không** thêm key `lang.<code>` hay `uiLang.<code>` vào catalogue. **Cả ba** dropdown — nguồn, đích và giao diện — hiển thị `nativeName` lấy thẳng từ registry; người chọn tiếng Nhật tìm 日本語, không tìm chữ "Japanese". Chỉ `lang.auto` và `uiLang.auto` còn đi qua i18n, vì cả hai là chỉ dẫn chứ không phải tên ngôn ngữ. Xem `languageLabel()` ở [`src/settings/sections/language.ts`](src/settings/sections/language.ts).
+
+   Ngôn ngữ mới có `dir: 'rtl'`: **không phải sửa gì thêm** ở tầng UI. Cả ba việc RTL (§6.16) đọc trường này, và test `marks Arabic right-to-left, and nothing else` sẽ đỏ để hỏi lại — trả lời rồi mới sửa test.
 
 5. `tests/languages.test.ts` — hai test cố ý **canh gác ma trận đã chốt** và sẽ đỏ khi thêm ngôn ngữ: `lists the agreed matrix` và `returns null for a language the plugin does not list`. Đỏ ở đó nghĩa là "ngôn ngữ này có nằm trong kế hoạch không?" — trả lời rồi mới sửa test, đừng sửa trước.
 
@@ -164,7 +175,7 @@ Mỗi playbook là danh sách file **theo đúng thứ tự phải sửa**.
 5. [`src/providers/ProviderRegistry.ts:26-30`](src/providers/ProviderRegistry.ts#L26-L30) — thêm vào `this.translators`. Khoá API đọc qua **getter**, không truyền giá trị vào constructor, để đổi khoá có hiệu lực ngay.
 6. `src/settings/settings.ts` — trường `<tên>ApiKey` trong `SelectionTranslateSettings` + `DEFAULT_SETTINGS`.
 7. [`src/settings/sections/provider.ts:19`](src/settings/sections/provider.ts#L19) — thêm id vào mảng dropdown, rồi một khối `addApiKeyField(...)` như DeepL/Google Cloud.
-8. `src/i18n/en.ts` rồi `vi.ts` — `provider.<id>`, `settings.<tên>Key`, `settings.<tên>KeyDesc`.
+8. **Cả tám catalogue** trong `src/i18n/` — `provider.<id>`, `settings.<tên>Key`, `settings.<tên>KeyDesc`. Theo đúng playbook §5.3: `en.ts` trước, tra `docs/GLOSSARY.md`, rồi bảy file còn lại. Ba key × 8 = 24 chuỗi cho mỗi provider mới, và `tsc` sẽ liệt kê đúng file nào còn thiếu.
 9. **Bộ fixture tối thiểu** trong `tests/fixtures/` + `tests/<Tên>Provider.test.ts`. Bốn fixture, đúng mẫu đang có cho DeepL (`deepl-ok.json`, `deepl-403.json`, `deepl-456.json`, `deepl-usage.json`) và cho gtx (`gtx-malformed.json`):
    - response thành công · lỗi xác thực · lỗi hết hạn mức/quota · body dị dạng.
    - Fixture cho endpoint không có tài liệu (kiểu gtx) phải là **bản chụp thật**, không viết tay.
@@ -174,12 +185,44 @@ Mỗi playbook là danh sách file **theo đúng thứ tự phải sửa**.
 
 ### 5.3. Thêm một chuỗi UI mới
 
-1. `src/i18n/en.ts` **trước** — đây là bản chuẩn; `vi.ts` khai `satisfies Messages` nên thiếu key là lỗi biên dịch.
-2. `src/i18n/vi.ts` — đủ dấu tiếng Việt, không viết "cai dat".
-3. Nơi dùng: `t('key')` hoặc `t('key', { vars })`. Placeholder dạng `{name}` phải **trùng tên** giữa mọi catalogue.
-4. `npm test` (parity trong `tests/i18n.test.ts`) và `npm run check` (parity key + placeholder).
+> Viết lại toàn bộ ở **E4**. Trước E4 mục này nói "`en.ts` trước, rồi `vi.ts`"; nay là **tám** catalogue, và một chuỗi mới tốn tám lần công thay vì hai. Đó không phải lý do để bỏ qua bước nào — nó là lý do để **cân nhắc có thật sự cần thêm chuỗi không** trước khi thêm.
 
-Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầng provider không được import catalogue.
+1. **`src/i18n/en.ts` trước, luôn luôn.** Đây là bản chuẩn và là nơi duy nhất định nghĩa tập key (`Messages = typeof en`).
+
+2. **Rồi đủ bảy file còn lại**, không được bỏ sót file nào:
+
+   | File | Ngôn ngữ | Lưu ý riêng |
+   |---|---|---|
+   | `vi.ts` | Tiếng Việt | Đủ dấu. Không viết "cai dat" thay cho "cài đặt" |
+   | `zh-Hant.ts` | Trung phồn thể | **Viết trước `zh-Hans`** — đây là bản Trung chuẩn |
+   | `zh-Hans.ts` | Trung giản thể | **Phái sinh từ `zh-Hant`, rồi rà lại thuật ngữ.** Xem §6.17 |
+   | `ja.ts` | Nhật | Nhãn là cụm danh từ ngắn, không phải câu; lược chủ ngữ ngôi hai |
+   | `es.ts` | Tây Ban Nha | Dài hơn tiếng Anh 20–30%; ngữ vực **usted**, theo Obsidian |
+   | `it.ts` | Ý | Dài tương tự; ngữ vực **tu**, theo Obsidian |
+   | `ar.ts` | Ả Rập | **RTL.** Không mã hoá hướng đọc trong chuỗi — đó là việc của `dir` (§6.16) |
+
+   Bảy file đều khai `satisfies Messages`, nên **thiếu một key là lỗi biên dịch**, không phải nhãn trống phát hiện sau khi phát hành.
+
+3. **Tra [`docs/GLOSSARY.md`](docs/GLOSSARY.md) trước khi đặt bút.** Thuật ngữ cốt lõi có **một** bản dịch cố định cho mỗi ngôn ngữ. Khái niệm dùng chung với Obsidian (options, hotkeys, reading view, properties, cache, font, vault…) phải dùng **đúng từ bản địa hoá chính thức của Obsidian**, và glossary ghi sẵn cách tra lại từ file asar.
+
+   Hai bẫy thuật ngữ đã gặp thật, ghi trong glossary: `provider` **không bao giờ** xuất hiện trong chuỗi UI (từ hiển thị là **engine**); và tiếng Tây Ban Nha dùng *Origen del diccionario* chứ không phải *Fuente del diccionario*, vì *Fuente* đã là nhãn phông chữ ở cùng một pane.
+
+4. Nơi dùng: `t('key')` hoặc `t('key', { vars })`. Placeholder dạng `{name}` phải **trùng khít tên** ở cả tám catalogue.
+
+5. `npm run verify`. Bốn cổng bắt lỗi ở bốn mức khác nhau, và biết cổng nào bắt gì thì đọc lỗi nhanh hơn nhiều:
+
+   | Cổng | Bắt được gì |
+   |---|---|
+   | `tsc` (`satisfies Messages`) | Thiếu key, thừa key — **có tên file và số dòng** |
+   | `tests/i18n.test.ts` | Tập key, tập placeholder, chuỗi rỗng, và catalogue nào chưa vào `CATALOGUES` |
+   | `npm run check` | Cùng vậy nhưng ở mức văn bản, quét **mọi** file trong `src/i18n/` chứ không theo danh sách viết tay |
+   | `tests/i18n.test.ts` (sentence case) | Chỉ áp cho `en` — style guide của Obsidian là quy tắc tiếng Anh |
+
+**Ba điều không được quên:**
+
+- **Chuỗi lỗi của provider đi bằng key, không đi bằng câu** — tầng provider không được import catalogue.
+- **Tên ngôn ngữ KHÔNG nằm trong catalogue.** Ba dropdown (nguồn, đích, giao diện) đều lấy `nativeName` thẳng từ registry. Chỉ `lang.auto` và `uiLang.auto` đi qua i18n, vì chúng là **chỉ dẫn** chứ không phải tên. Thấy mình đang thêm `lang.ja` hay `uiLang.ja` là đã đi sai đường.
+- **Thiếu chuỗi ở một locale nay rơi về `en`, không hiện ra key** (E4-T1). Tiện cho người dùng, nhưng nghĩa là một key sót sẽ **không** đập vào mắt lúc chạy — chỉ có một dòng `console.warn` một lần. Đừng dựa vào mắt; dựa vào bốn cổng ở trên.
 
 ### 5.4. Thêm một setting mới
 
@@ -200,7 +243,7 @@ Chuỗi lỗi của provider đi bằng **key**, không đi bằng câu — tầ
    | `speech.ts` | `ttsEngine`, `ttsRate` |
    | `advanced.ts` | `cacheSize`, `stripMarkdown`, `debugLog`, nút reset |
 
-3. `src/i18n/en.ts` + `src/i18n/vi.ts` — `settings.<tên>` và `settings.<tên>Desc`.
+3. **Cả tám catalogue** — `settings.<tên>` và `settings.<tên>Desc`, theo playbook §5.3.
 4. Nơi đọc setting (orchestrator / UI / provider). Nếu giá trị ảnh hưởng CSS thì đi qua `applyCssVariables` ở `src/utils/dom.ts`.
 5. `tests/settings.test.ts` nếu có clamp hoặc migration.
 6. `README.md` + `README.vi.md` nếu bảng setting có liệt kê (quy tắc R2), rồi `npm run verify`.
@@ -288,6 +331,53 @@ Còn cache LRU thì **không cần invalidate**, dù khoá cache có chứa mã 
 **6.14. Bảng mã ngôn ngữ của provider phải khai `Record<LangCode, string>`, không phải `Partial<…>`, trừ khi provider thật sự thiếu ngôn ngữ.** Đây là thứ làm cho playbook 5.1 rẻ như hiện nay: thêm một hàng vào registry thì **trình biên dịch tự liệt kê** từng bảng còn thiếu mã, kèm đúng file và đúng dòng. Đổi sang `Partial` "cho tiện" là vứt bỏ đúng cái lưới an toàn đó, và ngôn ngữ mới sẽ lặng lẽ trở thành "không hỗ trợ" ở provider đó thay vì báo lỗi lúc build.
 
 Chỉ dùng `Partial<Record<LangCode, string>>` khi provider **thật sự** không có ngôn ngữ nào đó — ca của E5, ví dụ Papago không có tiếng Ả Rập. Khi ấy thiếu mã là câu trả lời đúng, và `supportsPair()` biến nó thành `unsupported-pair` **trước khi gọi mạng**.
+
+### Ba cái mới — **phát hiện từ E4, không có trong kế hoạch gốc**
+
+**6.15. Một luật phân tích thẻ ngôn ngữ, hai bộ lọc theo vai. Đừng viết bảng thứ hai.** `src/languages.ts` có một hàm riêng tư `normalizeTag()` làm toàn bộ việc khó — cắt region, và luật `zh` ở §6.4 — rồi **hai** hàm export mỏng lọc kết quả theo vai:
+
+| Hàm | Lọc theo | Dùng ở đâu |
+|---|---|---|
+| `normalizeDetectedLang()` | `asSource` | Mã ngôn ngữ **provider báo về** |
+| `normalizeUiLang()` | `ui` | Giá trị `localStorage.language` **Obsidian ghi** |
+
+Vì sao tách vai chứ không dùng chung một hàm: **hai tập không trùng nhau.** `fr` là ngôn ngữ nguồn hợp lệ nhưng **không** là locale giao diện, nên Obsidian đặt tiếng Pháp thì `normalizeUiLang('fr')` phải trả `null` để `resolveLocale` rơi về `en`. Dùng `normalizeDetectedLang` cho việc đó sẽ trả `'fr'` và `CATALOGUES['fr']` là `undefined` — plugin mất sạch chuỗi.
+
+Và vì sao **không** viết hai bảng `zh` riêng: luật `zh` là thứ dễ lệch nhất trong file này, và hai bản sao của nó sẽ lệch. E4-T3 mô tả đúng hai luật mà E3-T3 đã cài; dùng lại là câu trả lời, không phải chép lại.
+
+**6.16. RTL là BA câu hỏi khác nhau. Trả lời cả ba từ một nguồn là cách chắc chắn nhất để hỏng.** Đây là phần dễ làm sai nhất của E4, và ba việc rất dễ tưởng là một:
+
+| # | Việc | Theo cái gì | Ở đâu |
+|---|---|---|---|
+| 1 | **Chrome của plugin** — popup, twin đo, settings pane | **UI locale** | `uiDir()` ở [`src/i18n/index.ts`](src/i18n/index.ts); ghi `dir` ở `TranslatePopup.ensureElement`, `measure()` và `SettingTab.display()` |
+| 2 | **Nội dung** — khối `.st-translation` và `.st-entry` | **ngôn ngữ ĐÍCH** | `PopupContent.targetDir()`, đọc `LanguageDescriptor.dir` của `targetLang` |
+| 3 | **Placement** — icon/popup đặt bên nào | **UI locale** | `PlacementRequest.dir`, `computeCandidate()` đảo cạnh ngang |
+
+Ca chứng minh ba việc là ba: **giao diện tiếng Anh, dịch sang tiếng Ả Rập.** Khối kết quả phải căn phải (việc 2), trong khi nhãn header, footer và câu lỗi vẫn căn trái (việc 1), và icon vẫn nằm bên phải vùng chọn (việc 3).
+
+Ba điều **không được** làm:
+
+- **Đừng bám `body.mod-rtl` của Obsidian cho việc 1.** Class đó theo ngôn ngữ của **Obsidian**, còn plugin có ngôn ngữ giao diện của riêng nó. Hai cái trùng nhau khi `uiLanguage: 'auto'` — ca phổ biến — và khác nhau đúng lúc cần đúng nhất. (Dữ kiện: `app.js` của 1.13.7 làm `e.body.toggleClass("mod-rtl", ld.contains(t))` với `ld = ["ar","dv","fa","ff","he","ks","ku","ur","wo","yi"]`.)
+- **Đừng đặt `dir` lên vỏ popup rồi coi là xong.** Vỏ mang hướng của **giao diện**; khối nội dung **ghi đè** nó. Ngược lại là căn phải cả nhãn lẫn footer.
+- **Đừng đặt `dir` lên khối phiên âm.** IPA và romanization là chữ Latin dù mô tả ngôn ngữ nào.
+
+Và một thứ **không cần** sửa, đã kiểm: `ClipInsets` cùng bốn custom property `--st-clip-*` tính từ hình học thật của từng cạnh vật lý, nên chúng **đã đúng** ở cả hai hướng. Đừng "logical-hoá" chúng.
+
+`--st-font-family` nay có đuôi fallback cho Ả Rập / CJK / Kana trong [`styles.css`](styles.css). Popup là chỗ **duy nhất** trong Obsidian chắc chắn hiện một thứ chữ mà người dùng không đọc thường ngày, nên stack dừng ở `--font-interface` là ra ô vuông. E3 đã ghi nợ việc này và cố ý không làm.
+
+**6.17. `zh-Hans` không phải `zh-Hant` đổi bộ chữ — và đây là chuyện từ vựng, không phải chuyện ký tự.** Bảng đối chiếu đầy đủ ở [`docs/GLOSSARY.md`](docs/GLOSSARY.md) §4. Vài cặp có thật trong catalogue của dự án:
+
+| | `zh-Hant` | `zh-Hans` |
+|---|---|---|
+| cache | 快取 | 缓存 |
+| API key | API 金鑰 | API 密钥 |
+| plugin | 外掛程式 | 插件 |
+| hotkeys | 快速鍵 | 快捷键 |
+| reading view | 閱讀檢視模式 | 阅读视图 |
+
+Một bản OpenCC chuyển máy cho ra 快取 → 快取 và 外掛程式 → 外挂程式, đều **sai** với người đại lục và đọc ra ngay là "bản Đài Loan chuyển máy". Quy trình bắt buộc: `zh-Hant` trước như bản chuẩn, chuyển bộ chữ, rồi **rà lại toàn bộ thuật ngữ** theo catalogue `zh` chính thức của Obsidian.
+
+Cách tra thuật ngữ chính thức của Obsidian cho **mọi** ngôn ngữ, ghi trong `docs/GLOSSARY.md` vì E7 sẽ cần lại: giải nén `obsidian-<version>.asar` (kỹ thuật ở §6.12) rồi ghép `i18n/mapping.txt` (khoá, mỗi dòng một khoá) với `i18n/<locale>.txt` (bản dịch, **cùng số dòng**); bản English nằm trong `i18n.js` dưới `window.OBSIDIAN_DEFAULT_I18N`.
 
 ---
 

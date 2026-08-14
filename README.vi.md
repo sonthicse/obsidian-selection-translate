@@ -20,7 +20,7 @@ Bôi đen bất kỳ đoạn văn bản nào trong Obsidian rồi dịch tại c
 - **Ba công cụ dịch.** Google không cần khoá, Google Cloud Translation, hoặc DeepL. Máy chủ đúng cho khoá DeepL được chọn từ chính khoá đó.
 - **Đọc thành tiếng.** Bằng giọng hệ thống (ngoại tuyến) hoặc bằng Google.
 - **Đọc Markdown như người đọc.** Bôi đen `**Domain** [information](https://example.com)` thì gửi đi `Domain information`, không gửi cú pháp và URL.
-- **Giao diện Việt và Anh**, mặc định theo ngôn ngữ của chính Obsidian.
+- **Giao diện tám ngôn ngữ.** Anh, Việt, Trung phồn thể và giản thể, Nhật, Tây Ban Nha, Ý, Ả Rập — mặc định theo ngôn ngữ của chính Obsidian, và có bố cục phải-sang-trái.
 - **Không lưu gì, không theo dõi gì.** Không telemetry dưới bất kỳ hình thức nào, và bản dịch không bao giờ được ghi ra đĩa.
 
 ## Cài đặt

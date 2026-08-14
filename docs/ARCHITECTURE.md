@@ -74,8 +74,9 @@ Ba điều về [`StateMachine.ts`](../src/core/StateMachine.ts) đáng nêu:
 
 ```
 onload()
- ├─ loadSettings()          hợp nhất với DEFAULT_SETTINGS + kẹp khoảng giá trị
- ├─ applyLocale()           theo Obsidian nếu đặt 'auto'
+ ├─ loadSettings()          migrate() theo schemaVersion, rồi hợp nhất với
+ │                          DEFAULT_SETTINGS + kẹp khoảng giá trị; lưu ngay nếu đổi
+ ├─ applyLocale()           1 trong 8 locale; theo Obsidian nếu đặt 'auto'
  ├─ ProviderRegistry        dựng một lần, đọc khoá qua getter
  ├─ TtsService
  ├─ TranslationOrchestrator

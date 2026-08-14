@@ -27,6 +27,20 @@ by this version is not readable by 0.3.1, so keep a copy of
   简体中文 and you get that one, whichever engine you use.
 - **Language menus name languages in their own script** — 日本語, العربية,
   Tiếng Việt — instead of in whatever the interface language calls them.
+- **The plugin speaks eight languages.** English, Vietnamese, Traditional
+  Chinese, Simplified Chinese, Japanese, Spanish, Italian and Arabic. It follows
+  Obsidian's own interface language by default, including Obsidian's two
+  Chineses, and you can pin it to any one of the eight instead.
+- **Right-to-left support.** With the interface in Arabic, the popup, the button
+  and the options pane all read right to left, and the button appears on the
+  side where the text ends rather than where it starts. Translating *into*
+  Arabic right-aligns the translation on its own, whatever language the
+  interface is in.
+- **Missing translations fall back to English** instead of showing the internal
+  name of the message.
+- **Arabic, Chinese, Japanese and Korean text no longer risks appearing as empty
+  boxes** in the popup and the language menus, on systems whose interface font
+  has no glyphs for those scripts.
 
 ### Changed
 
