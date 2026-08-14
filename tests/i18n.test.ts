@@ -3,12 +3,13 @@ import { applyLocale, resolveLocale, setMessages, t, type Locale } from '../src/
 import { en, type Messages } from '../src/i18n/en';
 import { vi } from '../src/i18n/vi';
 import { zhHant } from '../src/i18n/zh-Hant';
+import { zhHans } from '../src/i18n/zh-Hans';
 import { UI_LANGUAGES } from '../src/languages';
 import { resetWarnings } from '../src/utils/log';
 import { ProviderError, type ProviderErrorCode } from '../src/providers/TranslationProvider';
 
 /** Every catalogue the plugin ships, keyed the way the i18n layer keys them. */
-const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant };
+const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Hans': zhHans };
 
 /** A window whose localStorage reports whatever Obsidian would have written. */
 function windowWithLanguage(language: string | null): Window {
@@ -168,10 +169,18 @@ describe('resolveLocale', () => {
 		expect(resolveLocale('auto', windowWithLanguage('vi_VN'))).toBe('vi');
 	});
 
-	it('reads Obsidian’s zh-TW as traditional', () => {
-		// Obsidian ships exactly two Chinese interface languages, `zh` and
-		// `zh-TW`, and this is the one that says which script out loud.
+	it('reads Obsidian’s two Chineses as the two the plugin ships', () => {
+		// Obsidian ships exactly `zh` and `zh-TW`, and a bare `zh` is its own
+		// spelling of simplified. Agreeing with the host app is the whole point
+		// here, which is why this leans the opposite way to the rule below.
+		expect(resolveLocale('auto', windowWithLanguage('zh'))).toBe('zh-Hans');
 		expect(resolveLocale('auto', windowWithLanguage('zh-TW'))).toBe('zh-Hant');
+	});
+
+	it('follows the script subtag rather than the region', () => {
+		expect(resolveLocale('auto', windowWithLanguage('zh-CN'))).toBe('zh-Hans');
+		expect(resolveLocale('auto', windowWithLanguage('zh-SG'))).toBe('zh-Hans');
+		expect(resolveLocale('auto', windowWithLanguage('zh-Hant-CN'))).toBe('zh-Hant');
 	});
 
 	it('leans traditional for a Chinese variant nobody listed', () => {

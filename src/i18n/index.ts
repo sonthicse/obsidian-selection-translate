@@ -1,6 +1,7 @@
 import { en, type Messages } from './en';
 import { vi } from './vi';
 import { zhHant } from './zh-Hant';
+import { zhHans } from './zh-Hans';
 import { normalizeUiLang, type UiLangCode } from '../languages';
 import { warnOnce } from '../utils/log';
 
@@ -21,7 +22,7 @@ export type Locale = UiLangCode;
  * never reach the dropdown with nothing behind it. The same trick the provider
  * code tables use, for the same reason.
  */
-const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant };
+const CATALOGUES: Record<Locale, Messages> = { en, vi, 'zh-Hant': zhHant, 'zh-Hans': zhHans };
 
 /**
  * Lookup for every string the plugin shows.
