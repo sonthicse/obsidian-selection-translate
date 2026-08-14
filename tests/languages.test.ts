@@ -54,7 +54,7 @@ describe('the language registry', () => {
 		// language dropdown offer a language with no strings behind it. The
 		// compiler catches that too — see the CATALOGUES table in src/i18n — and
 		// this is the same guard stated where the flag lives.
-		expect([...UI_LANGUAGES].sort()).toEqual(['en', 'es', 'it', 'ja', 'vi', 'zh-Hans', 'zh-Hant']);
+		expect([...UI_LANGUAGES].sort()).toEqual(['ar', 'en', 'es', 'it', 'ja', 'vi', 'zh-Hans', 'zh-Hant']);
 	});
 
 	it('keeps both Chinese variants apart, with the script in the code', () => {
